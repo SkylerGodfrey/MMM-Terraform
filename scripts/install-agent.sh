@@ -205,7 +205,7 @@ RestartSec=5
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=$(dirname "$MM_CONFIG_PATH")
+ReadWritePaths=-$(dirname "$MM_CONFIG_PATH")
 
 StandardOutput=journal
 StandardError=journal
@@ -291,6 +291,44 @@ verify_installation() {
     echo ""
 }
 
+# Prompt for MagicMirror location
+prompt_mm_location() {
+    # Skip if already provided via command line
+    if [ "$MM_CONFIG_PATH" != "/home/pi/MagicMirror/config/config.js" ]; then
+        return
+    fi
+
+    echo ""
+    echo "Where is your MagicMirror installation?"
+    echo ""
+    echo "  1) /home/pi/MagicMirror (default)"
+    echo "  2) /home/$(whoami)/MagicMirror"
+    echo "  3) Custom location"
+    echo ""
+    read -p "Select option [1-3]: " choice
+
+    case $choice in
+        1|"")
+            MM_CONFIG_PATH="/home/pi/MagicMirror/config/config.js"
+            ;;
+        2)
+            MM_CONFIG_PATH="/home/$(whoami)/MagicMirror/config/config.js"
+            ;;
+        3)
+            read -p "Enter full path to MagicMirror directory: " custom_path
+            # Remove trailing slash if present
+            custom_path="${custom_path%/}"
+            MM_CONFIG_PATH="${custom_path}/config/config.js"
+            ;;
+        *)
+            warn "Invalid choice, using default"
+            MM_CONFIG_PATH="/home/pi/MagicMirror/config/config.js"
+            ;;
+    esac
+
+    info "Using MagicMirror config: $MM_CONFIG_PATH"
+}
+
 # Main installation flow
 main() {
     echo ""
@@ -305,6 +343,7 @@ main() {
         sudo -v || error "Failed to obtain sudo access"
     fi
 
+    prompt_mm_location
     detect_platform
     get_download_url
     install_binary
