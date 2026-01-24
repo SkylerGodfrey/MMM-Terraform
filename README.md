@@ -19,7 +19,7 @@ This project provides:
 On your Magic Mirror device (Raspberry Pi), run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/skyler/MMM-Terraform/main/scripts/install-agent.sh | bash
+curl -fsSL https://raw.githubusercontent.com/SkylerGodfrey/MMM-Terraform/main/scripts/install-agent.sh | bash
 ```
 
 This will:
@@ -39,7 +39,7 @@ Requires [Go 1.21+](https://golang.org/dl/).
 #### 1. Clone and Build
 
 ```bash
-git clone https://github.com/skyler/MMM-Terraform.git
+git clone https://github.com/SkylerGodfrey/MMM-Terraform.git
 cd MMM-Terraform
 
 # Build everything
@@ -120,13 +120,13 @@ OS=darwin
 ARCH=arm64
 VERSION=v0.1.0
 
-curl -fsSL "https://github.com/skyler/MMM-Terraform/releases/download/${VERSION}/terraform-provider-magicmirror_${OS}_${ARCH}" \
+curl -fsSL "https://github.com/SkylerGodfrey/MMM-Terraform/releases/download/${VERSION}/terraform-provider-magicmirror_${OS}_${ARCH}" \
   -o terraform-provider-magicmirror
 
 # Install to Terraform plugins directory
-mkdir -p ~/.terraform.d/plugins/local/skyler/magicmirror/0.1.0/${OS}_${ARCH}
-mv terraform-provider-magicmirror ~/.terraform.d/plugins/local/skyler/magicmirror/0.1.0/${OS}_${ARCH}/
-chmod +x ~/.terraform.d/plugins/local/skyler/magicmirror/0.1.0/${OS}_${ARCH}/terraform-provider-magicmirror
+mkdir -p ~/.terraform.d/plugins/local/SkylerGodfrey/magicmirror/0.1.0/${OS}_${ARCH}
+mv terraform-provider-magicmirror ~/.terraform.d/plugins/local/SkylerGodfrey/magicmirror/0.1.0/${OS}_${ARCH}/
+chmod +x ~/.terraform.d/plugins/local/SkylerGodfrey/magicmirror/0.1.0/${OS}_${ARCH}/terraform-provider-magicmirror
 ```
 
 **Option B: Build from source (requires Go)**
@@ -152,7 +152,7 @@ Create `main.tf`:
 terraform {
   required_providers {
     magicmirror = {
-      source  = "local/skyler/magicmirror"
+      source  = "local/SkylerGodfrey/magicmirror"
       version = "0.1.0"
     }
   }

@@ -4,7 +4,7 @@
 terraform {
   required_providers {
     magicmirror = {
-      source  = "skyler/magicmirror"
+      source  = "SkylerGodfrey/magicmirror"
       version = "~> 0.1"
     }
   }

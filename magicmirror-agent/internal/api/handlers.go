@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/skyler/magicmirror-agent/internal/mmconfig"
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmconfig"
 )
 
 const agentVersion = "0.1.0"

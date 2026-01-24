@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/skyler/magicmirror-agent/internal/config"
-	"github.com/skyler/magicmirror-agent/internal/mmconfig"
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/config"
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmconfig"
 )
 
 // Server represents the API server

@@ -1,14 +1,18 @@
 #!/bin/bash
 # Magic Mirror Agent Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/skyler/MMM-Terraform/main/scripts/install-agent.sh | bash
 #
-# Or with options:
-#   curl -fsSL ... | bash -s -- --version 0.1.0 --no-service
+# Usage:
+#   curl -fsSL https://raw.githubusercontent.com/SkylerGodfrey/MMM-Terraform/main/scripts/install-agent.sh | bash
+#
+# With options (note the 'bash -s --' syntax):
+#   curl -fsSL https://raw.githubusercontent.com/SkylerGodfrey/MMM-Terraform/main/scripts/install-agent.sh | bash -s -- --version 0.1.0
+#   curl -fsSL https://raw.githubusercontent.com/SkylerGodfrey/MMM-Terraform/main/scripts/install-agent.sh | bash -s -- --no-service
+#   curl -fsSL https://raw.githubusercontent.com/SkylerGodfrey/MMM-Terraform/main/scripts/install-agent.sh | bash -s -- --help
 
 set -e
 
 # Configuration
-REPO="skyler/MMM-Terraform"
+REPO="SkylerGodfrey/MMM-Terraform"
 BINARY_NAME="magicmirror-agent"
 INSTALL_DIR="/usr/local/bin"
 CONFIG_DIR="/etc/magicmirror-agent"

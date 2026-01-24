@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/skyler/magicmirror-agent/internal/api"
-	"github.com/skyler/magicmirror-agent/internal/config"
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/api"
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/config"
 )
 
 func main() {

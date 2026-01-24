@@ -293,7 +293,7 @@ For development and testing:
 make install-provider
 ```
 
-This installs to `~/.terraform.d/plugins/local/skyler/magicmirror/<version>/<os>_<arch>/`
+This installs to `~/.terraform.d/plugins/local/SkylerGodfrey/magicmirror/<version>/<os>_<arch>/`
 
 In your Terraform configuration:
 
@@ -301,7 +301,7 @@ In your Terraform configuration:
 terraform {
   required_providers {
     magicmirror = {
-      source  = "local/skyler/magicmirror"
+      source  = "local/SkylerGodfrey/magicmirror"
       version = "0.1.0"
     }
   }
@@ -323,7 +323,7 @@ Once published:
 terraform {
   required_providers {
     magicmirror = {
-      source  = "skyler/magicmirror"
+      source  = "SkylerGodfrey/magicmirror"
       version = "~> 0.1"
     }
   }

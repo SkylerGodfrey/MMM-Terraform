@@ -1,4 +1,4 @@
-module github.com/skyler/magicmirror-agent
+module github.com/SkylerGodfrey/magicmirror-agent
 
 go 1.21
 

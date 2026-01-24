@@ -1,4 +1,4 @@
-module github.com/skyler/terraform-provider-magicmirror
+module github.com/SkylerGodfrey/terraform-provider-magicmirror
 
 go 1.21
 

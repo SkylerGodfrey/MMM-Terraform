@@ -1,6 +1,6 @@
 [Unit]
 Description=Magic Mirror Terraform Agent
-Documentation=https://github.com/skyler/MMM-Terraform
+Documentation=https://github.com/SkylerGodfrey/MMM-Terraform
 After=network.target
 Wants=network-online.target
 

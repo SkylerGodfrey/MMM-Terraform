@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	"github.com/skyler/terraform-provider-magicmirror/internal/provider"
+	"github.com/SkylerGodfrey/terraform-provider-magicmirror/internal/provider"
 )
 
 var (
@@ -20,7 +20,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "registry.terraform.io/skyler/magicmirror",
+		Address: "registry.terraform.io/SkylerGodfrey/magicmirror",
 		Debug:   debug,
 	}
 

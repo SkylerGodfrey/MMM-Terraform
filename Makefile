@@ -47,7 +47,7 @@ ifeq ($(ARCH),arm64)
 endif
 
 # Terraform plugin directory
-TF_PLUGIN_DIR := ~/.terraform.d/plugins/local/skyler/magicmirror/$(VERSION)/$(OS)_$(ARCH)
+TF_PLUGIN_DIR := ~/.terraform.d/plugins/local/SkylerGodfrey/magicmirror/$(VERSION)/$(OS)_$(ARCH)
 
 # Magic Mirror device settings (override with environment variables or make args)
 MM_HOST ?= raspberrypi.local
@@ -136,7 +136,7 @@ install-provider: build-provider ## Install the provider locally for Terraform
 	@echo '  terraform {'
 	@echo '    required_providers {'
 	@echo '      magicmirror = {'
-	@echo '        source  = "local/skyler/magicmirror"'
+	@echo '        source  = "local/SkylerGodfrey/magicmirror"'
 	@echo '        version = "$(VERSION)"'
 	@echo '      }'
 	@echo '    }'
