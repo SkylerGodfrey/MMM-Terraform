@@ -231,14 +231,14 @@ release-binaries: check-go ## Build release binaries for all platforms
 	cd $(AGENT_DIR) && GOOS=linux GOARCH=amd64 $(GO) build $(GOFLAGS) -o ../dist/$(AGENT_NAME)-linux-amd64
 	cd $(AGENT_DIR) && GOOS=linux GOARCH=arm64 $(GO) build $(GOFLAGS) -o ../dist/$(AGENT_NAME)-linux-arm64
 	cd $(AGENT_DIR) && GOOS=linux GOARCH=arm GOARM=7 $(GO) build $(GOFLAGS) -o ../dist/$(AGENT_NAME)-linux-arm
-	cd $(AGENT_DIR) && GOOS=darwin GOARCH=amd64 $(GO) build $(GOFLAGS) -o ../dist/$(AGENT_NAME)-darwin-amd64
-	cd $(AGENT_DIR) && GOOS=darwin GOARCH=arm64 $(GO) build $(GOFLAGS) -o ../dist/$(AGENT_NAME)-darwin-arm64
+	cd $(AGENT_DIR) && GOOS=darwin GOARCH=amd64 $(GO) build $(GOFLAGS) -o ../dist/$(AGENT_NAME)-macos-amd64
+	cd $(AGENT_DIR) && GOOS=darwin GOARCH=arm64 $(GO) build $(GOFLAGS) -o ../dist/$(AGENT_NAME)-macos-arm64
 
 	@echo "Building provider binaries..."
 	cd $(PROVIDER_DIR) && GOOS=linux GOARCH=amd64 $(GO) build $(GOFLAGS) -o ../dist/$(PROVIDER_NAME)_linux_amd64
 	cd $(PROVIDER_DIR) && GOOS=linux GOARCH=arm64 $(GO) build $(GOFLAGS) -o ../dist/$(PROVIDER_NAME)_linux_arm64
-	cd $(PROVIDER_DIR) && GOOS=darwin GOARCH=amd64 $(GO) build $(GOFLAGS) -o ../dist/$(PROVIDER_NAME)_darwin_amd64
-	cd $(PROVIDER_DIR) && GOOS=darwin GOARCH=arm64 $(GO) build $(GOFLAGS) -o ../dist/$(PROVIDER_NAME)_darwin_arm64
+	cd $(PROVIDER_DIR) && GOOS=darwin GOARCH=amd64 $(GO) build $(GOFLAGS) -o ../dist/$(PROVIDER_NAME)_macos_amd64
+	cd $(PROVIDER_DIR) && GOOS=darwin GOARCH=arm64 $(GO) build $(GOFLAGS) -o ../dist/$(PROVIDER_NAME)_macos_arm64
 	cd $(PROVIDER_DIR) && GOOS=windows GOARCH=amd64 $(GO) build $(GOFLAGS) -o ../dist/$(PROVIDER_NAME)_windows_amd64.exe
 
 	@echo "Generating checksums..."
