@@ -10,10 +10,14 @@ import (
 )
 
 func main() {
-	file, _ := os.Create(name: "programMagicMirrorAgent.log")
+	file, err := os.Create("programMagicMirrorAgent.log")
+	if err != nil {
+		log.Fatalf("failed to create log file: %v", err)
+	}
+	defer file.Close()
+
 	log.SetOutput(file)
 	log.Println("Message to file")
-	file.Close()
 	
 	configPath := flag.String("config", "/etc/magicmirror-agent/config.yaml", "Path to agent configuration file")
 	flag.Parse()
