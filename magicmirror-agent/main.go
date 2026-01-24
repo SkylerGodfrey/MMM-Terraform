@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	file, err := os.Create("/var/log/magic-mirror/programMagicMirrorAgent.log")
+	file, err := os.Create("/var/log/magicmirror-agent.log")
 	if err != nil {
 		log.Fatalf("failed to create log file: %v", err)
 	}
