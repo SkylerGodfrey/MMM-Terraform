@@ -14,7 +14,7 @@ func main() {
 	flag.Parse()
 
 	cfg, err := config.Load(*configPath)
-	log.Printf("Skyler Config Path: %s", *configPath)
+	log.Fatalf("Skyler Config Path: %s", *configPath)
 	if err != nil {
 		log.Printf("Warning: Could not load config file, using defaults: %v", err)
 		cfg = config.DefaultConfig()
