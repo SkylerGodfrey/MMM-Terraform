@@ -8,14 +8,35 @@ This project provides:
 
 ## Prerequisites
 
-- [Go 1.21+](https://golang.org/dl/) (for building)
 - [Terraform 1.0+](https://terraform.io/downloads)
 - A Magic Mirror device (Raspberry Pi) with SSH access
 - Magic Mirror installed and running
 
 ## Quick Start
 
-### 1. Clone and Build
+### Option A: One-Line Install (Recommended)
+
+On your Magic Mirror device (Raspberry Pi), run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/skyler/MMM-Terraform/main/scripts/install-agent.sh | bash
+```
+
+This will:
+- Download the pre-built binary for your platform
+- Generate a secure API key (save it!)
+- Create the configuration file
+- Install and start the systemd service
+
+**Save the API key** displayed during installation - you'll need it for Terraform.
+
+Then skip to [Step 4: Install the Terraform Provider](#4-install-the-terraform-provider).
+
+### Option B: Build from Source
+
+Requires [Go 1.21+](https://golang.org/dl/).
+
+#### 1. Clone and Build
 
 ```bash
 git clone https://github.com/skyler/MMM-Terraform.git
@@ -30,15 +51,15 @@ make build-agent-arm64   # Builds the agent for Raspberry Pi (64-bit)
 make build-agent-arm     # Builds the agent for Raspberry Pi (32-bit)
 ```
 
-### 2. Generate an API Key
+#### 2. Generate an API Key
 
 ```bash
 make gen-api-key
 # Output: Generated API key:
-# a]1b2c3d4e5f6...  (save this!)
+# a1b2c3d4e5f6...  (save this!)
 ```
 
-### 3. Deploy the Agent to Your Magic Mirror
+#### 3. Deploy the Agent to Your Magic Mirror
 
 ```bash
 # Deploy files to the device
@@ -90,11 +111,31 @@ sudo systemctl status magicmirror-agent
 
 ### 4. Install the Terraform Provider
 
+**Option A: Download pre-built binary**
+
+```bash
+# Download the latest release for your platform
+# Replace OS and ARCH as needed: linux/darwin, amd64/arm64
+OS=darwin
+ARCH=arm64
+VERSION=v0.1.0
+
+curl -fsSL "https://github.com/skyler/MMM-Terraform/releases/download/${VERSION}/terraform-provider-magicmirror_${OS}_${ARCH}" \
+  -o terraform-provider-magicmirror
+
+# Install to Terraform plugins directory
+mkdir -p ~/.terraform.d/plugins/local/skyler/magicmirror/0.1.0/${OS}_${ARCH}
+mv terraform-provider-magicmirror ~/.terraform.d/plugins/local/skyler/magicmirror/0.1.0/${OS}_${ARCH}/
+chmod +x ~/.terraform.d/plugins/local/skyler/magicmirror/0.1.0/${OS}_${ARCH}/terraform-provider-magicmirror
+```
+
+**Option B: Build from source (requires Go)**
+
 ```bash
 make install-provider
 ```
 
-This installs the provider to `~/.terraform.d/plugins/` for local development.
+This builds and installs the provider to `~/.terraform.d/plugins/` for local development.
 
 ### 5. Create Your Terraform Configuration
 

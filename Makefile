@@ -4,8 +4,23 @@
 # Version
 VERSION ?= 0.1.0
 
-# Go settings
-GO := go
+# Go settings - try to find Go in common locations
+# Override with: make build GO=/path/to/go
+GO_PATHS := $(shell which go 2>/dev/null) \
+            /usr/local/go/bin/go \
+            /opt/homebrew/bin/go \
+            /home/linuxbrew/.linuxbrew/bin/go \
+            $(HOME)/go/bin/go \
+            $(HOME)/.local/go/bin/go
+
+GO := $(or $(shell which go 2>/dev/null), \
+           $(firstword $(wildcard $(GO_PATHS))))
+
+# If GO is still empty, set a default that will trigger the check
+ifeq ($(GO),)
+    GO := go
+endif
+
 GOFLAGS := -trimpath -ldflags="-s -w"
 
 # Provider settings
@@ -47,6 +62,36 @@ MM_SSH := $(MM_USER)@$(MM_HOST)
 all: build
 
 # ============================================================================
+# Go check
+# ============================================================================
+
+.PHONY: check-go
+check-go: ## Verify Go is installed
+	@if ! command -v $(GO) >/dev/null 2>&1; then \
+		echo ""; \
+		echo "ERROR: Go not found!"; \
+		echo ""; \
+		echo "Please install Go from https://golang.org/dl/"; \
+		echo ""; \
+		echo "Common installation methods:"; \
+		echo "  macOS (Homebrew): brew install go"; \
+		echo "  macOS (pkg):      Download from https://golang.org/dl/"; \
+		echo "  Linux (apt):      sudo apt install golang-go"; \
+		echo "  Linux (snap):     sudo snap install go --classic"; \
+		echo ""; \
+		echo "After installing, you may need to:"; \
+		echo "  1. Add Go to your PATH in ~/.bashrc or ~/.zshrc:"; \
+		echo "     export PATH=\$$PATH:/usr/local/go/bin"; \
+		echo "  2. Restart your terminal or run: source ~/.zshrc"; \
+		echo ""; \
+		echo "Or specify the Go path directly:"; \
+		echo "  make build GO=/usr/local/go/bin/go"; \
+		echo ""; \
+		exit 1; \
+	fi
+	@echo "Using Go: $(GO) ($$($(GO) version))"
+
+# ============================================================================
 # Build targets
 # ============================================================================
 
@@ -54,25 +99,25 @@ all: build
 build: build-provider build-agent ## Build both provider and agent
 
 .PHONY: build-provider
-build-provider: ## Build the Terraform provider
+build-provider: check-go ## Build the Terraform provider
 	@echo "Building Terraform provider..."
 	cd $(PROVIDER_DIR) && $(GO) mod tidy && $(GO) build $(GOFLAGS) -o $(PROVIDER_NAME)
 	@echo "Built: $(PROVIDER_BIN)"
 
 .PHONY: build-agent
-build-agent: ## Build the agent for current platform
+build-agent: check-go ## Build the agent for current platform
 	@echo "Building Magic Mirror agent..."
 	cd $(AGENT_DIR) && $(GO) mod tidy && $(GO) build $(GOFLAGS) -o $(AGENT_NAME)
 	@echo "Built: $(AGENT_BIN)"
 
 .PHONY: build-agent-arm64
-build-agent-arm64: ## Build the agent for Raspberry Pi (ARM64)
+build-agent-arm64: check-go ## Build the agent for Raspberry Pi (ARM64)
 	@echo "Building Magic Mirror agent for ARM64..."
 	cd $(AGENT_DIR) && $(GO) mod tidy && GOOS=linux GOARCH=arm64 $(GO) build $(GOFLAGS) -o $(AGENT_NAME)-linux-arm64
 	@echo "Built: $(AGENT_DIR)/$(AGENT_NAME)-linux-arm64"
 
 .PHONY: build-agent-arm
-build-agent-arm: ## Build the agent for Raspberry Pi (ARM 32-bit)
+build-agent-arm: check-go ## Build the agent for Raspberry Pi (ARM 32-bit)
 	@echo "Building Magic Mirror agent for ARM..."
 	cd $(AGENT_DIR) && $(GO) mod tidy && GOOS=linux GOARCH=arm GOARM=7 $(GO) build $(GOFLAGS) -o $(AGENT_NAME)-linux-arm
 	@echo "Built: $(AGENT_DIR)/$(AGENT_NAME)-linux-arm"
@@ -149,29 +194,58 @@ deploy-agent-full: build-agent-arm64 ## Deploy and install agent (requires sudo 
 test: test-provider test-agent ## Run all tests
 
 .PHONY: test-provider
-test-provider: ## Run provider tests
+test-provider: check-go ## Run provider tests
 	@echo "Running provider tests..."
 	cd $(PROVIDER_DIR) && $(GO) test -v ./...
 
 .PHONY: test-agent
-test-agent: ## Run agent tests
+test-agent: check-go ## Run agent tests
 	@echo "Running agent tests..."
 	cd $(AGENT_DIR) && $(GO) test -v ./...
 
 .PHONY: fmt
-fmt: ## Format Go code
+fmt: check-go ## Format Go code
 	@echo "Formatting code..."
 	cd $(PROVIDER_DIR) && $(GO) fmt ./...
 	cd $(AGENT_DIR) && $(GO) fmt ./...
 
 .PHONY: vet
-vet: ## Run go vet
+vet: check-go ## Run go vet
 	@echo "Running go vet..."
 	cd $(PROVIDER_DIR) && $(GO) vet ./...
 	cd $(AGENT_DIR) && $(GO) vet ./...
 
 .PHONY: lint
 lint: fmt vet ## Run all linters
+
+# ============================================================================
+# Release targets
+# ============================================================================
+
+.PHONY: release-binaries
+release-binaries: check-go ## Build release binaries for all platforms
+	@echo "Building release binaries..."
+	@mkdir -p dist
+
+	@echo "Building agent binaries..."
+	cd $(AGENT_DIR) && GOOS=linux GOARCH=amd64 $(GO) build $(GOFLAGS) -o ../dist/$(AGENT_NAME)-linux-amd64
+	cd $(AGENT_DIR) && GOOS=linux GOARCH=arm64 $(GO) build $(GOFLAGS) -o ../dist/$(AGENT_NAME)-linux-arm64
+	cd $(AGENT_DIR) && GOOS=linux GOARCH=arm GOARM=7 $(GO) build $(GOFLAGS) -o ../dist/$(AGENT_NAME)-linux-arm
+	cd $(AGENT_DIR) && GOOS=darwin GOARCH=amd64 $(GO) build $(GOFLAGS) -o ../dist/$(AGENT_NAME)-darwin-amd64
+	cd $(AGENT_DIR) && GOOS=darwin GOARCH=arm64 $(GO) build $(GOFLAGS) -o ../dist/$(AGENT_NAME)-darwin-arm64
+
+	@echo "Building provider binaries..."
+	cd $(PROVIDER_DIR) && GOOS=linux GOARCH=amd64 $(GO) build $(GOFLAGS) -o ../dist/$(PROVIDER_NAME)_linux_amd64
+	cd $(PROVIDER_DIR) && GOOS=linux GOARCH=arm64 $(GO) build $(GOFLAGS) -o ../dist/$(PROVIDER_NAME)_linux_arm64
+	cd $(PROVIDER_DIR) && GOOS=darwin GOARCH=amd64 $(GO) build $(GOFLAGS) -o ../dist/$(PROVIDER_NAME)_darwin_amd64
+	cd $(PROVIDER_DIR) && GOOS=darwin GOARCH=arm64 $(GO) build $(GOFLAGS) -o ../dist/$(PROVIDER_NAME)_darwin_arm64
+	cd $(PROVIDER_DIR) && GOOS=windows GOARCH=amd64 $(GO) build $(GOFLAGS) -o ../dist/$(PROVIDER_NAME)_windows_amd64.exe
+
+	@echo "Generating checksums..."
+	cd dist && shasum -a 256 * > checksums.txt
+
+	@echo "Release binaries built in dist/"
+	@ls -la dist/
 
 # ============================================================================
 # Utility targets
@@ -183,6 +257,7 @@ clean: ## Remove built binaries
 	rm -f $(PROVIDER_BIN)
 	rm -f $(AGENT_BIN)
 	rm -f $(AGENT_DIR)/$(AGENT_NAME)-linux-*
+	rm -rf dist/
 
 .PHONY: gen-api-key
 gen-api-key: ## Generate a secure API key
@@ -208,9 +283,15 @@ help: ## Show this help message
 	@echo "Usage: make [target] [VAR=value]"
 	@echo ""
 	@echo "Variables:"
+	@echo "  GO         Path to Go binary (auto-detected, or specify manually)"
 	@echo "  MM_HOST    Magic Mirror hostname (default: raspberrypi.local)"
 	@echo "  MM_USER    SSH user (default: pi)"
 	@echo "  VERSION    Version number (default: 0.1.0)"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make build                          # Build with auto-detected Go"
+	@echo "  make build GO=/usr/local/go/bin/go  # Build with specific Go path"
+	@echo "  make deploy-agent MM_HOST=10.0.0.5  # Deploy to specific host"
 	@echo ""
 	@echo "Targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
