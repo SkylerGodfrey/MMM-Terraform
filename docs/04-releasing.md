@@ -72,8 +72,8 @@ The workflow builds binaries for these platforms:
 | Linux | amd64 | `magicmirror-agent-linux-amd64` | x86 Linux servers |
 | Linux | arm64 | `magicmirror-agent-linux-arm64` | Raspberry Pi 4/5 (64-bit OS) |
 | Linux | arm (v7) | `magicmirror-agent-linux-arm` | Raspberry Pi 3 (32-bit OS) |
-| macOS | amd64 | `magicmirror-agent-darwin-amd64` | Intel Macs |
-| macOS | arm64 | `magicmirror-agent-darwin-arm64` | Apple Silicon Macs |
+| macOS | amd64 | `magicmirror-agent-macos-amd64` | Intel Macs |
+| macOS | arm64 | `magicmirror-agent-macos-arm64` | Apple Silicon Macs |
 
 **Provider (`terraform-provider-magicmirror`)**
 
@@ -81,8 +81,8 @@ The workflow builds binaries for these platforms:
 |----|--------------|-------------|----------|
 | Linux | amd64 | `terraform-provider-magicmirror_linux_amd64` | Linux workstations, CI |
 | Linux | arm64 | `terraform-provider-magicmirror_linux_arm64` | ARM Linux |
-| macOS | amd64 | `terraform-provider-magicmirror_darwin_amd64` | Intel Macs |
-| macOS | arm64 | `terraform-provider-magicmirror_darwin_arm64` | Apple Silicon Macs |
+| macOS | amd64 | `terraform-provider-magicmirror_macos_amd64` | Intel Macs |
+| macOS | arm64 | `terraform-provider-magicmirror_macos_arm64` | Apple Silicon Macs |
 | Windows | amd64 | `terraform-provider-magicmirror_windows_amd64.exe` | Windows |
 
 ### Workflow Steps
@@ -161,12 +161,12 @@ https://github.com/SkylerGodfrey/MMM-Terraform/releases/download/v0.1.0/
 ├── magicmirror-agent-linux-amd64
 ├── magicmirror-agent-linux-arm64
 ├── magicmirror-agent-linux-arm
-├── magicmirror-agent-darwin-amd64
-├── magicmirror-agent-darwin-arm64
+├── magicmirror-agent-macos-amd64
+├── magicmirror-agent-macos-arm64
 ├── terraform-provider-magicmirror_linux_amd64
 ├── terraform-provider-magicmirror_linux_arm64
-├── terraform-provider-magicmirror_darwin_amd64
-├── terraform-provider-magicmirror_darwin_arm64
+├── terraform-provider-magicmirror_macos_amd64
+├── terraform-provider-magicmirror_macos_arm64
 ├── terraform-provider-magicmirror_windows_amd64.exe
 └── checksums.txt
 ```
@@ -200,12 +200,12 @@ ls -la dist/
 # magicmirror-agent-linux-amd64
 # magicmirror-agent-linux-arm64
 # magicmirror-agent-linux-arm
-# magicmirror-agent-darwin-amd64
-# magicmirror-agent-darwin-arm64
+# magicmirror-agent-macos-amd64
+# magicmirror-agent-macos-arm64
 # terraform-provider-magicmirror_linux_amd64
 # terraform-provider-magicmirror_linux_arm64
-# terraform-provider-magicmirror_darwin_amd64
-# terraform-provider-magicmirror_darwin_arm64
+# terraform-provider-magicmirror_macos_amd64
+# terraform-provider-magicmirror_macos_arm64
 # terraform-provider-magicmirror_windows_amd64.exe
 # checksums.txt
 ```

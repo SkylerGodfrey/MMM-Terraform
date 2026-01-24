@@ -17,15 +17,20 @@ jobs:
         include:
           - goos: linux
             goarch: amd64
+            platform: linux-amd64
           - goos: linux
             goarch: arm64
+            platform: linux-arm64
           - goos: linux
             goarch: arm
             goarm: 7
+            platform: linux-arm
           - goos: darwin
             goarch: amd64
+            platform: macos-amd64
           - goos: darwin
             goarch: arm64
+            platform: macos-arm64
 
     steps:
       - name: Checkout
@@ -45,13 +50,13 @@ jobs:
           cd magicmirror-agent
           go mod tidy
           go build -trimpath -ldflags="-s -w -X main.version=${{ github.ref_name }}" \
-            -o ../magicmirror-agent-${{ matrix.goos }}-${{ matrix.goarch }}
+            -o ../magicmirror-agent-${{ matrix.platform }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: magicmirror-agent-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: magicmirror-agent-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: magicmirror-agent-${{ matrix.platform }}
+          path: magicmirror-agent-${{ matrix.platform }}
 
   build-provider:
     name: Build Provider
@@ -61,14 +66,19 @@ jobs:
         include:
           - goos: linux
             goarch: amd64
+            platform: linux_amd64
           - goos: linux
             goarch: arm64
+            platform: linux_arm64
           - goos: darwin
             goarch: amd64
+            platform: macos_amd64
           - goos: darwin
             goarch: arm64
+            platform: macos_arm64
           - goos: windows
             goarch: amd64
+            platform: windows_amd64
 
     steps:
       - name: Checkout
@@ -93,13 +103,13 @@ jobs:
           fi
 
           go build -trimpath -ldflags="-s -w -X main.version=${{ github.ref_name }}" \
-            -o ../terraform-provider-magicmirror_${{ matrix.goos }}_${{ matrix.goarch }}${EXT}
+            -o ../terraform-provider-magicmirror_${{ matrix.platform }}${EXT}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-provider-magicmirror_${{ matrix.goos }}_${{ matrix.goarch }}
-          path: terraform-provider-magicmirror_${{ matrix.goos }}_${{ matrix.goarch }}*
+          name: terraform-provider-magicmirror_${{ matrix.platform }}
+          path: terraform-provider-magicmirror_${{ matrix.platform }}*
 
   release:
     name: Create Release

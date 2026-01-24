@@ -38,6 +38,8 @@ Requires [Go 1.21+](https://golang.org/dl/).
 
 #### 1. Clone and Build
 
+> **Note:** Steps 1-3 run on your **workstation** (where Go is installed). Step 3 deploys to the Magic Mirror device.
+
 ```bash
 git clone https://github.com/SkylerGodfrey/MMM-Terraform.git
 cd MMM-Terraform
@@ -111,12 +113,15 @@ sudo systemctl status magicmirror-agent
 
 ### 4. Install the Terraform Provider
 
+> **Note:** This step runs on your **workstation** (the machine where you run Terraform), not on the Magic Mirror device.
+
 **Option A: Download pre-built binary**
 
 ```bash
 # Download the latest release for your platform
-# Replace OS and ARCH as needed: linux/darwin, amd64/arm64
-OS=darwin
+# OS: linux, macos, windows
+# ARCH: amd64, arm64
+OS=macos
 ARCH=arm64
 VERSION=v0.1.0
 

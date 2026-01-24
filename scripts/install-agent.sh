@@ -74,7 +74,7 @@ done
 
 # Detect OS and architecture
 detect_platform() {
-    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+    local raw_os=$(uname -s | tr '[:upper:]' '[:lower:]')
     ARCH=$(uname -m)
 
     case $ARCH in
@@ -85,10 +85,10 @@ detect_platform() {
         *)       error "Unsupported architecture: $ARCH" ;;
     esac
 
-    case $OS in
-        linux)  ;;
-        darwin) ;;
-        *)      error "Unsupported OS: $OS" ;;
+    case $raw_os in
+        linux)  OS="linux" ;;
+        darwin) OS="macos" ;;
+        *)      error "Unsupported OS: $raw_os" ;;
     esac
 
     PLATFORM="${OS}-${ARCH}"
