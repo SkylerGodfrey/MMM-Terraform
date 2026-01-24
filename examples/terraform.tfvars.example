@@ -1,0 +1,11 @@
+# Example terraform.tfvars file
+# Copy this to terraform.tfvars and fill in your values
+
+magicmirror_host    = "192.168.1.50"
+magicmirror_port    = 8484
+magicmirror_api_key = "your-secure-api-key-here"
+
+weather_location       = "New York"
+openweathermap_api_key = "your-openweathermap-api-key"
+
+calendar_url = "https://calendar.google.com/calendar/ical/your-calendar-id/public/basic.ics"

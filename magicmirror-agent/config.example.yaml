@@ -1,0 +1,21 @@
+# Magic Mirror Agent Configuration
+# Copy this file to /etc/magicmirror-agent/config.yaml
+
+server:
+  # Host to bind to (use 0.0.0.0 to allow remote access)
+  host: "127.0.0.1"
+  # Port for the API
+  port: 8484
+
+magicmirror:
+  # Path to the Magic Mirror config.js file
+  config_path: "/home/pi/MagicMirror/config/config.js"
+  # Command to restart Magic Mirror
+  restart_command: "pm2 restart MagicMirror"
+
+auth:
+  # Enable API key authentication (recommended for remote access)
+  enabled: true
+  # API key (can also be set via MM_AGENT_API_KEY environment variable)
+  # Generate a secure key: openssl rand -hex 32
+  api_key: ""

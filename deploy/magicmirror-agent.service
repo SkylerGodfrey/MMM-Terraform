@@ -1,0 +1,35 @@
+[Unit]
+Description=Magic Mirror Terraform Agent
+Documentation=https://github.com/skyler/MMM-Terraform
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+
+# Path to the agent binary
+ExecStart=/usr/local/bin/magicmirror-agent --config /etc/magicmirror-agent/config.yaml
+
+# Restart on failure
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/pi/MagicMirror/config
+
+# Environment variables (API key can be set here instead of config file)
+# EnvironmentFile=-/etc/magicmirror-agent/env
+# Environment=MM_AGENT_API_KEY=your-key-here
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=magicmirror-agent
+
+[Install]
+WantedBy=multi-user.target
