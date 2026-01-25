@@ -305,7 +305,7 @@ prompt_mm_location() {
     echo "  2) /home/$(whoami)/MagicMirror"
     echo "  3) Custom location"
     echo ""
-    read -p "Select option [1-3]: " choice
+    read -p "Select option [1-3]: " choice </dev/tty
 
     case $choice in
         1|"")
@@ -315,7 +315,7 @@ prompt_mm_location() {
             MM_CONFIG_PATH="/home/$(whoami)/MagicMirror/config/config.js"
             ;;
         3)
-            read -p "Enter full path to MagicMirror directory: " custom_path
+            read -p "Enter full path to MagicMirror directory: " custom_path </dev/tty
             # Remove trailing slash if present
             custom_path="${custom_path%/}"
             MM_CONFIG_PATH="${custom_path}/config/config.js"
