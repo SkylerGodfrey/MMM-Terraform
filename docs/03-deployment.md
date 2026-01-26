@@ -150,7 +150,7 @@ sudo systemctl status magicmirror-agent
 sudo journalctl -u magicmirror-agent -f
 
 # Test the API
-curl http://localhost:8484/health
+curl http://localhost:8484/
 ```
 
 ---

@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"sync"
 )
 
@@ -245,20 +247,122 @@ func generateModuleID(mod *Module, index int) string {
 
 // parseConfigJS extracts configuration from Magic Mirror's config.js
 func parseConfigJS(data []byte) (*MagicMirrorConfig, error) {
-	// For this scaffold, we expect a JSON file with .js extension
-	// A full implementation would use a JS parser or regex extraction
-	// to handle actual JavaScript config files
+	content := string(data)
 
 	// Try to parse as JSON first (for Terraform-managed configs)
 	var cfg MagicMirrorConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		// TODO: Implement proper JS config parsing
-		// This would extract the config object from:
-		// let config = { ... }; module.exports = config;
-		return nil, fmt.Errorf("config parsing not fully implemented: %w", err)
+	if err := json.Unmarshal(data, &cfg); err == nil {
+		return &cfg, nil
+	}
+
+	// Extract the config object from JavaScript
+	// Handle: let config = { ... }; or var config = { ... };
+	configStart := strings.Index(content, "{")
+	if configStart == -1 {
+		return nil, fmt.Errorf("no config object found")
+	}
+
+	// Find the matching closing brace
+	configEnd := findMatchingBrace(content, configStart)
+	if configEnd == -1 {
+		return nil, fmt.Errorf("could not find end of config object")
+	}
+
+	jsonStr := content[configStart : configEnd+1]
+
+	// Remove JavaScript comments
+	jsonStr = removeJSComments(jsonStr)
+
+	// Remove trailing commas (valid in JS, invalid in JSON)
+	jsonStr = removeTrailingCommas(jsonStr)
+
+	if err := json.Unmarshal([]byte(jsonStr), &cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse config as JSON: %w", err)
 	}
 
 	return &cfg, nil
+}
+
+// findMatchingBrace finds the index of the closing brace that matches the opening brace at start
+func findMatchingBrace(s string, start int) int {
+	depth := 0
+	inString := false
+	stringChar := rune(0)
+	escaped := false
+
+	for i := start; i < len(s); i++ {
+		c := rune(s[i])
+
+		if escaped {
+			escaped = false
+			continue
+		}
+
+		if c == '\\' && inString {
+			escaped = true
+			continue
+		}
+
+		if (c == '"' || c == '\'' || c == '`') && !inString {
+			inString = true
+			stringChar = c
+			continue
+		}
+
+		if c == stringChar && inString {
+			inString = false
+			continue
+		}
+
+		if inString {
+			continue
+		}
+
+		if c == '{' {
+			depth++
+		} else if c == '}' {
+			depth--
+			if depth == 0 {
+				return i
+			}
+		}
+	}
+
+	return -1
+}
+
+// removeJSComments removes both // and /* */ style comments
+func removeJSComments(s string) string {
+	// Remove multi-line comments
+	multiLineComment := regexp.MustCompile(`/\*[\s\S]*?\*/`)
+	s = multiLineComment.ReplaceAllString(s, "")
+
+	// Remove single-line comments (but not inside strings)
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		inString := false
+		stringChar := rune(0)
+		for j, c := range line {
+			if (c == '"' || c == '\'' || c == '`') && !inString {
+				inString = true
+				stringChar = c
+			} else if c == stringChar && inString {
+				inString = false
+			} else if c == '/' && j+1 < len(line) && line[j+1] == '/' && !inString {
+				lines[i] = line[:j]
+				break
+			}
+		}
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+// removeTrailingCommas removes trailing commas before } or ]
+func removeTrailingCommas(s string) string {
+	// Remove trailing commas before closing braces/brackets
+	trailingComma := regexp.MustCompile(`,(\s*[}\]])`)
+	return trailingComma.ReplaceAllString(s, "$1")
 }
 
 // generateConfigJS generates a Magic Mirror config.js file

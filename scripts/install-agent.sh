@@ -28,12 +28,11 @@ MM_RESTART_CMD="pm2 restart MagicMirror"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NoColor='\033[0m' # No Color
 
-info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
-
+info() { echo -e "${GREEN}[INFO]${NoColor} $1"; }
+warn() { echo -e "${YELLOW}[WARN]${NoColor} $1"; }
+error() { echo -e "${RED}[ERROR]${NoColor} $1"; exit 1; }
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -160,6 +159,7 @@ auth:
 EOF
 
     sudo chmod 600 "${CONFIG_DIR}/config.yaml"
+    sudo chown -R $(whoami):$(id -gn) "${CONFIG_DIR}"
 
     echo ""
     info "Configuration created at ${CONFIG_DIR}/config.yaml"
