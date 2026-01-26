@@ -3,11 +3,12 @@ package api
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmconfig"
+	"github.com/gin-gonic/gin"
 )
 
-const agentVersion = "0.1.0"
+// agentVersion is set via ldflags at build time, defaults to "dev" for local builds
+var agentVersion = "dev"
 
 // healthCheck returns server health status
 func (s *Server) healthCheck(c *gin.Context) {
