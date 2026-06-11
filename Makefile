@@ -51,7 +51,7 @@ TF_PLUGIN_DIR := ~/.terraform.d/plugins/local/SkylerGodfrey/magicmirror/$(VERSIO
 
 # Magic Mirror device settings (override with environment variables or make args)
 MM_HOST ?= raspberrypi.local
-MM_USER ?= pi
+MM_USER ?= sgodfrey
 MM_SSH := $(MM_USER)@$(MM_HOST)
 
 # ============================================================================
