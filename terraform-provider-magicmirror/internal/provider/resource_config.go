@@ -22,17 +22,17 @@ type ConfigResource struct {
 
 // ConfigResourceModel describes the resource data model.
 type ConfigResourceModel struct {
-	ID          types.String `tfsdk:"id"`
-	Address     types.String `tfsdk:"address"`
-	Port        types.Int64  `tfsdk:"port"`
-	BasePath    types.String `tfsdk:"base_path"`
-	IPWhitelist types.List   `tfsdk:"ip_whitelist"`
-	Language    types.String `tfsdk:"language"`
-	Locale      types.String `tfsdk:"locale"`
-	TimeFormat  types.Int64  `tfsdk:"time_format"`
-	Units       types.String `tfsdk:"units"`
+	ID          types.String  `tfsdk:"id"`
+	Address     types.String  `tfsdk:"address"`
+	Port        types.Int64   `tfsdk:"port"`
+	BasePath    types.String  `tfsdk:"base_path"`
+	IPWhitelist types.List    `tfsdk:"ip_whitelist"`
+	Language    types.String  `tfsdk:"language"`
+	Locale      types.String  `tfsdk:"locale"`
+	TimeFormat  types.Int64   `tfsdk:"time_format"`
+	Units       types.String  `tfsdk:"units"`
 	Zoom        types.Float64 `tfsdk:"zoom"`
-	ServerOnly  types.Bool   `tfsdk:"server_only"`
+	ServerOnly  types.Bool    `tfsdk:"server_only"`
 }
 
 // NewConfigResource creates a new config resource

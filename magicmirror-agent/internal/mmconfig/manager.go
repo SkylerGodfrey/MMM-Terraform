@@ -8,9 +8,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
-	"strings"
 	"sync"
+
+	"github.com/dop251/goja"
 )
 
 // Manager handles Magic Mirror configuration operations
@@ -245,137 +245,107 @@ func generateModuleID(mod *Module, index int) string {
 	return hex.EncodeToString(hash[:8])
 }
 
-// parseConfigJS extracts configuration from Magic Mirror's config.js
+// parseConfigJS extracts configuration from Magic Mirror's config.js by
+// evaluating it as JavaScript, so unquoted keys, comments, single quotes,
+// and trailing commas are all handled.
 func parseConfigJS(data []byte) (*MagicMirrorConfig, error) {
-	content := string(data)
-
-	// Try to parse as JSON first (for Terraform-managed configs)
-	var cfg MagicMirrorConfig
-	if err := json.Unmarshal(data, &cfg); err == nil {
-		return &cfg, nil
+	vm := goja.New()
+	if _, err := vm.RunString(string(data)); err != nil {
+		return nil, fmt.Errorf("failed to evaluate config.js: %w", err)
 	}
 
-	// Extract the config object from JavaScript
-	// Handle: let config = { ... }; or var config = { ... };
-	configStart := strings.Index(content, "{")
-	if configStart == -1 {
-		return nil, fmt.Errorf("no config object found")
+	v, err := vm.RunString("JSON.stringify(config)")
+	if err != nil {
+		return nil, fmt.Errorf("config.js did not define a 'config' object: %w", err)
 	}
 
-	// Find the matching closing brace
-	configEnd := findMatchingBrace(content, configStart)
-	if configEnd == -1 {
-		return nil, fmt.Errorf("could not find end of config object")
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(v.String()), &raw); err != nil {
+		return nil, fmt.Errorf("failed to decode config object: %w", err)
 	}
 
-	jsonStr := content[configStart : configEnd+1]
-
-	// Remove JavaScript comments
-	jsonStr = removeJSComments(jsonStr)
-
-	// Remove trailing commas (valid in JS, invalid in JSON)
-	jsonStr = removeTrailingCommas(jsonStr)
-
-	if err := json.Unmarshal([]byte(jsonStr), &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config as JSON: %w", err)
-	}
-
-	return &cfg, nil
+	return configFromMap(raw)
 }
 
-// findMatchingBrace finds the index of the closing brace that matches the opening brace at start
-func findMatchingBrace(s string, start int) int {
-	depth := 0
-	inString := false
-	stringChar := rune(0)
-	escaped := false
+// configFromMap splits MagicMirror's flat top-level config into known global
+// settings, modules, and unmodeled extras.
+func configFromMap(raw map[string]any) (*MagicMirrorConfig, error) {
+	cfg := &MagicMirrorConfig{}
 
-	for i := start; i < len(s); i++ {
-		c := rune(s[i])
-
-		if escaped {
-			escaped = false
-			continue
+	if mods, ok := raw["modules"]; ok {
+		b, err := json.Marshal(mods)
+		if err != nil {
+			return nil, err
 		}
-
-		if c == '\\' && inString {
-			escaped = true
-			continue
+		if err := json.Unmarshal(b, &cfg.Modules); err != nil {
+			return nil, fmt.Errorf("failed to decode modules: %w", err)
 		}
-
-		if (c == '"' || c == '\'' || c == '`') && !inString {
-			inString = true
-			stringChar = c
-			continue
-		}
-
-		if c == stringChar && inString {
-			inString = false
-			continue
-		}
-
-		if inString {
-			continue
-		}
-
-		if c == '{' {
-			depth++
-		} else if c == '}' {
-			depth--
-			if depth == 0 {
-				return i
-			}
-		}
+		delete(raw, "modules")
 	}
 
-	return -1
-}
-
-// removeJSComments removes both // and /* */ style comments
-func removeJSComments(s string) string {
-	// Remove multi-line comments
-	multiLineComment := regexp.MustCompile(`/\*[\s\S]*?\*/`)
-	s = multiLineComment.ReplaceAllString(s, "")
-
-	// Remove single-line comments (but not inside strings)
-	lines := strings.Split(s, "\n")
-	for i, line := range lines {
-		inString := false
-		stringChar := rune(0)
-		for j, c := range line {
-			if (c == '"' || c == '\'' || c == '`') && !inString {
-				inString = true
-				stringChar = c
-			} else if c == stringChar && inString {
-				inString = false
-			} else if c == '/' && j+1 < len(line) && line[j+1] == '/' && !inString {
-				lines[i] = line[:j]
-				break
-			}
-		}
+	b, err := json.Marshal(raw)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(b, &cfg.Global); err != nil {
+		return nil, fmt.Errorf("failed to decode global settings: %w", err)
 	}
 
-	return strings.Join(lines, "\n")
+	for _, k := range jsonFieldNames(GlobalConfig{}) {
+		delete(raw, k)
+	}
+	if len(raw) > 0 {
+		cfg.Extras = raw
+	}
+
+	return cfg, nil
 }
 
-// removeTrailingCommas removes trailing commas before } or ]
-func removeTrailingCommas(s string) string {
-	// Remove trailing commas before closing braces/brackets
-	trailingComma := regexp.MustCompile(`,(\s*[}\]])`)
-	return trailingComma.ReplaceAllString(s, "$1")
+// configToMap flattens the config back into MagicMirror's top-level format.
+func configToMap(cfg *MagicMirrorConfig) (map[string]any, error) {
+	out := make(map[string]any, len(cfg.Extras)+16)
+	for k, v := range cfg.Extras {
+		out[k] = v
+	}
+
+	b, err := json.Marshal(cfg.Global)
+	if err != nil {
+		return nil, err
+	}
+	var global map[string]any
+	if err := json.Unmarshal(b, &global); err != nil {
+		return nil, err
+	}
+	for k, v := range global {
+		out[k] = v
+	}
+
+	modules := cfg.Modules
+	if modules == nil {
+		modules = []Module{}
+	}
+	modsJSON, err := json.Marshal(modules)
+	if err != nil {
+		return nil, err
+	}
+	out["modules"] = json.RawMessage(modsJSON)
+
+	return out, nil
 }
 
-// generateConfigJS generates a Magic Mirror config.js file
+// generateConfigJS generates a Magic Mirror config.js file in the flat
+// top-level format MagicMirror expects.
 func generateConfigJS(cfg *MagicMirrorConfig) ([]byte, error) {
-	// For Terraform-managed configs, we'll use a JSON-compatible format
-	// wrapped in JavaScript module.exports
-
-	configJSON, err := json.MarshalIndent(cfg, "", "  ")
+	flat, err := configToMap(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	// Generate proper Magic Mirror config.js format
+	configJSON, err := json.MarshalIndent(flat, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+
 	output := fmt.Sprintf(`/* Magic Mirror Config
  * Managed by Terraform - Manual edits may be overwritten
  * See: https://docs.magicmirror.builders/configuration/introduction.html
