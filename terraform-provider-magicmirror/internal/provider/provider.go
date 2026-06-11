@@ -118,6 +118,6 @@ func (p *MagicMirrorProvider) Resources(ctx context.Context) []func() resource.R
 
 func (p *MagicMirrorProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		// Future: NewModulesDataSource for reading existing modules
+		NewVersionDataSource,
 	}
 }

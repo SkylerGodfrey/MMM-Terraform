@@ -26,19 +26,19 @@ type MagicMirrorConfig struct {
 
 // GlobalConfig represents global Magic Mirror settings
 type GlobalConfig struct {
-	Address          string   `json:"address,omitempty"`
-	Port             int      `json:"port,omitempty"`
-	BasePath         string   `json:"basePath,omitempty"`
-	IPWhitelist      []string `json:"ipWhitelist,omitempty"`
-	Zoom             float64  `json:"zoom,omitempty"`
-	Language         string   `json:"language,omitempty"`
-	Locale           string   `json:"locale,omitempty"`
-	LogLevel         []string `json:"logLevel,omitempty"`
-	TimeFormat       int      `json:"timeFormat,omitempty"`
-	Units            string   `json:"units,omitempty"`
-	ServerOnly       bool     `json:"serverOnly,omitempty"`
-	ElectronOptions  any      `json:"electronOptions,omitempty"`
-	CustomCSS        string   `json:"customCss,omitempty"`
+	Address         string   `json:"address,omitempty"`
+	Port            int      `json:"port,omitempty"`
+	BasePath        string   `json:"basePath,omitempty"`
+	IPWhitelist     []string `json:"ipWhitelist,omitempty"`
+	Zoom            float64  `json:"zoom,omitempty"`
+	Language        string   `json:"language,omitempty"`
+	Locale          string   `json:"locale,omitempty"`
+	LogLevel        []string `json:"logLevel,omitempty"`
+	TimeFormat      int      `json:"timeFormat,omitempty"`
+	Units           string   `json:"units,omitempty"`
+	ServerOnly      bool     `json:"serverOnly,omitempty"`
+	ElectronOptions any      `json:"electronOptions,omitempty"`
+	CustomCSS       string   `json:"customCss,omitempty"`
 }
 
 // Module represents a Magic Mirror module configuration

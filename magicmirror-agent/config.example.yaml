@@ -10,6 +10,9 @@ server:
 magicmirror:
   # Path to the Magic Mirror config.js file
   config_path: "/home/pi/MagicMirror/config/config.js"
+  # Path to the Magic Mirror install directory
+  # (defaults to the grandparent of config_path, e.g. /home/pi/MagicMirror)
+  # path: "/home/pi/MagicMirror"
   # Command to restart Magic Mirror
   restart_command: "pm2 restart MagicMirror"
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -25,13 +26,15 @@ type ModuleResource struct {
 
 // ModuleResourceModel describes the resource data model.
 type ModuleResourceModel struct {
-	ID       types.String `tfsdk:"id"`
-	Module   types.String `tfsdk:"module"`
-	Position types.String `tfsdk:"position"`
-	Header   types.String `tfsdk:"header"`
-	Disabled types.Bool   `tfsdk:"disabled"`
-	Classes  types.String `tfsdk:"classes"`
-	Config   types.String `tfsdk:"config"` // JSON string for flexibility
+	ID         types.String `tfsdk:"id"`
+	Module     types.String `tfsdk:"module"`
+	Position   types.String `tfsdk:"position"`
+	Header     types.String `tfsdk:"header"`
+	Disabled   types.Bool   `tfsdk:"disabled"`
+	Classes    types.String `tfsdk:"classes"`
+	Config     types.String `tfsdk:"config"` // JSON string for flexibility
+	Repository types.String `tfsdk:"repository"`
+	Version    types.String `tfsdk:"version"`
 }
 
 // NewModuleResource creates a new module resource
@@ -81,6 +84,14 @@ func (r *ModuleResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				Description: "Module-specific configuration as a JSON string. Use jsonencode() to convert HCL maps to JSON.",
 				Optional:    true,
 			},
+			"repository": schema.StringAttribute{
+				Description: "Git repository URL used to install the module on the Pi if it isn't already present. On destroy, the module directory is left in place; only the config entry is removed.",
+				Optional:    true,
+			},
+			"version": schema.StringAttribute{
+				Description: "Git ref (tag, branch, or commit SHA) the installed module should be checked out at. The agent runs git fetch + checkout, then npm install. On destroy, the module directory is left in place; only the config entry is removed.",
+				Optional:    true,
+			},
 		},
 	}
 }
@@ -107,6 +118,11 @@ func (r *ModuleResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if err := r.ensureInstalled(ctx, &data); err != nil {
+		resp.Diagnostics.AddError("Failed to install module on the mirror", err.Error())
 		return
 	}
 
@@ -149,6 +165,30 @@ func (r *ModuleResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 	r.moduleToModel(module, &data)
 
+	if !data.Version.IsNull() && data.Version.ValueString() != "" {
+		installed, err := r.client.GetInstalledModule(data.Module.ValueString())
+		if err != nil {
+			if apiErr, ok := err.(*APIError); ok && apiErr.Message == "module not installed" {
+				// Module directory is gone — report drift
+				data.Version = types.StringNull()
+			} else {
+				resp.Diagnostics.AddError("Failed to read installed module version", err.Error())
+				return
+			}
+		} else if !versionMatches(data.Version.ValueString(), installed.Ref, installed.Commit) {
+			actual := installed.Ref
+			if actual == "" {
+				actual = installed.Commit
+			}
+			tflog.Debug(ctx, "Installed module version drifted", map[string]any{
+				"module":   data.Module.ValueString(),
+				"declared": data.Version.ValueString(),
+				"actual":   actual,
+			})
+			data.Version = types.StringValue(actual)
+		}
+	}
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -157,6 +197,11 @@ func (r *ModuleResource) Update(ctx context.Context, req resource.UpdateRequest,
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if err := r.ensureInstalled(ctx, &data); err != nil {
+		resp.Diagnostics.AddError("Failed to install module on the mirror", err.Error())
 		return
 	}
 
@@ -199,6 +244,43 @@ func (r *ModuleResource) ImportState(ctx context.Context, req resource.ImportSta
 	r.moduleToModel(module, &data)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// ensureInstalled converges the module install on the Pi before the
+// config entry is written, so the module exists when MagicMirror restarts.
+func (r *ModuleResource) ensureInstalled(ctx context.Context, data *ModuleResourceModel) error {
+	if data.Repository.IsNull() && data.Version.IsNull() {
+		return nil
+	}
+
+	name := data.Module.ValueString()
+	tflog.Debug(ctx, "Converging installed module", map[string]any{
+		"module":     name,
+		"repository": data.Repository.ValueString(),
+		"version":    data.Version.ValueString(),
+	})
+
+	_, err := r.client.EnsureInstalledModule(name, data.Repository.ValueString(), data.Version.ValueString())
+	return err
+}
+
+// versionMatches reports whether the declared version matches what is
+// installed: exact ref match, a prefix of the commit SHA, or a tag the
+// ref builds on (git describe output like v1.4.6-1-gf51d88a).
+func versionMatches(declared, ref, commit string) bool {
+	if declared == "" {
+		return true
+	}
+	if declared == ref {
+		return true
+	}
+	if commit != "" && strings.HasPrefix(commit, declared) {
+		return true
+	}
+	if ref != "" && strings.HasPrefix(ref, declared) {
+		return true
+	}
+	return false
 }
 
 // modelToModule converts the Terraform model to an API module

@@ -41,6 +41,14 @@ type GlobalConfig struct {
 	ServerOnly  bool     `json:"serverOnly,omitempty"`
 }
 
+// InstalledModule represents a module directory on the Pi with git info
+type InstalledModule struct {
+	Name       string `json:"name"`
+	Ref        string `json:"ref"`
+	Commit     string `json:"commit"`
+	Repository string `json:"repository"`
+}
+
 // APIError represents an error response from the API
 type APIError struct {
 	Message string `json:"error"`
@@ -182,6 +190,46 @@ func (c *MagicMirrorClient) UpdateConfig(config *GlobalConfig) error {
 	}
 
 	return nil
+}
+
+// GetMMVersion retrieves the core MagicMirror version (read-only)
+func (c *MagicMirrorClient) GetMMVersion() (string, error) {
+	resp, err := c.doRequest(http.MethodGet, "/mm/version", nil)
+	if err != nil {
+		return "", err
+	}
+
+	type versionResponse struct {
+		Version string `json:"version"`
+	}
+	result, err := parseResponse[versionResponse](resp)
+	if err != nil {
+		return "", err
+	}
+	return result.Version, nil
+}
+
+// GetInstalledModule retrieves git info for an installed module directory
+func (c *MagicMirrorClient) GetInstalledModule(name string) (*InstalledModule, error) {
+	resp, err := c.doRequest(http.MethodGet, "/modules/installed/"+name, nil)
+	if err != nil {
+		return nil, err
+	}
+	return parseResponse[InstalledModule](resp)
+}
+
+// EnsureInstalledModule converges a module install on the Pi
+// (clone if missing, fetch + checkout version, npm install)
+func (c *MagicMirrorClient) EnsureInstalledModule(name, repository, version string) (*InstalledModule, error) {
+	body := map[string]string{
+		"repository": repository,
+		"version":    version,
+	}
+	resp, err := c.doRequest(http.MethodPut, "/modules/installed/"+name, body)
+	if err != nil {
+		return nil, err
+	}
+	return parseResponse[InstalledModule](resp)
 }
 
 // Restart restarts the Magic Mirror process

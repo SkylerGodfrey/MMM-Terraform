@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/viper"
 )
@@ -23,6 +24,16 @@ type ServerConfig struct {
 type MagicMirrorConfig struct {
 	ConfigPath     string `mapstructure:"config_path"`
 	RestartCommand string `mapstructure:"restart_command"`
+	Path           string `mapstructure:"path"`
+}
+
+// InstallPath returns the MagicMirror install directory, defaulting to
+// the grandparent of config_path (config.js lives in <install>/config/).
+func (m MagicMirrorConfig) InstallPath() string {
+	if m.Path != "" {
+		return m.Path
+	}
+	return filepath.Dir(filepath.Dir(m.ConfigPath))
 }
 
 // AuthConfig holds authentication settings
