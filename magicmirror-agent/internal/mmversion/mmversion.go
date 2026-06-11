@@ -144,6 +144,11 @@ func (m *Manager) Converge(name, repository, version string) (*InstalledModule, 
 	}
 
 	if version != "" {
+		// Skip fetch/checkout/npm when already at the declared version so
+		// no-op terraform applies stay fast.
+		if current := m.inspect(name); matchesVersion(&current, version) {
+			return &current, nil
+		}
 		if _, err := m.run(dir, m.gitTimeout, "git", "fetch", "--tags"); err != nil {
 			return nil, fmt.Errorf("git fetch failed: %w", err)
 		}
@@ -159,6 +164,18 @@ func (m *Manager) Converge(name, repository, version string) (*InstalledModule, 
 	}
 
 	return m.GetInstalled(name)
+}
+
+// matchesVersion mirrors the provider's drift rule: the declared version
+// matches a tag/describe ref exactly, a commit by prefix, or a describe
+// output that starts with the declared tag.
+func matchesVersion(mod *InstalledModule, version string) bool {
+	if mod.Ref == "" && mod.Commit == "" {
+		return false
+	}
+	return version == mod.Ref ||
+		strings.HasPrefix(mod.Commit, version) ||
+		strings.HasPrefix(mod.Ref, version)
 }
 
 // Remove deletes a module directory, refusing if it isn't a git clone

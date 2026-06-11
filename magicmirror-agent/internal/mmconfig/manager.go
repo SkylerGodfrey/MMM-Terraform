@@ -5,19 +5,28 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/dop251/goja"
 )
+
+// restartDebounce delays the post-write restart so a terraform apply that
+// touches many resources restarts MagicMirror once, not once per resource.
+var restartDebounce = 3 * time.Second
 
 // Manager handles Magic Mirror configuration operations
 type Manager struct {
 	configPath     string
 	restartCommand string
 	mu             sync.RWMutex
+
+	restartMu    sync.Mutex
+	restartTimer *time.Timer
 }
 
 // NewManager creates a new configuration manager
@@ -110,7 +119,11 @@ func (m *Manager) UpdateGlobalConfig(global *GlobalConfig) error {
 	}
 
 	cfg.Global = *global
-	return m.writeConfigInternal(cfg)
+	if err := m.writeConfigInternal(cfg); err != nil {
+		return err
+	}
+	m.scheduleRestart()
+	return nil
 }
 
 // ListModules returns all modules
@@ -161,6 +174,7 @@ func (m *Manager) CreateModule(module *Module) (*Module, error) {
 	if err := m.writeConfigInternal(cfg); err != nil {
 		return nil, err
 	}
+	m.scheduleRestart()
 
 	return module, nil
 }
@@ -192,6 +206,7 @@ func (m *Manager) UpdateModule(module *Module) (*Module, error) {
 	if err := m.writeConfigInternal(cfg); err != nil {
 		return nil, err
 	}
+	m.scheduleRestart()
 
 	return module, nil
 }
@@ -221,7 +236,31 @@ func (m *Manager) DeleteModule(id string) error {
 	}
 
 	cfg.Modules = modules
-	return m.writeConfigInternal(cfg)
+	if err := m.writeConfigInternal(cfg); err != nil {
+		return err
+	}
+	m.scheduleRestart()
+	return nil
+}
+
+// scheduleRestart restarts MagicMirror after a debounce window so config
+// changes take effect without restarting once per write.
+func (m *Manager) scheduleRestart() {
+	if m.restartCommand == "" {
+		return
+	}
+
+	m.restartMu.Lock()
+	defer m.restartMu.Unlock()
+
+	if m.restartTimer != nil {
+		m.restartTimer.Stop()
+	}
+	m.restartTimer = time.AfterFunc(restartDebounce, func() {
+		if err := m.Restart(); err != nil {
+			log.Printf("post-write MagicMirror restart failed: %v", err)
+		}
+	})
 }
 
 // Restart restarts the Magic Mirror process
