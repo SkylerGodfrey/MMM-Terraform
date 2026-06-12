@@ -20,7 +20,9 @@ RestartSec=5
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=-/home/pi/MagicMirror/config
+# config: config.js writes; modules: family-portal chores/photos data and
+# module installs both live under modules/
+ReadWritePaths=-/home/pi/MagicMirror/config -/home/pi/MagicMirror/modules
 
 # Environment variables (API key can be set here instead of config file)
 # EnvironmentFile=-/etc/magicmirror-agent/env

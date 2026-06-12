@@ -22,6 +22,10 @@ import (
 
 var ErrNotFound = errors.New("chore not found")
 
+// ErrStorage marks read/write failures so handlers can hide filesystem
+// detail from the family-facing UI while it still lands in the agent log.
+var ErrStorage = errors.New("chores storage error")
+
 // Fields the portal is allowed to set. "anyone" and "assignee" are mutually
 // exclusive: bounty chores have anyone=true and no assignee.
 type Input struct {
@@ -122,11 +126,11 @@ func (s *Store) Delete(id string) error {
 func (s *Store) load() (map[string]any, error) {
 	raw, err := os.ReadFile(s.path)
 	if err != nil {
-		return nil, fmt.Errorf("reading chores file: %w", err)
+		return nil, fmt.Errorf("%w: reading %s: %w", ErrStorage, s.path, err)
 	}
 	var doc map[string]any
 	if err := yaml.Unmarshal(raw, &doc); err != nil {
-		return nil, fmt.Errorf("parsing chores file: %w", err)
+		return nil, fmt.Errorf("%w: parsing %s: %w", ErrStorage, s.path, err)
 	}
 	if doc == nil {
 		doc = map[string]any{}
@@ -221,6 +225,13 @@ func choreNode(chore map[string]any) (*yaml.Node, error) {
 }
 
 func (s *Store) save(doc map[string]any) error {
+	if err := s.write(doc); err != nil {
+		return fmt.Errorf("%w: writing %s: %w", ErrStorage, s.path, err)
+	}
+	return nil
+}
+
+func (s *Store) write(doc map[string]any) error {
 	node, err := docNode(doc)
 	if err != nil {
 		return err
@@ -234,13 +245,12 @@ func (s *Store) save(doc map[string]any) error {
 	if err := enc.Close(); err != nil {
 		return err
 	}
-	out := buf.Bytes()
 	tmp, err := os.CreateTemp(filepath.Dir(s.path), ".chores-*.yaml")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(tmp.Name())
-	if _, err := tmp.Write(out); err != nil {
+	if _, err := tmp.Write(buf.Bytes()); err != nil {
 		tmp.Close()
 		return err
 	}

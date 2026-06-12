@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,7 +16,7 @@ import (
 func (s *Server) listChores(c *gin.Context) {
 	list, err := s.choreStore.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		choreError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"chores": list})
@@ -66,7 +67,7 @@ func (s *Server) listAssignees(c *gin.Context) {
 
 	list, err := s.choreStore.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		choreError(c, err)
 		return
 	}
 	for _, chore := range list {
@@ -102,10 +103,13 @@ func (s *Server) listAssignees(c *gin.Context) {
 func choreError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, chores.ErrNotFound):
-		c.JSON(http.StatusNotFound, gin.H{"error": "chore not found"})
-	case errors.Is(err, os.ErrNotExist):
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "chores file not found on the mirror"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "That chore is gone — it may have been removed on the mirror. Pull to refresh."})
+	case errors.Is(err, chores.ErrStorage):
+		// Full detail (paths, fs errors) goes to the journal, not the family.
+		log.Printf("portal chores: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "The mirror couldn't save that change. Try again in a minute."})
 	default:
+		// Validation errors are written for humans; show them as-is.
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}
 }
