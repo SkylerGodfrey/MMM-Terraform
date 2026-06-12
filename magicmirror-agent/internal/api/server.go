@@ -7,6 +7,7 @@ import (
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/config"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmconfig"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmversion"
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/photos"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/portal"
 	"github.com/gin-gonic/gin"
 )
@@ -18,6 +19,7 @@ type Server struct {
 	mmManager  *mmconfig.Manager
 	mmVersions *mmversion.Manager
 	choreStore *chores.Store
+	photoStore *photos.Store
 }
 
 // NewServer creates a new API server
@@ -33,6 +35,7 @@ func NewServer(cfg *config.Config) *Server {
 		mmManager:  mmconfig.NewManager(cfg.MagicMirror.ConfigPath, cfg.MagicMirror.RestartCommand),
 		mmVersions: mmversion.NewManager(cfg.MagicMirror.InstallPath()),
 		choreStore: chores.NewStore(cfg.ChoresFile()),
+		photoStore: photos.NewStore(cfg.PhotosDir()),
 	}
 
 	s.setupRoutes()
@@ -78,6 +81,11 @@ func (s *Server) setupRoutes() {
 	portalAPI.PUT("/chores/:id", s.updateChore)
 	portalAPI.DELETE("/chores/:id", s.deleteChore)
 	portalAPI.GET("/assignees", s.listAssignees)
+	portalAPI.GET("/photos", s.listPhotos)
+	portalAPI.POST("/photos", s.uploadPhoto)
+	portalAPI.DELETE("/photos/:name", s.deletePhoto)
+	s.router.GET("/portal/photos/:name", s.servePhoto)
+	s.router.GET("/portal/thumbs/:name", s.servePhotoThumb)
 }
 
 // Run starts the HTTP server

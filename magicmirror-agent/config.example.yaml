@@ -20,6 +20,9 @@ portal:
   # Path to the MMM-Chores chores.yaml edited by the family portal
   # (defaults to <install>/modules/MMM-Chores/chores.yaml)
   # chores_file: "/home/pi/MagicMirror/modules/MMM-Chores/chores.yaml"
+  # Slideshow album directory managed by the family portal
+  # (defaults to <install>/modules/MagicMirrorPhotos)
+  # photos_dir: "/home/pi/MagicMirror/modules/MagicMirrorPhotos"
 
 auth:
   # Enable API key authentication (recommended for remote access)

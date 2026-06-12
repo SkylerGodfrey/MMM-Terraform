@@ -122,7 +122,7 @@ func (m *Manager) UpdateGlobalConfig(global *GlobalConfig) error {
 	if err := m.writeConfigInternal(cfg); err != nil {
 		return err
 	}
-	m.scheduleRestart()
+	m.ScheduleRestart()
 	return nil
 }
 
@@ -174,7 +174,7 @@ func (m *Manager) CreateModule(module *Module) (*Module, error) {
 	if err := m.writeConfigInternal(cfg); err != nil {
 		return nil, err
 	}
-	m.scheduleRestart()
+	m.ScheduleRestart()
 
 	return module, nil
 }
@@ -206,7 +206,7 @@ func (m *Manager) UpdateModule(module *Module) (*Module, error) {
 	if err := m.writeConfigInternal(cfg); err != nil {
 		return nil, err
 	}
-	m.scheduleRestart()
+	m.ScheduleRestart()
 
 	return module, nil
 }
@@ -239,13 +239,13 @@ func (m *Manager) DeleteModule(id string) error {
 	if err := m.writeConfigInternal(cfg); err != nil {
 		return err
 	}
-	m.scheduleRestart()
+	m.ScheduleRestart()
 	return nil
 }
 
-// scheduleRestart restarts MagicMirror after a debounce window so config
+// ScheduleRestart restarts MagicMirror after a debounce window so config
 // changes take effect without restarting once per write.
-func (m *Manager) scheduleRestart() {
+func (m *Manager) ScheduleRestart() {
 	if m.restartCommand == "" {
 		return
 	}

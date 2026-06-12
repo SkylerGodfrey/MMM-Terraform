@@ -3,6 +3,7 @@ module github.com/SkylerGodfrey/magicmirror-agent
 go 1.25
 
 require (
+	github.com/disintegration/imaging v1.6.2
 	github.com/dop251/goja v0.0.0-20260607120635-348e6bea910d
 	github.com/gin-gonic/gin v1.9.1
 	github.com/spf13/viper v1.18.2
@@ -46,6 +47,7 @@ require (
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/crypto v0.16.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
+	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8 // indirect
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect

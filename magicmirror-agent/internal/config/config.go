@@ -18,6 +18,7 @@ type Config struct {
 // PortalConfig holds family-portal settings
 type PortalConfig struct {
 	ChoresFile string `mapstructure:"chores_file"`
+	PhotosDir  string `mapstructure:"photos_dir"`
 }
 
 // ServerConfig holds HTTP server settings
@@ -50,6 +51,16 @@ func (c *Config) ChoresFile() string {
 		return c.Portal.ChoresFile
 	}
 	return filepath.Join(c.MagicMirror.InstallPath(), "modules", "MMM-Chores", "chores.yaml")
+}
+
+// PhotosDir returns the slideshow album directory edited by the family
+// portal, defaulting to the imagePaths value used in the live Terraform
+// config (modules/MagicMirrorPhotos under the MagicMirror install).
+func (c *Config) PhotosDir() string {
+	if c.Portal.PhotosDir != "" {
+		return c.Portal.PhotosDir
+	}
+	return filepath.Join(c.MagicMirror.InstallPath(), "modules", "MagicMirrorPhotos")
 }
 
 // AuthConfig holds authentication settings
