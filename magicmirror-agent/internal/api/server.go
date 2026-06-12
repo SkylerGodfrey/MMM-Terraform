@@ -6,6 +6,7 @@ import (
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/config"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmconfig"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmversion"
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/portal"
 	"github.com/gin-gonic/gin"
 )
 
@@ -66,6 +67,9 @@ func (s *Server) setupRoutes() {
 
 	// Service control
 	api.POST("/restart", s.restartMagicMirror)
+
+	// Family portal (unauthenticated, LAN data plane — see internal/portal)
+	portal.Register(s.router)
 }
 
 // Run starts the HTTP server
