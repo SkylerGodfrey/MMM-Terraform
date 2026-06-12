@@ -16,6 +16,11 @@ magicmirror:
   # Command to restart Magic Mirror
   restart_command: "pm2 restart MagicMirror"
 
+portal:
+  # Path to the MMM-Chores chores.yaml edited by the family portal
+  # (defaults to <install>/modules/MMM-Chores/chores.yaml)
+  # chores_file: "/home/pi/MagicMirror/modules/MMM-Chores/chores.yaml"
+
 auth:
   # Enable API key authentication (recommended for remote access)
   enabled: true

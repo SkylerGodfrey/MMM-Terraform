@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/chores"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/config"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmconfig"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmversion"
@@ -16,6 +17,7 @@ type Server struct {
 	router     *gin.Engine
 	mmManager  *mmconfig.Manager
 	mmVersions *mmversion.Manager
+	choreStore *chores.Store
 }
 
 // NewServer creates a new API server
@@ -30,6 +32,7 @@ func NewServer(cfg *config.Config) *Server {
 		router:     router,
 		mmManager:  mmconfig.NewManager(cfg.MagicMirror.ConfigPath, cfg.MagicMirror.RestartCommand),
 		mmVersions: mmversion.NewManager(cfg.MagicMirror.InstallPath()),
+		choreStore: chores.NewStore(cfg.ChoresFile()),
 	}
 
 	s.setupRoutes()
@@ -69,7 +72,12 @@ func (s *Server) setupRoutes() {
 	api.POST("/restart", s.restartMagicMirror)
 
 	// Family portal (unauthenticated, LAN data plane — see internal/portal)
-	portal.Register(s.router)
+	portalAPI := portal.Register(s.router)
+	portalAPI.GET("/chores", s.listChores)
+	portalAPI.POST("/chores", s.createChore)
+	portalAPI.PUT("/chores/:id", s.updateChore)
+	portalAPI.DELETE("/chores/:id", s.deleteChore)
+	portalAPI.GET("/assignees", s.listAssignees)
 }
 
 // Run starts the HTTP server

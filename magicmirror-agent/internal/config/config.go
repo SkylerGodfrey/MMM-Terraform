@@ -12,6 +12,12 @@ type Config struct {
 	Server      ServerConfig      `mapstructure:"server"`
 	MagicMirror MagicMirrorConfig `mapstructure:"magicmirror"`
 	Auth        AuthConfig        `mapstructure:"auth"`
+	Portal      PortalConfig      `mapstructure:"portal"`
+}
+
+// PortalConfig holds family-portal settings
+type PortalConfig struct {
+	ChoresFile string `mapstructure:"chores_file"`
 }
 
 // ServerConfig holds HTTP server settings
@@ -34,6 +40,16 @@ func (m MagicMirrorConfig) InstallPath() string {
 		return m.Path
 	}
 	return filepath.Dir(filepath.Dir(m.ConfigPath))
+}
+
+// ChoresFile returns the configured chores.yaml path, defaulting to the
+// MMM-Chores module directory under the MagicMirror install — so existing
+// agent configs need no edit for the family portal.
+func (c *Config) ChoresFile() string {
+	if c.Portal.ChoresFile != "" {
+		return c.Portal.ChoresFile
+	}
+	return filepath.Join(c.MagicMirror.InstallPath(), "modules", "MMM-Chores", "chores.yaml")
 }
 
 // AuthConfig holds authentication settings

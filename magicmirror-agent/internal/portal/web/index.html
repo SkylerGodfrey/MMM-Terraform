@@ -159,6 +159,144 @@
     animation: rise 0.7s 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
+  /* ---------- chores editor ---------- */
+  .group { margin-bottom: 18px; animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .group h3 {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 19px; font-weight: 600; letter-spacing: 0.01em;
+    display: flex; align-items: baseline; gap: 8px;
+    margin: 0 4px 8px;
+  }
+  .group h3 .count { font-family: "Karla", sans-serif; font-size: 12.5px; color: var(--ink-dim); font-weight: 700; }
+  .group ul { list-style: none; }
+  .chore {
+    display: flex; align-items: center; gap: 12px;
+    width: 100%; text-align: left;
+    background: var(--bg-raised); border: 1px solid var(--line);
+    border-radius: 16px; padding: 13px 14px; margin-bottom: 8px;
+    color: var(--ink); font-family: inherit; font-size: 16px;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: border-color 0.2s, transform 0.1s;
+  }
+  .chore:active { transform: scale(0.985); }
+  .chore .tick {
+    flex: none; width: 22px; height: 22px; border-radius: 50%;
+    border: 1.5px solid var(--line); display: grid; place-items: center;
+    color: transparent;
+  }
+  .chore.is-done .tick { border-color: var(--ok); color: var(--ok); }
+  .chore.is-done .title { color: var(--ink-dim); text-decoration: line-through; text-decoration-color: rgba(154,160,168,0.5); }
+  .chore .body { flex: 1; min-width: 0; }
+  .chore .title { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chore .meta { display: flex; gap: 8px; margin-top: 2px; font-size: 12.5px; color: var(--ink-dim); }
+  .chore .meta .hi { color: var(--gold); font-weight: 700; }
+  .chore .tokens { flex: none; font-size: 13px; font-weight: 700; color: var(--gold); white-space: nowrap; }
+  .empty-note { text-align: center; color: var(--ink-dim); font-size: 14.5px; padding: 28px 0 10px; }
+
+  .fab {
+    position: fixed; right: max(18px, env(safe-area-inset-right));
+    bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 14px);
+    z-index: 9;
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 20px; border: none; border-radius: 999px;
+    background: linear-gradient(150deg, var(--gold), var(--gold-deep));
+    color: #1c1405; font-family: inherit; font-size: 15.5px; font-weight: 700;
+    box-shadow: 0 8px 24px rgba(240, 180, 84, 0.35);
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s;
+  }
+  .fab:active { transform: scale(0.95); }
+  .fab[hidden] { display: none; }
+
+  /* ---------- bottom sheet ---------- */
+  .backdrop {
+    position: fixed; inset: 0; z-index: 20;
+    background: rgba(5, 6, 8, 0.6); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    opacity: 0; pointer-events: none; transition: opacity 0.25s;
+  }
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 21;
+    max-width: 560px; margin: 0 auto;
+    background: #16181d;
+    border: 1px solid var(--line); border-bottom: none;
+    border-radius: 26px 26px 0 0;
+    padding: 22px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+    transform: translateY(105%); transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    max-height: 86dvh; overflow-y: auto;
+  }
+  .sheet-open .backdrop { opacity: 1; pointer-events: auto; }
+  .sheet-open .sheet { transform: none; }
+  .sheet h2 { font-family: "Fraunces", Georgia, serif; font-size: 24px; font-weight: 600; margin-bottom: 18px; }
+
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block; font-size: 12px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-dim); margin-bottom: 8px;
+  }
+  .field input[type="text"], .field input[type="number"], .field select {
+    width: 100%; padding: 13px 14px;
+    background: var(--bg-raised); border: 1px solid var(--line); border-radius: 14px;
+    color: var(--ink); font-family: inherit; font-size: 16px;
+    outline: none; appearance: none; -webkit-appearance: none;
+  }
+  .field input:focus, .field select:focus { border-color: rgba(240, 180, 84, 0.5); }
+  .field select {
+    background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239aa0a8' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 9px 16px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--bg-raised);
+    color: var(--ink); font-family: inherit; font-size: 14.5px; font-weight: 500;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+  }
+  .chip[aria-pressed="true"] {
+    border-color: rgba(240, 180, 84, 0.55);
+    background: linear-gradient(180deg, rgba(240,180,84,0.18), rgba(240,180,84,0.06));
+    color: var(--gold); font-weight: 700;
+  }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stepper {
+    display: flex; align-items: center;
+    border: 1px solid var(--line); border-radius: 14px; background: var(--bg-raised);
+    overflow: hidden;
+  }
+  .stepper button {
+    flex: none; width: 46px; padding: 12px 0;
+    background: none; border: none; color: var(--gold);
+    font-size: 20px; font-weight: 700; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .stepper output { flex: 1; text-align: center; font-size: 16px; font-weight: 700; }
+  .sheet .actions { display: flex; gap: 10px; margin-top: 22px; }
+  .btn {
+    flex: 1; padding: 14px; border-radius: 16px; border: 1px solid var(--line);
+    background: var(--bg-raised); color: var(--ink);
+    font-family: inherit; font-size: 16px; font-weight: 700;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn.primary {
+    background: linear-gradient(150deg, var(--gold), var(--gold-deep));
+    border-color: transparent; color: #1c1405;
+  }
+  .btn.danger { flex: none; width: 54px; color: var(--bad); border-color: rgba(217, 124, 108, 0.35); }
+  .btn[disabled] { opacity: 0.55; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 18px);
+    transform: translate(-50%, 16px); z-index: 30;
+    padding: 11px 18px; border-radius: 999px;
+    background: #2a1b18; border: 1px solid rgba(217, 124, 108, 0.5); color: #f0c4ba;
+    font-size: 14px; font-weight: 500; white-space: nowrap;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.25s;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
   @keyframes rise {
     from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: none; }
@@ -184,18 +322,7 @@
 
   <main>
     <section id="panel-chores" role="tabpanel" aria-labelledby="tab-chores">
-      <div class="card">
-        <div class="icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 5h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2z"/>
-            <rect x="9" y="3" width="6" height="4" rx="1"/>
-            <path d="m9 13 2 2 4-4"/>
-          </svg>
-        </div>
-        <h2>Chores</h2>
-        <p>Add, change, and assign the family chores right from your phone. Whatever you set here shows up on the mirror.</p>
-        <span class="badge">Coming soon</span>
-      </div>
+      <div id="chores-root"><p class="empty-note">Fetching the chore list…</p></div>
     </section>
 
     <section id="panel-photos" role="tabpanel" aria-labelledby="tab-photos" hidden>
@@ -216,6 +343,67 @@
     <footer>The mirror is listening &middot; magicmirror&#8209;agent</footer>
   </main>
 </div>
+
+<button class="fab" id="fab" type="button">
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+  Add chore
+</button>
+
+<div class="backdrop" id="backdrop"></div>
+<form class="sheet" id="sheet" autocomplete="off">
+  <h2 id="sheet-title">New chore</h2>
+
+  <div class="field">
+    <label for="f-name">Chore</label>
+    <input type="text" id="f-name" placeholder="e.g. Feed the goldfish" maxlength="60" required>
+  </div>
+
+  <div class="field">
+    <label>Who does it?</label>
+    <div class="chips" id="f-assignee"></div>
+  </div>
+
+  <div class="row2">
+    <div class="field">
+      <label for="f-repeat">Repeats</label>
+      <select id="f-repeat">
+        <option value="">Just once</option>
+        <option value="daily">Every day</option>
+        <option value="2">Every 2 days</option>
+        <option value="3">Every 3 days</option>
+        <option value="weekly">Every week</option>
+        <option value="monthly">Every month</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="f-priority">Priority</label>
+      <select id="f-priority">
+        <option value="">Normal</option>
+        <option value="high">High</option>
+        <option value="low">Low</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Tokens earned</label>
+    <div class="stepper">
+      <button type="button" id="tok-minus" aria-label="Fewer tokens">&minus;</button>
+      <output id="f-tokens">1</output>
+      <button type="button" id="tok-plus" aria-label="More tokens">+</button>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="btn danger" id="btn-delete" aria-label="Delete chore" hidden>
+      <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+    </button>
+    <button type="button" class="btn" id="btn-cancel">Cancel</button>
+    <button type="submit" class="btn primary" id="btn-save">Save</button>
+  </div>
+</form>
+
+<div class="toast" id="toast" role="alert"></div>
 
 <nav aria-label="Portal sections">
   <div class="tabs" role="tablist">
@@ -240,36 +428,286 @@
 
 <script>
   (function () {
-    var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+    "use strict";
+    var $ = function (id) { return document.getElementById(id); };
 
+    /* ---------- tabs ---------- */
+    var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
     function show(name) {
       tabs.forEach(function (tab) {
         var selected = tab.dataset.panel === name;
         tab.setAttribute("aria-selected", String(selected));
-        document.getElementById("panel-" + tab.dataset.panel).hidden = !selected;
+        $("panel-" + tab.dataset.panel).hidden = !selected;
       });
+      $("fab").hidden = name !== "chores";
     }
-
     tabs.forEach(function (tab) {
       tab.addEventListener("click", function () {
         show(tab.dataset.panel);
         history.replaceState(null, "", "#" + tab.dataset.panel);
       });
     });
+    if (location.hash === "#photos") show("photos");
 
-    var initial = location.hash.replace("#", "");
-    if (initial === "photos") show("photos");
-
-    var status = document.getElementById("status");
-    var statusText = document.getElementById("status-text");
+    /* ---------- health pill ---------- */
     fetch("/health").then(function (res) {
       if (!res.ok) throw new Error(res.status);
-      status.classList.add("is-ok");
-      statusText.textContent = "Mirror is awake";
+      $("status").classList.add("is-ok");
+      $("status-text").textContent = "Mirror is awake";
     }).catch(function () {
-      status.classList.add("is-bad");
-      statusText.textContent = "Can't reach the mirror";
+      $("status").classList.add("is-bad");
+      $("status-text").textContent = "Can't reach the mirror";
     });
+
+    /* ---------- toast ---------- */
+    var toastTimer;
+    function toast(msg) {
+      var el = $("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { el.classList.remove("show"); }, 3200);
+    }
+
+    /* ---------- chores data ---------- */
+    var API = "/portal/api";
+    var chores = [];
+    var assignees = [];
+
+    function api(path, opts) {
+      return fetch(API + path, opts).then(function (res) {
+        if (res.status === 204) return null;
+        return res.json().catch(function () { return {}; }).then(function (body) {
+          if (!res.ok) throw new Error(body.error || ("Request failed (" + res.status + ")"));
+          return body;
+        });
+      });
+    }
+
+    function loadChores() {
+      return Promise.all([api("/chores"), api("/assignees")]).then(function (results) {
+        chores = results[0].chores || [];
+        assignees = results[1].assignees || [];
+        render();
+      }).catch(function (err) {
+        $("chores-root").innerHTML = "";
+        var note = document.createElement("p");
+        note.className = "empty-note";
+        note.textContent = "Couldn't load chores: " + err.message;
+        $("chores-root").appendChild(note);
+      });
+    }
+
+    function repeatLabel(repeat) {
+      if (repeat === "daily") return "every day";
+      if (repeat === "weekly") return "every week";
+      if (repeat === "monthly") return "every month";
+      if (typeof repeat === "number") return "every " + repeat + " days";
+      return "";
+    }
+
+    function render() {
+      var root = $("chores-root");
+      root.innerHTML = "";
+      if (!chores.length) {
+        var note = document.createElement("p");
+        note.className = "empty-note";
+        note.textContent = "No chores yet — tap “Add chore” to create the first one.";
+        root.appendChild(note);
+        return;
+      }
+
+      var groups = {};
+      var order = [];
+      chores.forEach(function (chore) {
+        var key = chore.anyone ? "✨ Anyone can claim" : (chore.assignee || "Unassigned");
+        if (!groups[key]) { groups[key] = []; order.push(key); }
+        groups[key].push(chore);
+      });
+
+      order.forEach(function (key) {
+        var section = document.createElement("div");
+        section.className = "group";
+        var h = document.createElement("h3");
+        h.textContent = key + " ";
+        var count = document.createElement("span");
+        count.className = "count";
+        count.textContent = groups[key].length;
+        h.appendChild(count);
+        section.appendChild(h);
+
+        var ul = document.createElement("ul");
+        groups[key].forEach(function (chore) {
+          var li = document.createElement("li");
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "chore" + (chore.completed ? " is-done" : "");
+          btn.addEventListener("click", function () { openSheet(chore); });
+
+          var tick = document.createElement("span");
+          tick.className = "tick";
+          tick.innerHTML = "<svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='m5 13 4 4 10-10'/></svg>";
+          btn.appendChild(tick);
+
+          var body = document.createElement("span");
+          body.className = "body";
+          var title = document.createElement("span");
+          title.className = "title";
+          title.textContent = chore.name || "Unnamed chore";
+          body.appendChild(title);
+
+          var metaParts = [];
+          var rep = repeatLabel(chore.repeat);
+          if (rep) metaParts.push(rep);
+          if (chore.completed && chore.claimedBy) metaParts.push("done by " + chore.claimedBy);
+          var meta = document.createElement("span");
+          meta.className = "meta";
+          if (chore.priority === "high") {
+            var hi = document.createElement("span");
+            hi.className = "hi";
+            hi.textContent = "high priority";
+            meta.appendChild(hi);
+          }
+          metaParts.forEach(function (part) {
+            var sp = document.createElement("span");
+            sp.textContent = part;
+            meta.appendChild(sp);
+          });
+          if (meta.childNodes.length) body.appendChild(meta);
+          btn.appendChild(body);
+
+          if (typeof chore.tokens === "number") {
+            var tok = document.createElement("span");
+            tok.className = "tokens";
+            tok.textContent = "✦ " + chore.tokens;
+            btn.appendChild(tok);
+          }
+
+          li.appendChild(btn);
+          ul.appendChild(li);
+        });
+        section.appendChild(ul);
+        root.appendChild(section);
+      });
+    }
+
+    /* ---------- bottom sheet ---------- */
+    var editingId = null;
+    var tokens = 1;
+    var selectedAssignee = null; // name string, or true for "anyone"
+
+    function setTokens(value) {
+      tokens = Math.max(0, Math.min(99, value));
+      $("f-tokens").textContent = tokens;
+    }
+
+    function renderChips() {
+      var box = $("f-assignee");
+      box.innerHTML = "";
+      var names = assignees.slice();
+      if (typeof selectedAssignee === "string" && names.indexOf(selectedAssignee) === -1) {
+        names.push(selectedAssignee);
+      }
+      names.forEach(function (name) { box.appendChild(makeChip(name, name)); });
+      box.appendChild(makeChip("✨ Anyone", true));
+    }
+
+    function makeChip(label, value) {
+      var chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip";
+      chip.textContent = label;
+      chip.setAttribute("aria-pressed", String(selectedAssignee === value));
+      chip.addEventListener("click", function () {
+        selectedAssignee = value;
+        renderChips();
+      });
+      return chip;
+    }
+
+    function ensureRepeatOption(repeat) {
+      var select = $("f-repeat");
+      var value = String(repeat);
+      for (var i = 0; i < select.options.length; i++) {
+        if (select.options[i].value === value) return;
+      }
+      var opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = "Every " + value + " days";
+      select.appendChild(opt);
+    }
+
+    function openSheet(chore) {
+      editingId = chore ? chore.id : null;
+      $("sheet-title").textContent = chore ? "Edit chore" : "New chore";
+      $("f-name").value = chore ? (chore.name || "") : "";
+      selectedAssignee = chore ? (chore.anyone ? true : (chore.assignee || null)) : null;
+      renderChips();
+      if (chore && typeof chore.repeat === "number") ensureRepeatOption(chore.repeat);
+      $("f-repeat").value = chore && chore.repeat != null ? String(chore.repeat) : "";
+      $("f-priority").value = chore && chore.priority ? chore.priority : "";
+      setTokens(chore && typeof chore.tokens === "number" ? chore.tokens : 1);
+      $("btn-delete").hidden = !chore;
+      document.body.classList.add("sheet-open");
+      if (!chore) setTimeout(function () { $("f-name").focus(); }, 250);
+    }
+
+    function closeSheet() {
+      document.body.classList.remove("sheet-open");
+    }
+
+    function payload() {
+      var repeatRaw = $("f-repeat").value;
+      var repeat = null;
+      if (repeatRaw === "daily" || repeatRaw === "weekly" || repeatRaw === "monthly") repeat = repeatRaw;
+      else if (repeatRaw !== "") repeat = parseInt(repeatRaw, 10);
+      return {
+        name: $("f-name").value.trim(),
+        assignee: typeof selectedAssignee === "string" ? selectedAssignee : "",
+        anyone: selectedAssignee === true,
+        repeat: repeat,
+        priority: $("f-priority").value,
+        tokens: tokens
+      };
+    }
+
+    $("fab").addEventListener("click", function () { openSheet(null); });
+    $("backdrop").addEventListener("click", closeSheet);
+    $("btn-cancel").addEventListener("click", closeSheet);
+    $("tok-minus").addEventListener("click", function () { setTokens(tokens - 1); });
+    $("tok-plus").addEventListener("click", function () { setTokens(tokens + 1); });
+
+    $("sheet").addEventListener("submit", function (event) {
+      event.preventDefault();
+      var body = payload();
+      if (!body.name) { toast("Give the chore a name"); return; }
+      if (!body.anyone && !body.assignee) { toast("Pick who does it (or Anyone)"); return; }
+      $("btn-save").disabled = true;
+      var req = editingId
+        ? api("/chores/" + encodeURIComponent(editingId), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+        : api("/chores", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      req.then(function () {
+        closeSheet();
+        return loadChores();
+      }).catch(function (err) {
+        toast(err.message);
+      }).then(function () {
+        $("btn-save").disabled = false;
+      });
+    });
+
+    $("btn-delete").addEventListener("click", function () {
+      if (!editingId) return;
+      if (!window.confirm("Delete this chore from the mirror?")) return;
+      api("/chores/" + encodeURIComponent(editingId), { method: "DELETE" }).then(function () {
+        closeSheet();
+        return loadChores();
+      }).catch(function (err) {
+        toast(err.message);
+      });
+    });
+
+    loadChores();
   })();
 </script>
 </body>
