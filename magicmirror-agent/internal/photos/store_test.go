@@ -146,6 +146,32 @@ func TestThumbGeneratedCachedAndScaled(t *testing.T) {
 	}
 }
 
+func TestPreExistingNamesAreServable(t *testing.T) {
+	s := newTestStore(t)
+	// Files that never went through upload sanitization (rsync'd in) must
+	// still be servable: every name List returns has to resolve.
+	for _, name := range []string{"PXL_20251207_180915473~2.jpg", "family pic (1).png"} {
+		if err := os.WriteFile(filepath.Join(s.Dir(), name), jpegBytes(t, 40, 30), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	photos, err := s.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(photos) != 3 {
+		t.Fatalf("want 3 photos, got %v", photos)
+	}
+	for _, p := range photos {
+		if _, err := s.OriginalPath(p.Name); err != nil {
+			t.Errorf("listed photo %q not servable: %v", p.Name, err)
+		}
+		if _, err := s.ThumbPath(p.Name); err != nil {
+			t.Errorf("listed photo %q has no thumb path: %v", p.Name, err)
+		}
+	}
+}
+
 func TestOriginalPathMissing(t *testing.T) {
 	s := newTestStore(t)
 	if _, err := s.OriginalPath("nope.jpg"); !errors.Is(err, ErrNotFound) {

@@ -179,10 +179,13 @@ func (s *Store) ThumbPath(name string) (string, error) {
 }
 
 // photoPath validates a client-supplied name and resolves it inside the
-// album dir; names that sanitize differently than supplied (traversal,
-// separators, hidden files) are rejected.
+// album dir. Pre-existing photos (rsync'd in before the portal) may
+// contain characters upload sanitization would never produce (~, spaces),
+// so only path traversal and hidden files are rejected — anything List()
+// returns must resolve here.
 func (s *Store) photoPath(name string) (string, error) {
-	if name == "" || name != sanitizeName(name) || !allowedExt[strings.ToLower(filepath.Ext(name))] {
+	if name == "" || name != filepath.Base(name) || strings.ContainsAny(name, `/\`) ||
+		strings.HasPrefix(name, ".") || !allowedExt[strings.ToLower(filepath.Ext(name))] {
 		return "", ErrNotFound
 	}
 	return filepath.Join(s.dir, name), nil
