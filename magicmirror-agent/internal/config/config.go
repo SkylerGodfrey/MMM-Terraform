@@ -95,6 +95,15 @@ func (c *Config) LayoutWorkingCopyPath() string {
 	return filepath.Join(filepath.Dir(c.MagicMirror.ConfigPath), "layout.json")
 }
 
+// CanvasLayoutPath returns the on-disk path of the Canvas v2 layout
+// document (HOM-104). Sits next to config.js so it inherits the same
+// systemd ReadWritePaths the agent already has. Separate from the L4
+// working copy because the canvas document is the durable source of
+// truth, not an editor scratch file.
+func (c *Config) CanvasLayoutPath() string {
+	return filepath.Join(filepath.Dir(c.MagicMirror.ConfigPath), "canvas-layout.json")
+}
+
 // ModulesTfPath returns the location of the Pi-resident modules.tf the
 // agent reads and writes on Save (HOM-96). Defaults next to config.js so
 // the existing systemd ReadWritePaths cover it. Override via the

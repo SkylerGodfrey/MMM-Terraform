@@ -1,2 +1,7 @@
 # Development folder
 my-mirror/
+
+# Built binaries (rebuilt via Makefile, not checked in)
+magicmirror-agent/magicmirror-agent
+magicmirror-agent/magicmirror-agent-linux-arm64
+terraform-provider-magicmirror/terraform-provider-magicmirror

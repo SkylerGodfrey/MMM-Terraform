@@ -113,6 +113,8 @@ func (p *MagicMirrorProvider) Resources(ctx context.Context) []func() resource.R
 	return []func() resource.Resource{
 		NewModuleResource,
 		NewConfigResource,
+		NewCanvasResource,
+		NewPageResource,
 	}
 }
 

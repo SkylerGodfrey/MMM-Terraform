@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/canvas"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/chores"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/config"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/layoutviewer"
@@ -23,6 +24,7 @@ type Server struct {
 	choreStore  *chores.Store
 	photoStore  *photos.Store
 	rewardStore *rewards.Store
+	canvasStore *canvas.Store
 }
 
 // NewServer creates a new API server
@@ -41,6 +43,7 @@ func NewServer(cfg *config.Config) *Server {
 		photoStore:  photos.NewStore(cfg.PhotosDir()),
 		rewardStore: rewards.NewStore(cfg.RewardsFile(), cfg.RewardsImagesDir()),
 	}
+	s.canvasStore = canvas.NewStore(cfg.CanvasLayoutPath(), &canvasModuleLister{mm: s.mmManager})
 
 	s.setupRoutes()
 	return s
@@ -77,6 +80,16 @@ func (s *Server) setupRoutes() {
 
 	// Service control
 	api.POST("/restart", s.restartMagicMirror)
+
+	// Canvas v2 layout document (HOM-104). Pages are referenced by name;
+	// the canvas singleton (debug flags, dimensions) lives on /canvas.
+	// The full document is also exposed on /canvas/document so the editor
+	// can hydrate everything in one round trip.
+	api.GET("/canvas/document", s.getCanvasDocument)
+	api.PUT("/canvas", s.updateCanvas)
+	api.GET("/pages/:name", s.getPage)
+	api.PUT("/pages/:name", s.putPage)
+	api.DELETE("/pages/:name", s.deletePage)
 
 	// Family portal (unauthenticated, LAN data plane — see internal/portal)
 	portalAPI := portal.Register(s.router)
