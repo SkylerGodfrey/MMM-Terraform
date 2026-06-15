@@ -32,6 +32,9 @@ type MagicMirrorConfig struct {
 	ConfigPath     string `mapstructure:"config_path"`
 	RestartCommand string `mapstructure:"restart_command"`
 	Path           string `mapstructure:"path"`
+	// ModulesTfPath overrides where the Pi-resident modules.tf lives
+	// (HOM-96). Empty falls back to the dir of ConfigPath.
+	ModulesTfPath string `mapstructure:"modules_tf_path"`
 }
 
 // InstallPath returns the MagicMirror install directory, defaulting to
@@ -61,6 +64,24 @@ func (c *Config) PhotosDir() string {
 		return c.Portal.PhotosDir
 	}
 	return filepath.Join(c.MagicMirror.InstallPath(), "modules", "MagicMirrorPhotos")
+}
+
+// LayoutWorkingCopyPath returns where the L4 layout editor stores its
+// in-flight document (HOM-93). Sits next to config.js so it inherits the
+// systemd ReadWritePaths for the config directory, mode 0644, gitignored.
+func (c *Config) LayoutWorkingCopyPath() string {
+	return filepath.Join(filepath.Dir(c.MagicMirror.ConfigPath), "layout.json")
+}
+
+// ModulesTfPath returns the location of the Pi-resident modules.tf the
+// agent reads and writes on Save (HOM-96). Defaults next to config.js so
+// the existing systemd ReadWritePaths cover it. Override via the
+// `magicmirror.modules_tf_path` config key if you want it elsewhere.
+func (c *Config) ModulesTfPath() string {
+	if c.MagicMirror.ModulesTfPath != "" {
+		return c.MagicMirror.ModulesTfPath
+	}
+	return filepath.Join(filepath.Dir(c.MagicMirror.ConfigPath), "modules.tf")
 }
 
 // AuthConfig holds authentication settings

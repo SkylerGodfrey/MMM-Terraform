@@ -1,0 +1,2405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c0e11">
+<title>Mirror Layout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Karla:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0e11;
+    --bg-raised: rgba(255, 255, 255, 0.045);
+    --line: rgba(255, 255, 255, 0.09);
+    --line-strong: rgba(255, 255, 255, 0.16);
+    --ink: #f2efe8;
+    --ink-dim: #9aa0a8;
+    --ink-faint: #5b6066;
+    --gold: #f0b454;
+    --gold-deep: #c98d2e;
+    --gold-soft: rgba(240, 180, 84, 0.22);
+    --ok: #7dc98f;
+    --bad: #d97c6c;
+    --radius: 22px;
+    --scale: 0.32;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: "Karla", "Avenir Next", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .glow {
+    position: fixed; inset: 0; z-index: -2; pointer-events: none;
+    background:
+      radial-gradient(120% 60% at 50% -10%, rgba(240, 180, 84, 0.11), transparent 60%),
+      radial-gradient(80% 50% at 85% 110%, rgba(96, 130, 170, 0.08), transparent 65%);
+  }
+  .grid-bg {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    opacity: 0.35;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 35%, #000 30%, transparent 80%);
+  }
+
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 22px 56px; }
+
+  /* ---------- header ---------- */
+  header { animation: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .crumbs {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--ink-dim);
+  }
+  .crumbs a {
+    color: var(--gold); text-decoration: none;
+    border-bottom: 1px dashed transparent;
+    transition: border-color 0.2s;
+  }
+  .crumbs a:hover { border-color: var(--gold-soft); }
+  .crumbs .sep { color: var(--ink-faint); }
+  h1 {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: clamp(36px, 8vw, 56px);
+    font-weight: 600; line-height: 1.02;
+    letter-spacing: -0.015em; margin-top: 14px;
+  }
+  h1 em { font-style: italic; color: var(--gold); }
+  .sub {
+    margin-top: 12px; color: var(--ink-dim);
+    font-size: 15px; line-height: 1.55; max-width: 620px;
+  }
+
+  .meta {
+    margin-top: 22px;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 12px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--ink-dim);
+    background: var(--bg-raised);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .chip .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ink-faint); transition: background 0.3s, box-shadow 0.3s;
+  }
+  .chip.is-live .dot { background: var(--ok); box-shadow: 0 0 6px rgba(125, 201, 143, 0.7); }
+  .chip.is-warn .dot { background: var(--gold); box-shadow: 0 0 6px var(--gold-soft); }
+  .chip.is-bad .dot { background: var(--bad); box-shadow: 0 0 6px rgba(217, 124, 108, 0.7); }
+  .chip strong { color: var(--ink); font-weight: 500; }
+
+  /* primary action button (edit toggle, save, reset) */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 16px; border-radius: 999px;
+    border: 1px solid var(--gold-soft); background: rgba(240, 180, 84, 0.08);
+    color: var(--gold); font: 700 12px/1 "Karla", sans-serif;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: background 0.2s, transform 0.12s, border-color 0.2s, color 0.2s;
+  }
+  .btn:hover { background: rgba(240, 180, 84, 0.18); }
+  .btn:active { transform: scale(0.96); }
+  .btn.is-on {
+    background: var(--gold); color: #1a1208;
+    border-color: var(--gold);
+    box-shadow: 0 0 12px rgba(240, 180, 84, 0.4);
+  }
+  .btn.ghost {
+    color: var(--ink-dim); border-color: var(--line);
+    background: var(--bg-raised);
+  }
+  .btn.ghost:hover { color: var(--ink); border-color: var(--line-strong); }
+  .btn.danger { color: var(--bad); border-color: rgba(217, 124, 108, 0.35); background: rgba(217, 124, 108, 0.06); }
+  .btn.danger:hover { background: rgba(217, 124, 108, 0.18); }
+
+  .meta .spacer { flex: 1; }
+
+  /* ---------- advanced link ---------- */
+  .advanced-link {
+    margin-top: 10px;
+    font-size: 11px; font-family: "JetBrains Mono", monospace;
+    color: var(--ink-faint);
+    letter-spacing: 0.04em;
+  }
+  .advanced-link a {
+    color: var(--ink-faint);
+    text-decoration: none;
+    border-bottom: 1px dashed transparent;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .advanced-link a:hover { color: var(--gold); border-color: var(--gold-soft); }
+
+  /* ---------- working-copy banner ---------- */
+  .wc-banner {
+    margin-top: 18px; padding: 12px 18px;
+    background: linear-gradient(90deg, rgba(240, 180, 84, 0.10), rgba(240, 180, 84, 0.02));
+    border: 1px solid var(--gold-soft);
+    border-radius: 12px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    font-size: 13.5px;
+  }
+  .wc-banner[hidden] { display: none; }
+  .wc-banner .wc-icon {
+    width: 22px; height: 22px; flex-shrink: 0;
+    border-radius: 50%; border: 1px solid var(--gold);
+    display: grid; place-items: center;
+    color: var(--gold); font-weight: 700;
+  }
+  .wc-banner .wc-text { color: var(--ink); flex: 1; }
+  .wc-banner .wc-text .wc-meta {
+    display: block; margin-top: 2px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px; color: var(--ink-dim);
+  }
+
+  /* ---------- active preview banner ---------- */
+  .preview-banner {
+    margin-top: 14px; padding: 14px 20px;
+    background: linear-gradient(90deg, rgba(125, 201, 143, 0.16), rgba(125, 201, 143, 0.04));
+    border: 1px solid rgba(125, 201, 143, 0.45);
+    border-radius: 12px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    font-size: 13.5px;
+    box-shadow: 0 0 20px rgba(125, 201, 143, 0.08);
+  }
+  .preview-banner[hidden] { display: none; }
+  .preview-banner .pulse {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 0 rgba(125, 201, 143, 0.55);
+    animation: pulse 1.6s ease-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(125, 201, 143, 0.6); }
+    70% { box-shadow: 0 0 0 12px rgba(125, 201, 143, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(125, 201, 143, 0); }
+  }
+  .preview-banner .pv-text { color: var(--ink); flex: 1; }
+  .preview-banner .pv-text .pv-meta {
+    display: block; margin-top: 2px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px; color: var(--ink-dim);
+  }
+
+  /* ---------- main grid ---------- */
+  main {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: minmax(260px, auto) 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+  @media (max-width: 760px) {
+    main { grid-template-columns: 1fr; }
+    .stage { order: 1; }
+    .panel { order: 2; }
+  }
+
+  /* ---------- the mirror preview ---------- */
+  .stage {
+    position: relative;
+    padding: 22px;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    animation: rise 0.7s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .stage::before {
+    content: ""; position: absolute; top: 0; left: 12%; right: 12%; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+  }
+  .stage-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 16px;
+  }
+  .stage-head .label {
+    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--ink-dim); font-weight: 700;
+  }
+  .stage-head .dims {
+    font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--ink-faint);
+  }
+
+  .mirror {
+    position: relative;
+    width: calc(1080px * var(--scale));
+    height: calc(1920px * var(--scale));
+    margin: 0 auto;
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0.025));
+    box-shadow:
+      0 0 0 6px rgba(255,255,255,0.018),
+      0 20px 60px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.06);
+    overflow: hidden;
+    transition: box-shadow 0.3s;
+  }
+  body.edit-mode .mirror {
+    box-shadow:
+      0 0 0 6px rgba(240, 180, 84, 0.12),
+      0 20px 60px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  .mirror .frame-glint {
+    position: absolute; inset: 0;
+    background: linear-gradient(155deg,
+      transparent 40%, rgba(255,255,255,0.04) 50%, transparent 60%);
+    pointer-events: none;
+  }
+  .mirror .reserve {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: calc(140px * var(--scale));
+    background:
+      repeating-linear-gradient(45deg,
+        rgba(240, 180, 84, 0.06) 0 6px,
+        transparent 6px 12px);
+    border-top: 1px dashed var(--gold-soft);
+    display: flex; align-items: center; justify-content: center;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9px; letter-spacing: 0.18em;
+    color: var(--gold-deep); text-transform: uppercase;
+  }
+  .stack {
+    position: absolute; left: 0; right: 0; top: 0;
+    bottom: calc(140px * var(--scale));
+    display: flex; flex-direction: column;
+  }
+
+  .band {
+    position: relative;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    display: flex; flex-direction: column; justify-content: center;
+    transition: background 0.25s;
+  }
+  .band:last-child { border-bottom: none; }
+  .band.row { display: flex; flex-direction: row; padding: 0; }
+
+  .cell {
+    position: relative;
+    flex: 1; min-width: 0;
+    padding: 6px 8px;
+    border: 1px dashed transparent;
+    border-radius: 6px;
+    margin: 4px;
+    display: flex; flex-direction: column; gap: 4px;
+    transition: background 0.2s, border-color 0.2s, transform 0.15s;
+    cursor: default;
+  }
+  .cell.capped { border-color: rgba(240, 180, 84, 0.4); }
+  .cell.suspended { border-style: dashed; border-color: var(--gold-soft);
+    background: repeating-linear-gradient(45deg,
+      rgba(240, 180, 84, 0.04) 0 4px, transparent 4px 8px); }
+  .cell.empty { border-color: rgba(255,255,255,0.05); }
+  .cell:hover { background: rgba(255,255,255,0.03); transform: translateY(-1px); }
+  .cell.is-focus { background: rgba(240, 180, 84, 0.08); border-color: var(--gold); }
+  .cell.is-dim { opacity: 0.32; }
+
+  body.edit-mode .cell { cursor: pointer; }
+  body.edit-mode.has-selection .cell {
+    border-style: solid;
+    border-color: rgba(240, 180, 84, 0.5);
+    animation: targets 1.6s ease-in-out infinite alternate;
+  }
+  body.edit-mode.has-selection .cell.is-source {
+    animation: none;
+    border-color: var(--gold);
+    background: rgba(240, 180, 84, 0.16);
+  }
+
+  @keyframes targets {
+    from { box-shadow: 0 0 0 0 rgba(240, 180, 84, 0); }
+    to { box-shadow: 0 0 0 2px rgba(240, 180, 84, 0.18); }
+  }
+
+  .cell-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-dim); gap: 4px;
+  }
+  .cell.suspended .cell-head { color: var(--gold); }
+  .cell-head .h {
+    font-family: "JetBrains Mono", monospace; font-size: 9px;
+    color: var(--ink-faint); text-transform: none; letter-spacing: 0;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+
+  /* HOM-99: height shown as text by default; flips to a text input in
+     edit mode so the user can type any CSS length the schema accepts. */
+  .h-edit { display: none; }
+  body.edit-mode .h-view { display: none; }
+  body.edit-mode .h-edit {
+    display: inline-block;
+    width: 56px;
+    padding: 1px 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--gold-soft);
+    border-radius: 3px;
+    color: var(--gold);
+    font: 500 9px/1.4 "JetBrains Mono", monospace;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  body.edit-mode .h-edit:focus {
+    border-color: var(--gold);
+    background: rgba(240, 180, 84, 0.1);
+  }
+  body.edit-mode .h-edit.invalid {
+    border-color: var(--bad);
+    background: rgba(217, 124, 108, 0.12);
+    color: var(--bad);
+  }
+
+  .cell-mods { display: flex; flex-direction: column; gap: 2px; }
+  .modtag {
+    font-size: 9px; line-height: 1.2; color: var(--ink);
+    padding: 2px 5px; border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+    border-left: 2px solid var(--gold-deep);
+    display: flex; align-items: center; gap: 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: background 0.18s, transform 0.12s, border-color 0.18s;
+  }
+  .modtag .name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  .modtag .cls {
+    font-family: "JetBrains Mono", monospace; font-size: 8px;
+    color: var(--ink-faint);
+  }
+  .modtag.moved { border-left-color: var(--gold); background: rgba(240, 180, 84, 0.12); }
+  .modtag.moved::after { content: "↻"; color: var(--gold); font-weight: 700; }
+  body.edit-mode .modtag { cursor: pointer; }
+  body.edit-mode .modtag:hover { background: rgba(240, 180, 84, 0.18); transform: translateX(1px); }
+  .modtag.is-selected {
+    background: var(--gold) !important; color: #1a1208;
+    border-left-color: #1a1208;
+    box-shadow: 0 0 0 1px var(--gold);
+  }
+  .modtag.is-selected .cls { color: #4a2f08; }
+
+  .exbtn {
+    display: none;
+    width: 14px; height: 14px;
+    border: 1px solid var(--gold-soft);
+    background: transparent; color: var(--gold);
+    font: 700 7px/1 "JetBrains Mono", monospace;
+    border-radius: 3px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    padding: 0;
+  }
+  body.edit-mode .exbtn { display: inline-flex; align-items: center; justify-content: center; }
+  .modtag.is-exempt .exbtn {
+    background: var(--gold); color: #1a1208; border-color: var(--gold);
+  }
+  .modtag.is-exempt .name { color: var(--gold); }
+
+  .cell.empty .cell-mods::after {
+    content: "·"; color: var(--ink-faint); font-size: 14px;
+    line-height: 0; align-self: center;
+  }
+
+  /* ---------- side panel ---------- */
+  .panel {
+    display: flex; flex-direction: column; gap: 16px;
+    animation: rise 0.7s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .card {
+    position: relative;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px 22px;
+    overflow: hidden;
+  }
+  .card::before {
+    content: ""; position: absolute; top: 0; left: 14%; right: 14%; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent);
+  }
+  .card h2 {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 19px; font-weight: 600; letter-spacing: -0.005em;
+    margin-bottom: 12px;
+  }
+  .card h2 .count {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px; color: var(--ink-faint); margin-left: 6px;
+    font-weight: 400; letter-spacing: 0;
+  }
+  .legend-key {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 0; font-size: 13px; color: var(--ink-dim);
+    border-bottom: 1px solid var(--line);
+  }
+  .legend-key:last-child { border-bottom: none; }
+  .legend-key .swatch {
+    flex-shrink: 0;
+    width: 30px; height: 18px; border-radius: 4px;
+    border: 1px dashed transparent;
+  }
+  .legend-key .swatch.capped { border-color: rgba(240, 180, 84, 0.45); border-style: solid; }
+  .legend-key .swatch.suspended { border-color: var(--gold-soft);
+    background: repeating-linear-gradient(45deg,
+      rgba(240, 180, 84, 0.10) 0 3px, transparent 3px 6px); }
+  .legend-key .swatch.empty { border-color: rgba(255,255,255,0.12); }
+  .legend-key .swatch.reserve { background: repeating-linear-gradient(45deg,
+      rgba(240,180,84,0.18) 0 3px, transparent 3px 6px); border-color: var(--gold-soft); }
+  .legend-key strong { color: var(--ink); font-weight: 600; }
+
+  .ov-row {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 8px 0; font-size: 13px;
+    border-bottom: 1px solid var(--line);
+    font-family: "JetBrains Mono", monospace;
+  }
+  .ov-row:last-child { border-bottom: none; }
+  .ov-row .name { color: var(--ink); font-weight: 500; }
+  .ov-row .reg { color: var(--ink-faint); }
+  .ov-row .mark { color: var(--gold); font-size: 11px; letter-spacing: 0.1em; }
+
+  .empty-note {
+    font-size: 13px; color: var(--ink-dim); line-height: 1.55;
+    font-style: italic;
+  }
+
+  .meta-line {
+    display: flex; justify-content: space-between;
+    padding: 5px 0; font-size: 12.5px;
+    font-family: "JetBrains Mono", monospace;
+    border-bottom: 1px solid var(--line);
+  }
+  .meta-line:last-child { border-bottom: none; }
+  .meta-line .k { color: var(--ink-dim); }
+  .meta-line .v { color: var(--ink); }
+
+  .help-card[hidden] { display: none; }
+  .help-card ol {
+    list-style: none; counter-reset: step;
+    padding-left: 0; margin-top: 6px;
+  }
+  .help-card li {
+    counter-increment: step;
+    padding: 8px 0 8px 30px; position: relative;
+    font-size: 13.5px; line-height: 1.5; color: var(--ink-dim);
+    border-bottom: 1px solid var(--line);
+  }
+  .help-card li:last-child { border-bottom: none; }
+  .help-card li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 8px;
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 1px solid var(--gold-soft);
+    color: var(--gold);
+    font: 700 11px/20px "JetBrains Mono", monospace;
+    text-align: center;
+  }
+  .help-card strong { color: var(--ink); font-weight: 600; }
+  .help-card code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px; color: var(--gold);
+    background: rgba(240, 180, 84, 0.08);
+    padding: 1px 4px; border-radius: 3px;
+  }
+
+  footer {
+    margin-top: 36px; padding-top: 18px;
+    border-top: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; gap: 14px;
+    font-size: 12px; color: var(--ink-faint);
+    font-family: "JetBrains Mono", monospace;
+  }
+  footer a { color: var(--gold); text-decoration: none; border-bottom: 1px dashed transparent; }
+  footer a:hover { border-color: var(--gold-soft); }
+
+  /* ---------- module bottom sheet (HOM-99) ---------- */
+  .ms-overlay {
+    position: fixed; inset: 0; z-index: 35;
+    background: rgba(5, 6, 8, 0.6);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .ms-overlay.open { opacity: 1; pointer-events: auto; }
+  .ms-sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 36;
+    max-width: 640px; margin: 0 auto;
+    background: #14171b;
+    border: 1px solid var(--line-strong); border-bottom: none;
+    border-radius: 22px 22px 0 0;
+    padding: 0;
+    transform: translateY(105%);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    max-height: 84dvh;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .ms-overlay.open + .ms-sheet, .ms-sheet.open { transform: translateY(0); }
+  .ms-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 18px 22px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .ms-head h2 {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 22px; font-weight: 600; letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .ms-head h2 .cls {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px; color: var(--ink-faint); font-weight: 400;
+    margin-left: 6px; letter-spacing: 0;
+  }
+  .ms-close {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 1px solid var(--line); background: var(--bg-raised);
+    color: var(--ink-dim); font-size: 18px; line-height: 1; cursor: pointer;
+  }
+  .ms-tabs {
+    display: flex; gap: 4px; padding: 0 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .ms-tab {
+    flex: 1; padding: 12px 8px;
+    background: none; border: none; border-bottom: 2px solid transparent;
+    font: 700 12px/1 "Karla", sans-serif;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-dim); cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .ms-tab[aria-selected="true"] { color: var(--gold); border-bottom-color: var(--gold); }
+  .ms-tab:hover { color: var(--ink); }
+
+  .ms-body {
+    flex: 1; overflow: auto;
+    padding: 20px 22px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .ms-section h3 {
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-dim); font-weight: 700; margin-bottom: 10px;
+  }
+  .ms-section .hint {
+    font-size: 12px; color: var(--ink-faint);
+    margin-top: 6px; line-height: 1.4;
+  }
+
+  .ms-regions {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  }
+  .ms-region-btn {
+    padding: 10px 4px;
+    background: var(--bg-raised); border: 1px solid var(--line);
+    border-radius: 8px;
+    font: 500 11px/1.3 "JetBrains Mono", monospace;
+    color: var(--ink); cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s, border-color 0.15s, transform 0.12s;
+    text-align: center;
+  }
+  .ms-region-btn:hover { background: rgba(255,255,255,0.06); border-color: var(--line-strong); }
+  .ms-region-btn:active { transform: scale(0.96); }
+  .ms-region-btn.current {
+    background: rgba(240, 180, 84, 0.16); border-color: var(--gold);
+    color: var(--gold);
+  }
+  .ms-region-btn.fullscreen { color: var(--ink-dim); font-style: italic; }
+
+  .ms-field {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 8px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12.5px;
+  }
+  .ms-field label { color: var(--ink-dim); flex-shrink: 0; min-width: 110px; }
+  .ms-field input[type="text"], .ms-field input[type="number"], .ms-field select {
+    flex: 1; min-width: 0;
+    background: var(--bg); color: var(--ink);
+    font: inherit;
+    border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .ms-field input:focus, .ms-field select:focus { border-color: var(--gold-soft); }
+  .ms-field input.invalid { border-color: var(--bad); color: var(--bad); }
+  .ms-field textarea {
+    width: 100%;
+    background: var(--bg); color: var(--ink);
+    font: 12px/1.45 "JetBrains Mono", monospace;
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; outline: none; resize: vertical;
+    min-height: 140px;
+  }
+  .ms-field textarea:focus { border-color: var(--gold-soft); }
+  .ms-field textarea.invalid { border-color: var(--bad); }
+
+  .ms-toggle {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    background: var(--bg-raised); border: 1px solid var(--line); border-radius: 8px;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    font-size: 13px;
+  }
+  .ms-toggle.on { background: rgba(240, 180, 84, 0.12); border-color: var(--gold-soft); }
+  .ms-toggle .knob {
+    width: 36px; height: 20px; border-radius: 999px;
+    background: var(--line-strong); position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .ms-toggle .knob::after {
+    content: ""; position: absolute; left: 2px; top: 2px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--ink); transition: transform 0.2s;
+  }
+  .ms-toggle.on .knob { background: var(--gold); }
+  .ms-toggle.on .knob::after { transform: translateX(16px); background: #1a1208; }
+  .ms-toggle .lbl { flex: 1; }
+  .ms-toggle .lbl strong { color: var(--ink); display: block; font-weight: 600; }
+  .ms-toggle .lbl span { color: var(--ink-dim); font-size: 11.5px; }
+
+  .ms-foot {
+    display: flex; gap: 10px; align-items: center;
+    padding: 14px 22px;
+    border-top: 1px solid var(--line);
+    background: var(--bg-raised);
+  }
+  .ms-foot .spacer { flex: 1; }
+  .ms-foot .hint { font-size: 12px; color: var(--ink-faint); font-family: "JetBrains Mono", monospace; }
+
+  /* ---------- generate-terraform panel ---------- */
+  .tf-overlay {
+    position: fixed; inset: 0; z-index: 40;
+    background: rgba(5, 6, 8, 0.72);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    display: none;
+  }
+  .tf-overlay.open { display: block; }
+  .tf-panel {
+    position: fixed; inset: 0;
+    margin: auto;
+    max-width: 880px;
+    max-height: calc(100dvh - 40px);
+    background: #14171b;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .tf-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .tf-head h2 {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 22px; font-weight: 600; letter-spacing: -0.005em;
+  }
+  .tf-head .close {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--bg-raised);
+    color: var(--ink-dim);
+    font-size: 18px; line-height: 1; cursor: pointer;
+  }
+  .tf-body {
+    flex: 1; overflow: auto;
+    padding: 22px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .tf-paste label {
+    display: block;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-dim); font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .tf-paste textarea {
+    width: 100%; min-height: 130px;
+    background: var(--bg); color: var(--ink);
+    font: 13px/1.45 "JetBrains Mono", ui-monospace, monospace;
+    padding: 14px 16px;
+    border: 1px solid var(--line); border-radius: 12px;
+    resize: vertical; outline: none;
+    transition: border-color 0.2s;
+  }
+  .tf-paste textarea:focus { border-color: var(--gold-soft); }
+  .tf-paste .row {
+    display: flex; gap: 10px; align-items: center; margin-top: 10px;
+    font-size: 12px; color: var(--ink-dim);
+  }
+  .tf-paste .row .spacer { flex: 1; }
+
+  .tf-summary {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding-bottom: 6px;
+  }
+  .tf-summary .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--bg-raised);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px; color: var(--ink);
+  }
+  .tf-summary .badge.ok { border-color: rgba(125, 201, 143, 0.4); color: var(--ok); }
+  .tf-summary .badge.warn { border-color: var(--gold-soft); color: var(--gold); }
+
+  .tf-changes {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .tf-changes .ch-head {
+    padding: 10px 16px;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-dim); font-weight: 700;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-raised);
+  }
+  .tf-changes .ch-row {
+    display: flex; gap: 12px; align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    font-family: "JetBrains Mono", monospace; font-size: 12.5px;
+  }
+  .tf-changes .ch-row:last-child { border-bottom: none; }
+  .tf-changes .ch-kind {
+    flex-shrink: 0;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .tf-changes .ch-kind.move { background: rgba(125, 201, 143, 0.12); color: var(--ok); }
+  .tf-changes .ch-kind.layout { background: rgba(240, 180, 84, 0.14); color: var(--gold); }
+  .tf-changes .ch-desc { color: var(--ink); flex: 1; word-break: break-word; }
+
+  .tf-diff {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .tf-diff .diff-head {
+    padding: 10px 16px;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-dim); font-weight: 700;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-raised);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .tf-diff .diff-head .spacer { flex: 1; }
+  .tf-diff pre {
+    margin: 0; padding: 12px 16px;
+    font: 13px/1.45 "JetBrains Mono", ui-monospace, monospace;
+    overflow: auto; max-height: 380px;
+  }
+  .tf-diff .ln { display: block; white-space: pre; }
+  .tf-diff .ln.h { color: var(--gold); }
+  .tf-diff .ln.hh { color: var(--ink-dim); border-top: 1px dashed var(--line); padding-top: 4px; margin-top: 4px; }
+  .tf-diff .ln.add { color: var(--ok); background: rgba(125, 201, 143, 0.07); }
+  .tf-diff .ln.del { color: var(--bad); background: rgba(217, 124, 108, 0.07); }
+  .tf-diff .ln.ctx { color: var(--ink-dim); }
+
+  .tf-empty {
+    padding: 28px; text-align: center;
+    border: 1px dashed var(--line); border-radius: 12px;
+    color: var(--ink-dim); font-style: italic;
+  }
+  .tf-warnings {
+    background: rgba(217, 124, 108, 0.08);
+    border: 1px solid rgba(217, 124, 108, 0.35);
+    border-radius: 12px; padding: 12px 16px;
+    color: var(--ink);
+    font-size: 13px;
+  }
+  .tf-warnings strong { color: var(--bad); }
+  .tf-warnings ul { margin-top: 4px; padding-left: 18px; }
+
+  .tf-foot {
+    display: flex; gap: 10px; align-items: center;
+    padding: 14px 22px;
+    border-top: 1px solid var(--line);
+    background: var(--bg-raised);
+  }
+  .tf-foot .spacer { flex: 1; }
+  .tf-foot .hint {
+    font-size: 12px; color: var(--ink-dim);
+    font-family: "JetBrains Mono", monospace;
+  }
+
+  /* ---------- toast ---------- */
+  .toast {
+    position: fixed; right: 22px; bottom: 22px;
+    padding: 12px 16px;
+    background: var(--bg-raised);
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    font-size: 13px; color: var(--ink);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    opacity: 0; transform: translateY(8px);
+    transition: opacity 0.25s, transform 0.25s;
+    z-index: 30;
+    pointer-events: none;
+    max-width: 320px;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.bad { border-color: rgba(217, 124, 108, 0.5); color: var(--bad); }
+  .toast.ok { border-color: rgba(125, 201, 143, 0.5); color: var(--ok); }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="glow"></div>
+<div class="grid-bg"></div>
+
+<div class="wrap">
+
+  <header>
+    <div class="crumbs">
+      <a href="/portal">Family Portal</a>
+      <span class="sep">›</span>
+      <span>Mirror Layout</span>
+    </div>
+    <h1>The <em>mirror</em>, drawn to scale.</h1>
+    <p class="sub">
+      A map of which modules live in which region, with each region proportional
+      to its current max-height cap. Toggle <strong>Edit</strong> to move modules,
+      resize regions, and mark per-module exemptions. Hit <strong>Save</strong>
+      and the mirror picks up your changes — no code, no copy-paste.
+    </p>
+    <div class="meta">
+      <span class="chip" id="status-chip"><span class="dot"></span><span id="status-text">connecting…</span></span>
+      <span class="chip"><strong id="region-count">—</strong>&nbsp;regions</span>
+      <span class="chip"><strong id="module-count">—</strong>&nbsp;modules</span>
+      <span class="chip" id="source-chip"><strong id="source-text">—</strong></span>
+      <span class="spacer"></span>
+      <button class="btn" id="edit-toggle" type="button" aria-pressed="false">Edit</button>
+    </div>
+    <div class="advanced-link">
+      <a id="generate-tf" href="#" role="button">Advanced › Export Terraform diff</a>
+    </div>
+
+    <div class="wc-banner" id="wc-banner" hidden>
+      <span class="wc-icon">✎</span>
+      <span class="wc-text">
+        <strong>You have unsaved edits.</strong> Preview them on the mirror first if you want to eyeball, or just hit Save to make them durable.
+        <span class="wc-meta" id="wc-meta"></span>
+      </span>
+      <button class="btn ghost" id="preview-btn" type="button">Preview on mirror</button>
+      <button class="btn" id="save-btn" type="button">Save</button>
+      <button class="btn danger" id="reset-btn" type="button">Reset to live</button>
+    </div>
+
+    <div class="preview-banner" id="preview-banner" hidden>
+      <span class="pulse"></span>
+      <span class="pv-text">
+        <strong>Previewing on the mirror — not yet saved.</strong>
+        The mirror reverts to the previous state automatically if you don't save or discard.
+        <span class="pv-meta" id="preview-meta"></span>
+      </span>
+      <button class="btn" id="save-from-preview" type="button">Save</button>
+      <button class="btn danger" id="discard-preview" type="button">Discard</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="stage" aria-labelledby="stage-label">
+      <div class="stage-head">
+        <span class="label" id="stage-label">Portrait preview</span>
+        <span class="dims" id="dims-text">1080 × 1920 px</span>
+      </div>
+      <div class="mirror" id="mirror">
+        <div class="frame-glint"></div>
+        <div class="stack" id="stack" aria-live="polite"></div>
+        <div class="reserve">Scenes2 reserve · 140 px</div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="card help-card" id="help-card" hidden>
+        <h2>How to edit</h2>
+        <ol>
+          <li>Tap a module chip to <strong>pick it up</strong>. Tap any region to move it there.</li>
+          <li>Type a CSS length (e.g. <code>420px</code>, <code>30vh</code>) in a region's height field. Leave blank to remove its cap.</li>
+          <li>Tap a chip's <code>EX</code> badge to <strong>exempt</strong> it from its region's cap, or use the chip popover for tighter per-module sizing.</li>
+          <li>Edits auto-save to the working copy. Tap <strong>Reset to live</strong> to discard, or <strong>Save</strong> to make them durable.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2>Legend</h2>
+        <div class="legend-key">
+          <span class="swatch capped"></span>
+          <span><strong>Capped</strong> — region has a max-height; overflow clips.</span>
+        </div>
+        <div class="legend-key">
+          <span class="swatch suspended"></span>
+          <span><strong>Suspended</strong> — an exempt module lifts the cap for the whole region.</span>
+        </div>
+        <div class="legend-key">
+          <span class="swatch empty"></span>
+          <span><strong>Uncapped</strong> — region accepts whatever height its modules take.</span>
+        </div>
+        <div class="legend-key">
+          <span class="swatch reserve"></span>
+          <span><strong>Reserve</strong> — bottom 140 px held for the Scenes2 indicator strip.</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Module overrides <span class="count" id="overrides-count">0</span></h2>
+        <div id="overrides-list">
+          <p class="empty-note">No overrides declared yet.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Source</h2>
+        <div class="meta-line"><span class="k">document</span><span class="v" id="meta-doc">—</span></div>
+        <div class="meta-line"><span class="k">last read</span><span class="v" id="meta-time">—</span></div>
+        <div class="meta-line"><span class="k">refresh</span><span class="v">5 s</span></div>
+        <div class="meta-line"><span class="k">epic</span><span class="v">HOM-91 · HOM-93</span></div>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    <span>tap-to-select editor · agent serves this view from <code>/layout</code></span>
+    <span><a href="/portal">← back to portal</a></span>
+  </footer>
+</div>
+
+<div class="tf-overlay" id="tf-overlay" role="dialog" aria-modal="true" aria-labelledby="tf-title">
+  <div class="tf-panel">
+    <div class="tf-head">
+      <h2 id="tf-title">Advanced: Terraform diff export</h2>
+      <button class="close" id="tf-close" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="tf-body">
+      <div class="tf-paste">
+        <label for="tf-input">Paste a <code style="font-family:'JetBrains Mono',monospace;font-size:11px">modules.tf</code> to diff against the working copy</label>
+        <textarea id="tf-input" spellcheck="false" autocorrect="off" autocapitalize="off"
+          placeholder="# Advanced: paste any modules.tf to see what HCL changes the working copy implies.
+# You don't need this for normal Save — Save already writes the Pi's modules.tf.
+# Use this if you keep a separate copy somewhere else (e.g. a git repo) and want to sync it."></textarea>
+        <div class="row">
+          <span>Stored locally in your browser between visits — never uploaded except for the generate call.</span>
+          <span class="spacer"></span>
+          <button class="btn ghost" id="tf-clear-input" type="button">Clear</button>
+          <button class="btn" id="tf-generate" type="button">Generate diff</button>
+        </div>
+      </div>
+
+      <div id="tf-output" hidden>
+        <div class="tf-summary" id="tf-summary"></div>
+        <div class="tf-warnings" id="tf-warnings" hidden></div>
+        <div class="tf-changes" id="tf-changes" hidden>
+          <div class="ch-head">Changes</div>
+          <div id="tf-changes-list"></div>
+        </div>
+        <div class="tf-diff" id="tf-diff-wrap" hidden>
+          <div class="diff-head">
+            <span>Unified diff</span>
+            <span class="spacer"></span>
+            <button class="btn ghost" id="tf-copy-diff" type="button">Copy diff</button>
+            <button class="btn ghost" id="tf-copy-new" type="button">Copy full file</button>
+            <button class="btn ghost" id="tf-download" type="button">Download .tf</button>
+          </div>
+          <pre id="tf-diff"></pre>
+        </div>
+        <div class="tf-empty" id="tf-empty" hidden>
+          Working copy is identical to your <code style="font-family:'JetBrains Mono',monospace">modules.tf</code> — nothing to commit.
+        </div>
+      </div>
+    </div>
+    <div class="tf-foot">
+      <span class="hint">No auto-commit — you commit and <code style="font-family:'JetBrains Mono',monospace;color:var(--gold)">terraform apply</code> yourself.</span>
+      <span class="spacer"></span>
+      <button class="btn" id="tf-finalize" type="button" hidden>I committed it — clean up</button>
+      <button class="btn ghost" id="tf-dismiss" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- HOM-99: module bottom sheet (Place + Configure tabs) -->
+<div class="ms-overlay" id="ms-overlay" role="presentation"></div>
+<aside class="ms-sheet" id="ms-sheet" role="dialog" aria-modal="true" aria-labelledby="ms-title" hidden>
+  <div class="ms-head">
+    <h2 id="ms-title">Module<span class="cls" id="ms-classes"></span></h2>
+    <button class="ms-close" id="ms-close" type="button" aria-label="Close">×</button>
+  </div>
+  <div class="ms-tabs" role="tablist">
+    <button class="ms-tab" id="ms-tab-place" type="button" role="tab" aria-selected="true" data-tab="place">Place &amp; bound</button>
+    <button class="ms-tab" id="ms-tab-config" type="button" role="tab" aria-selected="false" data-tab="config">Configure</button>
+  </div>
+  <div class="ms-body">
+    <section class="ms-section" id="ms-pane-place">
+      <h3>Move to region</h3>
+      <div class="ms-regions" id="ms-regions"></div>
+      <p class="hint">Tap a region to move the module. Fullscreen overlays own the whole viewport (auto-exempt from bounds).</p>
+
+      <h3 style="margin-top:18px">Per-module bounds</h3>
+      <div class="ms-field">
+        <label for="ms-mh">max-height</label>
+        <input type="text" id="ms-mh" spellcheck="false" placeholder="e.g. 220px (blank = none)">
+      </div>
+      <div class="ms-field">
+        <label for="ms-mw">max-width</label>
+        <input type="text" id="ms-mw" spellcheck="false" placeholder="e.g. 480px (blank = none)">
+      </div>
+      <div class="ms-field">
+        <label for="ms-contain">contain</label>
+        <select id="ms-contain">
+          <option value="">(inherit region)</option>
+          <option value="paint">paint — clip absolute children</option>
+          <option value="layout">layout</option>
+          <option value="size">size</option>
+          <option value="off">off — disable contain</option>
+        </select>
+      </div>
+      <p class="hint">Tighter than the region cap. Use <code style="font-family:'JetBrains Mono',monospace">paint</code> if a module's grid renders with <code style="font-family:'JetBrains Mono',monospace">position: absolute</code> and escapes the box.</p>
+
+      <h3 style="margin-top:18px">Exempt from region cap</h3>
+      <div class="ms-toggle" id="ms-exempt-toggle" role="switch" aria-checked="false">
+        <span class="knob"></span>
+        <span class="lbl">
+          <strong>Exempt this module here</strong>
+          <span>Suspends the region's cap entirely while this module is in it. Use for tall hero modules.</span>
+        </span>
+      </div>
+    </section>
+
+    <section class="ms-section" id="ms-pane-config" hidden>
+      <h3>Module configuration</h3>
+      <div id="ms-config-fields"></div>
+      <p class="hint" id="ms-config-hint">Changes here merge into the module's existing config — only the fields you edit get written. Saved with the rest of the working copy.</p>
+    </section>
+  </div>
+  <div class="ms-foot">
+    <span class="hint">Edits auto-save · Save to apply</span>
+    <span class="spacer"></span>
+    <button class="btn ghost" id="ms-dismiss" type="button">Done</button>
+  </div>
+</aside>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+  (function () {
+    "use strict";
+
+    var REFRESH_MS = 5000;
+    var SAVE_DEBOUNCE_MS = 350;
+    // CSS-length regex mirrors _docs/layout-schema.schema.json — the editor's
+    // text inputs validate against this client-side so invalid values can't
+    // even reach the PUT (the server validates again).
+    var CSS_LENGTH_RE = /^[0-9]+(\.[0-9]+)?(px|vh|vw|em|rem|%)$/;
+
+    var $ = function (id) { return document.getElementById(id); };
+    var stack = $("stack");
+    var statusChip = $("status-chip");
+    var statusText = $("status-text");
+    var sourceChip = $("source-chip");
+    var sourceText = $("source-text");
+    var regionCount = $("region-count");
+    var moduleCount = $("module-count");
+    var overridesList = $("overrides-list");
+    var overridesCount = $("overrides-count");
+    var dimsText = $("dims-text");
+    var metaDoc = $("meta-doc");
+    var metaTime = $("meta-time");
+    var editToggle = $("edit-toggle");
+    var helpCard = $("help-card");
+    var wcBanner = $("wc-banner");
+    var wcMeta = $("wc-meta");
+    var resetBtn = $("reset-btn");
+    var previewBtn = $("preview-btn");
+    var saveBtn = $("save-btn");
+    var previewBanner = $("preview-banner");
+    var previewMeta = $("preview-meta");
+    var saveFromPreview = $("save-from-preview");
+    var discardPreview = $("discard-preview");
+    var toast = $("toast");
+
+    // Editor state — workingDoc is local until the next save lands.
+    var state = null;           // last server-rendered State
+    var workingDoc = null;      // {version, layout, pendingPositions} when edit mode is active
+    var editMode = false;
+    var selectedModule = null;  // {id, name, region}
+    var saveTimer = null;
+    var lastSentBody = null;    // dedupes identical saves
+    var refreshTimer = null;
+
+    function parsePx(s) {
+      if (!s) return null;
+      var m = /^(\d+(?:\.\d+)?)\s*px$/i.exec(String(s).trim());
+      return m ? parseFloat(m[1]) : null;
+    }
+
+    var TOP_ROW = ["top_left", "top_center", "top_right"];
+    var BOTTOM_ROW = ["bottom_left", "bottom_center", "bottom_right"];
+
+    function showToast(msg, kind) {
+      toast.textContent = msg;
+      toast.classList.remove("ok", "bad");
+      if (kind) toast.classList.add(kind);
+      toast.classList.add("show");
+      clearTimeout(toast._t);
+      toast._t = setTimeout(function () { toast.classList.remove("show"); }, 2400);
+    }
+
+    function render(next) {
+      state = next;
+      regionCount.textContent = next.regions.length;
+      var totalModules = next.regions.reduce(function (acc, r) {
+        return acc + (r.modules ? r.modules.length : 0);
+      }, 0);
+      moduleCount.textContent = totalModules;
+
+      if (next.viewport) {
+        dimsText.textContent = next.viewport.width + " × " + next.viewport.height + " px · reserve " + next.viewport.bottomReserve;
+      }
+
+      sourceText.textContent = next.hasLayoutDoc ? "MMM-LayoutBounds" : "schema defaults";
+      sourceChip.classList.toggle("is-warn", !next.hasLayoutDoc);
+      metaDoc.textContent = next.hasLayoutDoc ? "MMM-LayoutBounds.config.layout" : "_docs/layout-schema.md";
+
+      // Working-copy + preview banners. When preview is active, hide the
+      // WC banner to keep one source of truth in the header.
+      if (next.previewActive) {
+        wcBanner.hidden = true;
+        previewBanner.hidden = false;
+        var msg = "live on mirror";
+        if (next.previewDeadline) {
+          var remaining = Math.max(0, Math.round((new Date(next.previewDeadline) - Date.now()) / 60000));
+          msg += " · auto-reverts in " + remaining + " min";
+        }
+        previewMeta.textContent = msg;
+      } else {
+        previewBanner.hidden = true;
+        if (next.hasWorkingCopy) {
+          wcBanner.hidden = false;
+          var changes = countChanges();
+          wcMeta.textContent = (changes ? changes + " pending · " : "") + "saved " + (next.workingCopyAt || "just now");
+        } else {
+          wcBanner.hidden = true;
+          wcMeta.textContent = "";
+        }
+      }
+
+      var byId = {};
+      next.regions.forEach(function (r) { byId[r.id] = r; });
+
+      var bands = [];
+      if (byId.top_bar) bands.push({ kind: "full", region: byId.top_bar });
+      var topRowCells = TOP_ROW.map(function (id) { return byId[id]; }).filter(Boolean);
+      if (topRowCells.length) bands.push({ kind: "row", cells: topRowCells });
+      if (byId.upper_third) bands.push({ kind: "full", region: byId.upper_third });
+      if (byId.middle_center) bands.push({ kind: "full", region: byId.middle_center });
+      if (byId.lower_third) bands.push({ kind: "full", region: byId.lower_third });
+      var bottomRowCells = BOTTOM_ROW.map(function (id) { return byId[id]; }).filter(Boolean);
+      if (bottomRowCells.length) bands.push({ kind: "row", cells: bottomRowCells });
+      if (byId.bottom_bar) bands.push({ kind: "full", region: byId.bottom_bar });
+
+      var totalLogical = 0;
+      bands.forEach(function (b) {
+        if (b.kind === "full") {
+          b.h = parsePx(b.region.maxHeight) || estimateHeight(b.region);
+        } else {
+          b.h = Math.max.apply(null, b.cells.map(function (c) {
+            return parsePx(c.maxHeight) || estimateHeight(c);
+          }));
+        }
+        totalLogical += b.h;
+      });
+
+      var TARGET = 1780;
+      var ratio = TARGET / Math.max(totalLogical, 1);
+
+      stack.innerHTML = "";
+      bands.forEach(function (b) {
+        var pct = (b.h * ratio) / TARGET * 100;
+        if (b.kind === "full") {
+          var bandEl = document.createElement("div");
+          bandEl.className = "band";
+          bandEl.style.flexBasis = pct + "%";
+          bandEl.appendChild(makeCell(b.region, true));
+          stack.appendChild(bandEl);
+        } else {
+          var rowEl = document.createElement("div");
+          rowEl.className = "band row";
+          rowEl.style.flexBasis = pct + "%";
+          b.cells.forEach(function (r) { rowEl.appendChild(makeCell(r, false)); });
+          stack.appendChild(rowEl);
+        }
+      });
+
+      renderOverrides(next.moduleOverrides || []);
+      reapplySelection();
+
+      metaTime.textContent = new Date().toLocaleTimeString();
+      statusChip.classList.remove("is-bad");
+      statusChip.classList.add("is-live");
+      statusText.textContent = "live";
+    }
+
+    function estimateHeight(region) {
+      if (region.modules && region.modules.length > 0) return 200;
+      return 60;
+    }
+
+    function makeCell(region, fullWidth) {
+      var el = document.createElement("div");
+      el.className = "cell";
+      el.dataset.region = region.id;
+      if (region.suspended) el.classList.add("suspended");
+      else if (region.capped) el.classList.add("capped");
+      if (!region.modules || region.modules.length === 0) el.classList.add("empty");
+
+      var head = document.createElement("div");
+      head.className = "cell-head";
+      var label = document.createElement("span");
+      label.textContent = region.id.replace(/_/g, " ");
+
+      // HOM-99: text-entry for region max-height. Read-only span in view
+      // mode; flips to a free-text input when edit mode is on, validating
+      // against the schema CSS-length regex on every keystroke.
+      var height = document.createElement("span");
+      height.className = "h";
+
+      var heightText = document.createElement("span");
+      heightText.className = "h-view";
+      if (region.suspended) heightText.textContent = "suspended";
+      else if (region.maxHeight) heightText.textContent = region.maxHeight;
+      else heightText.textContent = "—";
+
+      var heightInput = document.createElement("input");
+      heightInput.type = "text";
+      heightInput.className = "h-edit";
+      heightInput.spellcheck = false;
+      heightInput.placeholder = "e.g. 420px";
+      heightInput.value = region.maxHeight || "";
+      heightInput.addEventListener("click", function (e) { e.stopPropagation(); });
+      heightInput.addEventListener("input", function (e) {
+        e.stopPropagation();
+        var v = heightInput.value.trim();
+        var ok = v === "" || CSS_LENGTH_RE.test(v);
+        heightInput.classList.toggle("invalid", !ok);
+        if (!ok) return;
+        setRegionMaxHeight(region.id, v);
+      });
+      heightInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { heightInput.blur(); e.preventDefault(); }
+        if (e.key === "Escape") { heightInput.value = region.maxHeight || ""; heightInput.blur(); }
+      });
+
+      height.appendChild(heightText);
+      height.appendChild(heightInput);
+      head.appendChild(label);
+      head.appendChild(height);
+      el.appendChild(head);
+
+      var mods = document.createElement("div");
+      mods.className = "cell-mods";
+      (region.modules || []).forEach(function (m) {
+        var tag = document.createElement("div");
+        tag.className = "modtag";
+        if (m.moved) tag.classList.add("moved");
+        if (isExempt(m.name, region.id)) tag.classList.add("is-exempt");
+        tag.dataset.moduleId = m.id;
+        tag.dataset.moduleName = m.name;
+
+        var nameEl = document.createElement("span");
+        nameEl.className = "name";
+        nameEl.textContent = m.name;
+        tag.appendChild(nameEl);
+
+        if (m.classes) {
+          var c = document.createElement("span");
+          c.className = "cls";
+          c.textContent = "." + m.classes;
+          tag.appendChild(c);
+        }
+
+        var ex = document.createElement("button");
+        ex.type = "button"; ex.className = "exbtn";
+        ex.textContent = "EX";
+        ex.title = "toggle region-scoped exemption for " + m.name;
+        ex.addEventListener("click", function (e) {
+          e.stopPropagation();
+          toggleExempt(m.name, region.id);
+        });
+        tag.appendChild(ex);
+
+        tag.title = m.name + (m.classes ? " · ." + m.classes : "");
+        tag.addEventListener("click", function (e) {
+          if (!editMode) return focusCell(el);
+          e.stopPropagation();
+          // HOM-99: prefer the bottom sheet for deep edits. Long-tap still
+          // selects for the lightweight tap-region move pattern.
+          openModuleSheet({ id: m.id, name: m.name, region: region.id, classes: m.classes });
+        });
+        mods.appendChild(tag);
+      });
+      el.appendChild(mods);
+
+      var tooltipBits = [region.id];
+      if (region.maxHeight) tooltipBits.push("max-height " + region.maxHeight);
+      if (region.overflow) tooltipBits.push("overflow " + region.overflow);
+      if (region.reason) tooltipBits.push(region.reason);
+      el.title = tooltipBits.join(" · ");
+
+      el.addEventListener("click", function () {
+        if (editMode) {
+          if (selectedModule) moveSelectedTo(region.id);
+          return;
+        }
+        focusCell(el);
+      });
+      return el;
+    }
+
+    function isExempt(moduleName, regionId) {
+      if (!workingDoc || !workingDoc.layout) return false;
+      var list = workingDoc.layout.moduleOverrides || [];
+      for (var i = 0; i < list.length; i++) {
+        var ov = list[i] || {};
+        var match = ov.match || {};
+        if (match.module !== moduleName) continue;
+        if (!ov.exempt) continue;
+        if (!match.region || match.region === regionId) return true;
+      }
+      return false;
+    }
+
+    function countChanges() {
+      if (!workingDoc) return 0;
+      var moves = workingDoc.pendingPositions ? Object.keys(workingDoc.pendingPositions).length : 0;
+      var overrides = (workingDoc.layout && workingDoc.layout.moduleOverrides) ? workingDoc.layout.moduleOverrides.length : 0;
+      return moves + overrides;
+    }
+
+    function focusCell(target) {
+      var all = stack.querySelectorAll(".cell");
+      var alreadyOn = target.classList.contains("is-focus");
+      all.forEach(function (c) { c.classList.remove("is-focus", "is-dim"); });
+      if (alreadyOn) return;
+      target.classList.add("is-focus");
+      all.forEach(function (c) { if (c !== target) c.classList.add("is-dim"); });
+    }
+
+    function renderOverrides(list) {
+      overridesCount.textContent = list.length;
+      if (list.length === 0) {
+        overridesList.innerHTML = '<p class="empty-note">No overrides declared yet.</p>';
+        return;
+      }
+      overridesList.innerHTML = "";
+      list.forEach(function (ov) {
+        var row = document.createElement("div");
+        row.className = "ov-row";
+        var left = document.createElement("span");
+        var name = document.createElement("span");
+        name.className = "name"; name.textContent = ov.module;
+        left.appendChild(name);
+        if (ov.region) {
+          var reg = document.createElement("span");
+          reg.className = "reg"; reg.textContent = " @ " + ov.region;
+          left.appendChild(reg);
+        }
+        var mark = document.createElement("span");
+        mark.className = "mark";
+        mark.textContent = ov.exempt ? "EXEMPT" : "OVERRIDE";
+        row.appendChild(left); row.appendChild(mark);
+        overridesList.appendChild(row);
+      });
+    }
+
+    // ---------- edit mode actions ----------
+
+    function ensureWorkingDoc() {
+      if (workingDoc) return workingDoc;
+      // Seed from live state: copy region rules out of the state into a layout
+      // doc. Keeping maxHeight strings as-is avoids stringly-typed drift.
+      var regions = {};
+      (state.regions || []).forEach(function (r) {
+        if (r.maxHeight) regions[r.id] = { maxHeight: r.maxHeight, overflow: r.overflow || "hidden" };
+      });
+      workingDoc = {
+        version: 1,
+        layout: {
+          version: 1,
+          regions: regions,
+          moduleOverrides: (state.moduleOverrides || []).map(function (ov) {
+            var match = { module: ov.module };
+            if (ov.region) match.region = ov.region;
+            return { match: match, exempt: !!ov.exempt };
+          }),
+        },
+        pendingPositions: {},
+      };
+      return workingDoc;
+    }
+
+    function selectModule(mod) {
+      if (selectedModule && selectedModule.id === mod.id) {
+        // Tap selected chip again → deselect.
+        selectedModule = null;
+        reapplySelection();
+        return;
+      }
+      selectedModule = mod;
+      reapplySelection();
+    }
+
+    function reapplySelection() {
+      document.body.classList.toggle("has-selection", editMode && !!selectedModule);
+      document.querySelectorAll(".modtag.is-selected").forEach(function (n) {
+        n.classList.remove("is-selected");
+      });
+      document.querySelectorAll(".cell.is-source").forEach(function (n) {
+        n.classList.remove("is-source");
+      });
+      if (selectedModule) {
+        var tag = document.querySelector('.modtag[data-module-id="' + cssEscape(selectedModule.id) + '"]');
+        if (tag) {
+          tag.classList.add("is-selected");
+          var sourceCell = tag.closest(".cell");
+          if (sourceCell) sourceCell.classList.add("is-source");
+        }
+      }
+    }
+
+    // HOM-98: schema defaults match _docs/layout-schema.md "Default per-
+    // region budgets" — every region's safe starting cap so an unmapped
+    // destination doesn't leave the moved module unbounded (the agenda-in-
+    // upper_third bug). User can grow/shrink via the +/− buttons.
+    var REGION_DEFAULT_HEIGHT = {
+      top_bar: "60px",
+      top_left: "480px", top_center: "480px", top_right: "480px",
+      upper_third: "220px",
+      middle_center: "480px",
+      lower_third: "200px",
+      bottom_left: "280px", bottom_center: "280px", bottom_right: "280px",
+      bottom_bar: "80px",
+    };
+    var FULLSCREEN_REGIONS = { fullscreen_above: true, fullscreen_below: true };
+
+    function moveSelectedTo(regionId) {
+      if (!selectedModule) return;
+      if (selectedModule.region === regionId) {
+        selectedModule = null;
+        reapplySelection();
+        return;
+      }
+      ensureWorkingDoc();
+      workingDoc.pendingPositions = workingDoc.pendingPositions || {};
+      workingDoc.pendingPositions[selectedModule.id] = regionId;
+
+      // If the destination region has no bound declared, seed the schema
+      // default. Without this the module renders unbounded — HOM-98.
+      // Fullscreen overlays stay null (auto-exempt by the bounds module).
+      if (!FULLSCREEN_REGIONS[regionId]) {
+        var regions = workingDoc.layout.regions = workingDoc.layout.regions || {};
+        var rule = regions[regionId];
+        if (!rule || typeof rule !== "object") {
+          var def = REGION_DEFAULT_HEIGHT[regionId];
+          if (def) {
+            regions[regionId] = { maxHeight: def, overflow: "hidden" };
+            showToast("Capped " + regionId + " at " + def + " (default) — adjust via +/−", "ok");
+          }
+        }
+      }
+
+      selectedModule = null;
+      scheduleSave("moved");
+    }
+
+    function setRegionMaxHeight(regionId, value) {
+      ensureWorkingDoc();
+      var regions = workingDoc.layout.regions = workingDoc.layout.regions || {};
+      if (value === "") {
+        // Empty input drops the cap entirely (null in schema = "no bounds").
+        delete regions[regionId];
+        scheduleSave("uncapped " + regionId);
+        return;
+      }
+      var rule = regions[regionId];
+      if (!rule || typeof rule !== "object") {
+        rule = { maxHeight: value, overflow: "hidden" };
+        regions[regionId] = rule;
+      } else {
+        rule.maxHeight = value;
+        if (!rule.overflow) rule.overflow = "hidden";
+      }
+      scheduleSave("resized " + regionId + " → " + value);
+    }
+
+    function toggleExempt(moduleName, regionId) {
+      ensureWorkingDoc();
+      var list = workingDoc.layout.moduleOverrides = workingDoc.layout.moduleOverrides || [];
+      var idx = -1;
+      for (var i = 0; i < list.length; i++) {
+        var ov = list[i] || {};
+        var match = ov.match || {};
+        if (match.module === moduleName && (match.region || "") === regionId) { idx = i; break; }
+      }
+      if (idx >= 0) {
+        list.splice(idx, 1);
+        scheduleSave("removed exempt " + moduleName);
+      } else {
+        list.push({ match: { module: moduleName, region: regionId }, exempt: true });
+        scheduleSave("exempted " + moduleName + " @ " + regionId);
+      }
+    }
+
+    // ---------- save / reset ----------
+
+    function scheduleSave(reason) {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(function () { doSave(reason); }, SAVE_DEBOUNCE_MS);
+    }
+
+    async function doSave(reason) {
+      if (!workingDoc) return;
+      var body = JSON.stringify(workingDoc);
+      if (body === lastSentBody) return;
+      try {
+        var res = await fetch("/layout/api/working-copy", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: body,
+        });
+        if (!res.ok) {
+          var err = await safeJSON(res);
+          showToast("Save failed: " + (err && err.error ? err.error : res.statusText), "bad");
+          return;
+        }
+        var saved = await res.json();
+        workingDoc = saved;
+        lastSentBody = JSON.stringify(saved);
+        showToast(reason ? "Saved · " + reason : "Saved", "ok");
+        // Re-fetch state so the visualization reflects the persisted doc.
+        tick();
+      } catch (e) {
+        showToast("Save failed: " + e.message, "bad");
+      }
+    }
+
+    async function safeJSON(res) {
+      try { return await res.json(); } catch (_) { return null; }
+    }
+
+    async function resetWorkingCopy() {
+      try {
+        var res = await fetch("/layout/api/working-copy", { method: "DELETE" });
+        if (!res.ok && res.status !== 204) throw new Error(res.statusText);
+        workingDoc = null;
+        lastSentBody = null;
+        selectedModule = null;
+        showToast("Reset to live mirror state", "ok");
+        tick();
+      } catch (e) {
+        showToast("Reset failed: " + e.message, "bad");
+      }
+    }
+
+    async function loadWorkingCopy() {
+      try {
+        var res = await fetch("/layout/api/working-copy", { cache: "no-store" });
+        if (res.status === 204) { workingDoc = null; return; }
+        if (!res.ok) throw new Error(res.statusText);
+        workingDoc = await res.json();
+        lastSentBody = JSON.stringify(workingDoc);
+      } catch (e) {
+        // Non-fatal: the editor will seed a doc when the user starts editing.
+        workingDoc = null;
+      }
+    }
+
+    // ---------- edit mode toggle ----------
+
+    function setEditMode(on) {
+      editMode = !!on;
+      document.body.classList.toggle("edit-mode", editMode);
+      editToggle.classList.toggle("is-on", editMode);
+      editToggle.setAttribute("aria-pressed", String(editMode));
+      editToggle.textContent = editMode ? "Done" : "Edit";
+      helpCard.hidden = !editMode;
+      if (!editMode) {
+        selectedModule = null;
+        reapplySelection();
+      } else {
+        ensureWorkingDoc();
+      }
+    }
+
+    editToggle.addEventListener("click", function () { setEditMode(!editMode); });
+    resetBtn.addEventListener("click", resetWorkingCopy);
+
+    // ---------- HOM-95 L6: live preview / discard ----------
+    async function startPreview() {
+      previewBtn.disabled = true;
+      previewBtn.textContent = "Applying…";
+      try {
+        var res = await fetch("/layout/api/preview", { method: "POST" });
+        var body = await safeJSON(res);
+        if (!res.ok) {
+          if (res.status === 409) {
+            showToast("A preview is already active — discard it first", "bad");
+          } else {
+            showToast("Preview failed: " + (body && body.error ? body.error : res.statusText), "bad");
+          }
+          return;
+        }
+        showToast("Preview live on mirror", "ok");
+        tick();
+      } catch (e) {
+        showToast("Preview failed: " + e.message, "bad");
+      } finally {
+        previewBtn.disabled = false;
+        previewBtn.textContent = "Preview on mirror";
+      }
+    }
+
+    async function discardPreviewNow() {
+      discardPreview.disabled = true;
+      discardPreview.textContent = "Reverting…";
+      try {
+        var res = await fetch("/layout/api/discard-preview", { method: "POST" });
+        if (!res.ok) {
+          var body = await safeJSON(res);
+          showToast("Discard failed: " + (body && body.error ? body.error : res.statusText), "bad");
+          return;
+        }
+        showToast("Mirror reverted to last applied state", "ok");
+        tick();
+      } catch (e) {
+        showToast("Discard failed: " + e.message, "bad");
+      } finally {
+        discardPreview.disabled = false;
+        discardPreview.textContent = "Discard";
+      }
+    }
+
+    previewBtn.addEventListener("click", startPreview);
+    discardPreview.addEventListener("click", discardPreviewNow);
+
+    // HOM-96: durable Save — agent writes Pi-resident modules.tf + config.js
+    // and restarts MM. No paste, no terraform apply. Distinct from the
+    // autosaver `doSave(reason)` which PUTs to /working-copy on every edit;
+    // this one commits the persisted working copy to live + Terraform.
+    async function commitSave(btn) {
+      var orig = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Saving…";
+      try {
+        // Make sure any in-flight autosave finishes before the commit, so
+        // the agent reads the latest working-copy off disk.
+        if (saveTimer) {
+          clearTimeout(saveTimer);
+          await doSave("flush before commit");
+        }
+        var res = await fetch("/layout/api/save", { method: "POST" });
+        var body = await safeJSON(res);
+        if (!res.ok) {
+          showToast("Save failed: " + (body && body.error ? body.error : res.statusText), "bad");
+          return;
+        }
+        if (body && body.noChange) {
+          showToast("Nothing to save — working copy matched live state", "ok");
+        } else {
+          var summary = [];
+          if (body && body.positionMoves) summary.push(body.positionMoves + " move" + (body.positionMoves > 1 ? "s" : ""));
+          if (body && body.layoutBoundsTouched) summary.push("layout updated");
+          var msg = "Saved · " + (summary.length ? summary.join(" · ") : "applied");
+          showToast(msg, "ok");
+        }
+        // Server side has cleaned up working-copy + preview; refresh local state.
+        workingDoc = null;
+        lastSentBody = null;
+        tick();
+      } catch (e) {
+        showToast("Save failed: " + e.message, "bad");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = orig;
+      }
+    }
+    saveBtn.addEventListener("click", function () { commitSave(saveBtn); });
+    saveFromPreview.addEventListener("click", function () { commitSave(saveFromPreview); });
+
+    // ---------- generate-terraform panel (HOM-94 L5) ----------
+    var TF_LS_KEY = "mmm.layout.modulesTf";
+    var tfOverlay = $("tf-overlay");
+    var tfClose = $("tf-close");
+    var tfDismiss = $("tf-dismiss");
+    var tfInput = $("tf-input");
+    var tfGenerate = $("tf-generate");
+    var tfClearInput = $("tf-clear-input");
+    var tfOutput = $("tf-output");
+    var tfSummary = $("tf-summary");
+    var tfWarnings = $("tf-warnings");
+    var tfChanges = $("tf-changes");
+    var tfChangesList = $("tf-changes-list");
+    var tfDiffWrap = $("tf-diff-wrap");
+    var tfDiff = $("tf-diff");
+    var tfEmpty = $("tf-empty");
+    var tfCopyDiff = $("tf-copy-diff");
+    var tfCopyNew = $("tf-copy-new");
+    var tfDownload = $("tf-download");
+    var lastResult = null;
+
+    function openTfPanel() {
+      tfOverlay.classList.add("open");
+      // Show "I committed it" only when there's actually a working copy or
+      // preview to clean up — keeps the foot clean otherwise.
+      tfFinalize.hidden = !(state && (state.hasWorkingCopy || state.previewActive));
+      try {
+        var stored = window.localStorage.getItem(TF_LS_KEY);
+        if (stored) tfInput.value = stored;
+      } catch (_) {}
+      if (tfInput.value && tfInput.value.indexOf("magicmirror_module") >= 0) {
+        // We have something useful cached — auto-generate so the panel opens
+        // straight to the diff instead of an empty paste.
+        runGenerate();
+      } else {
+        tfInput.focus();
+      }
+    }
+    function closeTfPanel() {
+      tfOverlay.classList.remove("open");
+    }
+    $("generate-tf").addEventListener("click", function (e) {
+      e.preventDefault();
+      openTfPanel();
+    });
+    tfClose.addEventListener("click", closeTfPanel);
+    tfDismiss.addEventListener("click", closeTfPanel);
+    tfOverlay.addEventListener("click", function (e) {
+      if (e.target === tfOverlay) closeTfPanel();
+    });
+    tfClearInput.addEventListener("click", function () {
+      tfInput.value = "";
+      try { window.localStorage.removeItem(TF_LS_KEY); } catch (_) {}
+      tfInput.focus();
+    });
+
+    async function runGenerate() {
+      var content = tfInput.value;
+      if (!content || !content.trim()) {
+        showToast("Paste your modules.tf first", "bad");
+        return;
+      }
+      try { window.localStorage.setItem(TF_LS_KEY, content); } catch (_) {}
+      try {
+        var res = await fetch("/layout/api/emit-terraform", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ modulesTf: content }),
+        });
+        if (!res.ok) {
+          var err = await safeJSON(res);
+          showToast("Generate failed: " + (err && err.error ? err.error : res.statusText), "bad");
+          return;
+        }
+        lastResult = await res.json();
+        renderTfResult(lastResult);
+      } catch (e) {
+        showToast("Generate failed: " + e.message, "bad");
+      }
+    }
+    tfGenerate.addEventListener("click", runGenerate);
+
+    function renderTfResult(r) {
+      tfOutput.hidden = false;
+
+      // Summary chips
+      tfSummary.innerHTML = "";
+      if (r.summary && r.summary.noChange) {
+        var b = document.createElement("span");
+        b.className = "badge ok";
+        b.textContent = "no changes";
+        tfSummary.appendChild(b);
+        tfEmpty.hidden = false;
+        tfChanges.hidden = true;
+        tfDiffWrap.hidden = true;
+      } else {
+        tfEmpty.hidden = true;
+        if (r.summary && r.summary.positionMoves) {
+          var bm = document.createElement("span");
+          bm.className = "badge ok";
+          bm.textContent = r.summary.positionMoves + " position move" + (r.summary.positionMoves > 1 ? "s" : "");
+          tfSummary.appendChild(bm);
+        }
+        if (r.summary && r.summary.layoutBoundsTouched) {
+          var bl = document.createElement("span");
+          bl.className = "badge warn";
+          bl.textContent = "layout_bounds regenerated";
+          tfSummary.appendChild(bl);
+        }
+        tfChanges.hidden = !(r.changes && r.changes.length);
+        tfDiffWrap.hidden = !r.diff;
+      }
+
+      // Warnings
+      if (r.warnings && r.warnings.length) {
+        tfWarnings.hidden = false;
+        tfWarnings.innerHTML = "<strong>Warnings:</strong><ul></ul>";
+        var ul = tfWarnings.querySelector("ul");
+        r.warnings.forEach(function (w) {
+          var li = document.createElement("li");
+          li.textContent = w;
+          ul.appendChild(li);
+        });
+      } else {
+        tfWarnings.hidden = true;
+      }
+
+      // Change rows
+      tfChangesList.innerHTML = "";
+      (r.changes || []).forEach(function (c) {
+        var row = document.createElement("div");
+        row.className = "ch-row";
+        var kind = document.createElement("span");
+        kind.className = "ch-kind " + (c.kind || "");
+        kind.textContent = c.kind || "?";
+        var desc = document.createElement("span");
+        desc.className = "ch-desc";
+        desc.textContent = c.description || "";
+        row.appendChild(kind);
+        row.appendChild(desc);
+        tfChangesList.appendChild(row);
+      });
+
+      // Diff render (line-by-line span colorize)
+      tfDiff.innerHTML = "";
+      if (r.diff) {
+        var lines = r.diff.split("\n");
+        // Drop trailing empty split.
+        if (lines.length && lines[lines.length - 1] === "") lines.pop();
+        lines.forEach(function (line) {
+          var span = document.createElement("span");
+          span.className = "ln";
+          if (line.startsWith("+++") || line.startsWith("---")) span.classList.add("h");
+          else if (line.startsWith("@@")) span.classList.add("hh");
+          else if (line.startsWith("+")) span.classList.add("add");
+          else if (line.startsWith("-")) span.classList.add("del");
+          else span.classList.add("ctx");
+          span.textContent = line + "\n";
+          tfDiff.appendChild(span);
+        });
+      }
+    }
+
+    var tfFinalize = $("tf-finalize");
+    tfFinalize.addEventListener("click", async function () {
+      if (!confirm("Mark the working copy as committed? This deletes the preview snapshot and the layout.json file — only do this after running `terraform apply` successfully.")) return;
+      tfFinalize.disabled = true;
+      try {
+        var res = await fetch("/layout/api/finalize-preview", { method: "POST" });
+        if (!res.ok) {
+          var body = await safeJSON(res);
+          showToast("Cleanup failed: " + (body && body.error ? body.error : res.statusText), "bad");
+          return;
+        }
+        showToast("Working copy cleared — viewer back in sync with modules.tf", "ok");
+        workingDoc = null;
+        lastSentBody = null;
+        closeTfPanel();
+        tick();
+      } catch (e) {
+        showToast("Cleanup failed: " + e.message, "bad");
+      } finally {
+        tfFinalize.disabled = false;
+      }
+    });
+
+    tfCopyDiff.addEventListener("click", function () { copyToClipboard(lastResult ? lastResult.diff : "", "Diff copied"); });
+    tfCopyNew.addEventListener("click", function () { copyToClipboard(lastResult ? lastResult.newContent : "", "New modules.tf copied"); });
+    tfDownload.addEventListener("click", function () {
+      if (!lastResult || !lastResult.newContent) return;
+      var blob = new Blob([lastResult.newContent], { type: "text/plain" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = "modules.tf";
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 100);
+    });
+
+    async function copyToClipboard(text, okMsg) {
+      if (!text) { showToast("Nothing to copy", "bad"); return; }
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast(okMsg, "ok");
+      } catch (e) {
+        // Fallback for older browsers / non-secure contexts.
+        var ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); showToast(okMsg, "ok"); }
+        catch (_) { showToast("Copy failed: " + e.message, "bad"); }
+        ta.remove();
+      }
+    }
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape") return;
+      if (tfOverlay.classList.contains("open")) { closeTfPanel(); return; }
+      if (selectedModule) { selectedModule = null; reapplySelection(); return; }
+      if (editMode) setEditMode(false);
+    });
+
+    function fitScale() {
+      var stage = document.querySelector(".stage");
+      if (!stage) return;
+      var available = stage.clientWidth - 44;
+      var maxScale = 0.42;
+      var scale = Math.min(available / 1080, maxScale);
+      scale = Math.max(scale, 0.22);
+      document.documentElement.style.setProperty("--scale", String(scale));
+    }
+
+    async function tick() {
+      try {
+        var res = await fetch("/layout/api/state", { cache: "no-store" });
+        if (!res.ok) throw new Error(res.status + " " + res.statusText);
+        var json = await res.json();
+        render(json);
+      } catch (err) {
+        statusChip.classList.remove("is-live");
+        statusChip.classList.add("is-bad");
+        statusText.textContent = "agent unreachable";
+        console.error(err);
+      }
+    }
+
+    // CSS.escape polyfill for older WebKit on the Pi-touch display.
+    function cssEscape(s) {
+      if (window.CSS && CSS.escape) return CSS.escape(s);
+      return String(s).replace(/["\\\]\[]/g, "\\$&");
+    }
+
+    // ---------- HOM-99: module bottom sheet ----------
+    //
+    // Typed config schemas for the modules we know about. Each entry lists
+    // the editable fields with a label + type so the sheet renders the right
+    // input. Anything not in this registry falls back to a JSON textarea so
+    // the editor never blocks a user from changing config — it just gives a
+    // nicer UI when it knows what the module accepts.
+    var MODULE_CONFIG_FIELDS = {
+      "MMM-PhotoFrame": [
+        { key: "crossfadeMs", type: "number", label: "Crossfade (ms)" },
+        { key: "maxWidth", type: "number", label: "Max width (px)" },
+        { key: "maxHeight", type: "number", label: "Max height (px)" },
+        { key: "fit", type: "enum", label: "Fit", options: ["contain", "cover"] },
+        { key: "randomizeImageOrder", type: "bool", label: "Randomise order" },
+        { key: "tapToAdvance", type: "bool", label: "Tap to advance" },
+      ],
+      "MMM-CalendarExt3": [
+        { key: "mode", type: "enum", label: "Mode", options: ["month", "week", "weekly", "daily"] },
+        { key: "firstDayOfWeek", type: "number", label: "First day of week (0-6)" },
+        { key: "maxEventLines", type: "number", label: "Max event lines" },
+      ],
+      "MMM-CalendarExt3Agenda": [
+        { key: "showMiniMonthCalendar", type: "bool", label: "Show mini month calendar" },
+      ],
+      "weather": [
+        { key: "lat", type: "number", label: "Latitude" },
+        { key: "lon", type: "number", label: "Longitude" },
+        { key: "type", type: "enum", label: "Type", options: ["current", "forecast", "hourly", "daily"] },
+        { key: "showSun", type: "bool", label: "Show sunrise/sunset" },
+        { key: "weatherProvider", type: "string", label: "Provider" },
+      ],
+      "MMM-OpenWeatherForecast": [
+        { key: "apikey", type: "string", label: "API key" },
+        { key: "latitude", type: "number", label: "Latitude" },
+        { key: "longitude", type: "number", label: "Longitude" },
+        { key: "showFeelsLikeTemp", type: "bool", label: "Show feels-like" },
+        { key: "showHourlyForecast", type: "bool", label: "Show hourly forecast" },
+        { key: "showCurrentConditions", type: "bool", label: "Show current conditions" },
+      ],
+      "MMM-Chores": [
+        { key: "title", type: "string", label: "Title" },
+        { key: "updateInterval", type: "number", label: "Update interval (ms)" },
+        { key: "pages", type: "string[]", label: "Pages" },
+        { key: "landingPage", type: "string", label: "Landing page" },
+        { key: "users", type: "string[]", label: "Users" },
+        { key: "showUnassignedLane", type: "bool", label: "Show unassigned lane" },
+        { key: "autoRotate", type: "bool", label: "Auto-rotate pages" },
+        { key: "rewardsEnabled", type: "bool", label: "Rewards enabled" },
+      ],
+      "MMM-RecipeSage": [
+        { key: "mealPlanName", type: "string", label: "Meal plan name" },
+        { key: "shoppingListName", type: "string", label: "Shopping list name" },
+        { key: "pages", type: "string[]", label: "Pages" },
+        { key: "landingPage", type: "string", label: "Landing page" },
+        { key: "autoRotate", type: "bool", label: "Auto-rotate pages" },
+        { key: "mealsRefreshMs", type: "number", label: "Meals refresh (ms)" },
+        { key: "shoppingRefreshMs", type: "number", label: "Shopping refresh (ms)" },
+      ],
+    };
+
+    var msOverlay = $("ms-overlay");
+    var msSheet = $("ms-sheet");
+    var msClose = $("ms-close");
+    var msDismiss = $("ms-dismiss");
+    var msTabPlace = $("ms-tab-place");
+    var msTabConfig = $("ms-tab-config");
+    var msPanePlace = $("ms-pane-place");
+    var msPaneConfig = $("ms-pane-config");
+    var msTitle = $("ms-title").firstChild;
+    var msClasses = $("ms-classes");
+    var msRegions = $("ms-regions");
+    var msMh = $("ms-mh");
+    var msMw = $("ms-mw");
+    var msContain = $("ms-contain");
+    var msExempt = $("ms-exempt-toggle");
+    var msConfigFields = $("ms-config-fields");
+
+    var sheetCurrent = null; // { id, name, region, classes }
+
+    var ALL_REGIONS = [
+      "top_bar",
+      "top_left", "top_center", "top_right",
+      "upper_third",
+      "middle_center",
+      "lower_third",
+      "bottom_left", "bottom_center", "bottom_right",
+      "bottom_bar",
+      "fullscreen_above", "fullscreen_below",
+    ];
+
+    function openModuleSheet(mod) {
+      sheetCurrent = mod;
+      msTitle.nodeValue = mod.name;
+      msClasses.textContent = mod.classes ? "·" + mod.classes : "";
+      renderRegionPicker();
+      renderBoundsControls();
+      renderConfigFields();
+      msOverlay.classList.add("open");
+      msSheet.hidden = false;
+      requestAnimationFrame(function () { msSheet.classList.add("open"); });
+      showTab("place");
+    }
+
+    function closeModuleSheet() {
+      msSheet.classList.remove("open");
+      msOverlay.classList.remove("open");
+      setTimeout(function () { msSheet.hidden = true; sheetCurrent = null; }, 280);
+    }
+
+    msClose.addEventListener("click", closeModuleSheet);
+    msDismiss.addEventListener("click", closeModuleSheet);
+    msOverlay.addEventListener("click", closeModuleSheet);
+
+    function showTab(name) {
+      msTabPlace.setAttribute("aria-selected", String(name === "place"));
+      msTabConfig.setAttribute("aria-selected", String(name === "config"));
+      msPanePlace.hidden = name !== "place";
+      msPaneConfig.hidden = name !== "config";
+    }
+    msTabPlace.addEventListener("click", function () { showTab("place"); });
+    msTabConfig.addEventListener("click", function () { showTab("config"); });
+
+    function renderRegionPicker() {
+      msRegions.innerHTML = "";
+      ALL_REGIONS.forEach(function (r) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "ms-region-btn";
+        if (r === sheetCurrent.region) btn.classList.add("current");
+        if (r === "fullscreen_above" || r === "fullscreen_below") btn.classList.add("fullscreen");
+        btn.textContent = r.replace(/_/g, " ");
+        btn.addEventListener("click", function () {
+          if (r === sheetCurrent.region) return;
+          // Re-use existing move plumbing: set selected then route through
+          // moveSelectedTo which handles auto-bound seeding (HOM-98).
+          selectedModule = { id: sheetCurrent.id, name: sheetCurrent.name, region: sheetCurrent.region };
+          moveSelectedTo(r);
+          sheetCurrent.region = r;
+          renderRegionPicker();
+        });
+        msRegions.appendChild(btn);
+      });
+    }
+
+    function findOverride(moduleName, regionId) {
+      if (!workingDoc || !workingDoc.layout) return null;
+      var list = workingDoc.layout.moduleOverrides || [];
+      for (var i = 0; i < list.length; i++) {
+        var ov = list[i] || {};
+        var match = ov.match || {};
+        if (match.module !== moduleName) continue;
+        if ((match.region || "") !== regionId) continue;
+        return { index: i, entry: ov };
+      }
+      return null;
+    }
+
+    function upsertOverride(moduleName, regionId, patch) {
+      ensureWorkingDoc();
+      var list = workingDoc.layout.moduleOverrides = workingDoc.layout.moduleOverrides || [];
+      var found = findOverride(moduleName, regionId);
+      var entry = found ? found.entry : { match: { module: moduleName, region: regionId } };
+      Object.keys(patch).forEach(function (k) {
+        var v = patch[k];
+        if (v === undefined || v === null || v === "" || v === false) {
+          delete entry[k];
+        } else {
+          entry[k] = v;
+        }
+      });
+      // Drop the entry entirely if it carries no override semantics.
+      var hasSemantics = entry.exempt || entry.maxHeight || entry.maxWidth || entry.containMode;
+      if (!hasSemantics) {
+        if (found) list.splice(found.index, 1);
+      } else if (!found) {
+        list.push(entry);
+      }
+      scheduleSave("override " + moduleName);
+    }
+
+    function renderBoundsControls() {
+      var ov = findOverride(sheetCurrent.name, sheetCurrent.region);
+      var entry = ov ? ov.entry : {};
+      msMh.value = entry.maxHeight || "";
+      msMh.classList.remove("invalid");
+      msMw.value = entry.maxWidth || "";
+      msMw.classList.remove("invalid");
+      msContain.value = entry.containMode || "";
+      msExempt.classList.toggle("on", !!entry.exempt);
+      msExempt.setAttribute("aria-checked", String(!!entry.exempt));
+    }
+
+    msMh.addEventListener("input", function () {
+      var v = msMh.value.trim();
+      var ok = v === "" || CSS_LENGTH_RE.test(v);
+      msMh.classList.toggle("invalid", !ok);
+      if (!ok) return;
+      upsertOverride(sheetCurrent.name, sheetCurrent.region, { maxHeight: v });
+    });
+    msMw.addEventListener("input", function () {
+      var v = msMw.value.trim();
+      var ok = v === "" || CSS_LENGTH_RE.test(v);
+      msMw.classList.toggle("invalid", !ok);
+      if (!ok) return;
+      upsertOverride(sheetCurrent.name, sheetCurrent.region, { maxWidth: v });
+    });
+    msContain.addEventListener("change", function () {
+      upsertOverride(sheetCurrent.name, sheetCurrent.region, { containMode: msContain.value });
+    });
+    msExempt.addEventListener("click", function () {
+      var ov = findOverride(sheetCurrent.name, sheetCurrent.region);
+      var nextExempt = !(ov && ov.entry.exempt);
+      upsertOverride(sheetCurrent.name, sheetCurrent.region, { exempt: nextExempt });
+      renderBoundsControls();
+    });
+
+    // ---------- Configure tab ----------
+
+    function findLiveModule(id) {
+      if (!state || !state.regions) return null;
+      for (var i = 0; i < state.regions.length; i++) {
+        var r = state.regions[i];
+        var mods = r.modules || [];
+        for (var j = 0; j < mods.length; j++) {
+          if (mods[j].id === id) return mods[j];
+        }
+      }
+      return null;
+    }
+
+    function getModuleConfigPatch(id) {
+      if (!workingDoc || !workingDoc.moduleConfigs) return {};
+      return workingDoc.moduleConfigs[id] || {};
+    }
+
+    function setModuleConfigKey(id, key, value) {
+      ensureWorkingDoc();
+      var configs = workingDoc.moduleConfigs = workingDoc.moduleConfigs || {};
+      var patch = configs[id] = configs[id] || {};
+      if (value === undefined) {
+        delete patch[key];
+        if (Object.keys(patch).length === 0) delete configs[id];
+      } else {
+        patch[key] = value;
+      }
+      scheduleSave("config " + key);
+    }
+
+    function setModuleConfigPatch(id, patch) {
+      ensureWorkingDoc();
+      var configs = workingDoc.moduleConfigs = workingDoc.moduleConfigs || {};
+      if (!patch || Object.keys(patch).length === 0) {
+        delete configs[id];
+      } else {
+        configs[id] = patch;
+      }
+      scheduleSave("config rewrite");
+    }
+
+    function renderConfigFields() {
+      msConfigFields.innerHTML = "";
+      var schema = MODULE_CONFIG_FIELDS[sheetCurrent.name];
+      var patch = getModuleConfigPatch(sheetCurrent.id);
+      if (!schema) {
+        renderConfigJSONFallback(patch);
+        return;
+      }
+      schema.forEach(function (field) {
+        var row = document.createElement("div");
+        row.className = "ms-field";
+        var label = document.createElement("label");
+        label.textContent = field.label;
+        label.htmlFor = "ms-cfg-" + field.key;
+        row.appendChild(label);
+
+        var current = patch[field.key];
+        var input;
+        switch (field.type) {
+          case "number":
+            input = document.createElement("input");
+            input.type = "number";
+            input.id = "ms-cfg-" + field.key;
+            if (current !== undefined && current !== null) input.value = current;
+            input.addEventListener("input", function () {
+              var v = input.value.trim();
+              if (v === "") return setModuleConfigKey(sheetCurrent.id, field.key, undefined);
+              var n = Number(v);
+              if (!isFinite(n)) return;
+              setModuleConfigKey(sheetCurrent.id, field.key, n);
+            });
+            break;
+          case "bool":
+            row.innerHTML = "";
+            var t = document.createElement("div");
+            t.className = "ms-toggle" + (current ? " on" : "");
+            t.setAttribute("role", "switch");
+            t.setAttribute("aria-checked", String(!!current));
+            t.innerHTML = '<span class="knob"></span><span class="lbl"><strong>' + field.label + '</strong></span>';
+            t.addEventListener("click", function () {
+              var next = !t.classList.contains("on");
+              t.classList.toggle("on", next);
+              t.setAttribute("aria-checked", String(next));
+              setModuleConfigKey(sheetCurrent.id, field.key, next);
+            });
+            msConfigFields.appendChild(t);
+            return;
+          case "enum":
+            input = document.createElement("select");
+            input.id = "ms-cfg-" + field.key;
+            var blank = document.createElement("option");
+            blank.value = ""; blank.textContent = "(inherit)";
+            input.appendChild(blank);
+            (field.options || []).forEach(function (opt) {
+              var o = document.createElement("option");
+              o.value = opt; o.textContent = opt;
+              input.appendChild(o);
+            });
+            if (current !== undefined) input.value = current;
+            input.addEventListener("change", function () {
+              setModuleConfigKey(sheetCurrent.id, field.key, input.value === "" ? undefined : input.value);
+            });
+            break;
+          case "string[]":
+            input = document.createElement("input");
+            input.type = "text";
+            input.id = "ms-cfg-" + field.key;
+            input.placeholder = "comma-separated";
+            if (Array.isArray(current)) input.value = current.join(", ");
+            input.addEventListener("input", function () {
+              var v = input.value.trim();
+              if (v === "") return setModuleConfigKey(sheetCurrent.id, field.key, undefined);
+              var arr = v.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+              setModuleConfigKey(sheetCurrent.id, field.key, arr);
+            });
+            break;
+          default: // "string"
+            input = document.createElement("input");
+            input.type = "text";
+            input.id = "ms-cfg-" + field.key;
+            if (current !== undefined) input.value = current;
+            input.addEventListener("input", function () {
+              var v = input.value;
+              setModuleConfigKey(sheetCurrent.id, field.key, v === "" ? undefined : v);
+            });
+        }
+        row.appendChild(input);
+        msConfigFields.appendChild(row);
+      });
+    }
+
+    function renderConfigJSONFallback(patch) {
+      var row = document.createElement("div");
+      row.className = "ms-field";
+      var ta = document.createElement("textarea");
+      ta.spellcheck = false;
+      ta.value = JSON.stringify(patch, null, 2);
+      ta.placeholder = "{\n  // JSON keys to merge into the module's config\n}";
+      ta.addEventListener("input", function () {
+        var v = ta.value.trim();
+        if (v === "") {
+          ta.classList.remove("invalid");
+          setModuleConfigPatch(sheetCurrent.id, null);
+          return;
+        }
+        try {
+          var parsed = JSON.parse(v);
+          if (typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("must be an object");
+          ta.classList.remove("invalid");
+          setModuleConfigPatch(sheetCurrent.id, parsed);
+        } catch (e) {
+          ta.classList.add("invalid");
+        }
+      });
+      row.appendChild(ta);
+      msConfigFields.appendChild(row);
+      var hint = document.createElement("p");
+      hint.className = "hint";
+      hint.style.marginTop = "8px";
+      hint.textContent = "No typed schema for " + sheetCurrent.name + " — edit JSON directly. Keys here shallow-merge into the module's existing config.";
+      msConfigFields.appendChild(hint);
+    }
+
+    window.addEventListener("resize", fitScale);
+    fitScale();
+    (async function init() {
+      await loadWorkingCopy();
+      await tick();
+      if (refreshTimer) clearInterval(refreshTimer);
+      refreshTimer = setInterval(tick, REFRESH_MS);
+    }());
+  }());
+</script>
+</body>
+</html>

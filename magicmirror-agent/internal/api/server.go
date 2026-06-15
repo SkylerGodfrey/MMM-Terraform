@@ -5,6 +5,7 @@ import (
 
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/chores"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/config"
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/layoutviewer"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmconfig"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmversion"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/photos"
@@ -86,6 +87,13 @@ func (s *Server) setupRoutes() {
 	portalAPI.DELETE("/photos/:name", s.deletePhoto)
 	s.router.GET("/portal/photos/:name", s.servePhoto)
 	s.router.GET("/portal/thumbs/:name", s.servePhotoThumb)
+
+	// Layout viewer (HOM-92, L3 of HOM-91 Epic) — read-only visualisation of
+	// the active layout document, plus the L4 drag/resize editor (HOM-93)
+	// that persists its in-flight document to layout.json next to config.js,
+	// the L5 Terraform diff emitter (HOM-94), and the L6 live preview/revert
+	// (HOM-95).
+	layoutviewer.Register(s.router, s.mmManager, s.config.LayoutWorkingCopyPath(), s.config.MagicMirror.ConfigPath, s.config.ModulesTfPath())
 }
 
 // Run starts the HTTP server
