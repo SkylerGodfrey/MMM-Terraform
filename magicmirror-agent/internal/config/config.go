@@ -17,8 +17,10 @@ type Config struct {
 
 // PortalConfig holds family-portal settings
 type PortalConfig struct {
-	ChoresFile string `mapstructure:"chores_file"`
-	PhotosDir  string `mapstructure:"photos_dir"`
+	ChoresFile       string `mapstructure:"chores_file"`
+	PhotosDir        string `mapstructure:"photos_dir"`
+	RewardsFile      string `mapstructure:"rewards_file"`
+	RewardsImagesDir string `mapstructure:"rewards_images_dir"`
 }
 
 // ServerConfig holds HTTP server settings
@@ -64,6 +66,26 @@ func (c *Config) PhotosDir() string {
 		return c.Portal.PhotosDir
 	}
 	return filepath.Join(c.MagicMirror.InstallPath(), "modules", "MagicMirrorPhotos")
+}
+
+// RewardsFile returns the configured rewards.yaml path, defaulting next
+// to chores.yaml in the MMM-Chores module dir — the same convention the
+// node_helper uses when loading rewards data.
+func (c *Config) RewardsFile() string {
+	if c.Portal.RewardsFile != "" {
+		return c.Portal.RewardsFile
+	}
+	return filepath.Join(c.MagicMirror.InstallPath(), "modules", "MMM-Chores", "rewards.yaml")
+}
+
+// RewardsImagesDir returns the directory where reward image uploads
+// land. Defaults to MMM-Chores/rewards-images/, matching where the
+// module expects bare-filename images (see MMM-Chores.js getRewardImage).
+func (c *Config) RewardsImagesDir() string {
+	if c.Portal.RewardsImagesDir != "" {
+		return c.Portal.RewardsImagesDir
+	}
+	return filepath.Join(c.MagicMirror.InstallPath(), "modules", "MMM-Chores", "rewards-images")
 }
 
 // LayoutWorkingCopyPath returns where the L4 layout editor stores its

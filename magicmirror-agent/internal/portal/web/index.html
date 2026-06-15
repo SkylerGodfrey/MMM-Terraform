@@ -225,7 +225,9 @@
     max-height: 86dvh; overflow-y: auto;
   }
   .sheet-open .backdrop { opacity: 1; pointer-events: auto; }
-  .sheet-open .sheet { transform: none; }
+  .sheet-open #sheet { transform: none; }
+  .reward-sheet-open .backdrop { opacity: 1; pointer-events: auto; }
+  .reward-sheet-open #reward-sheet { transform: none; }
   .sheet h2 { font-family: "Fraunces", Georgia, serif; font-size: 24px; font-weight: 600; margin-bottom: 18px; }
 
   .field { margin-bottom: 16px; }
@@ -286,6 +288,78 @@
   }
   .btn.danger { flex: none; width: 54px; color: var(--bad); border-color: rgba(217, 124, 108, 0.35); }
   .btn[disabled] { opacity: 0.55; }
+
+  /* ---------- rewards ---------- */
+  .reward-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+    animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .reward-tile {
+    position: relative; display: flex; flex-direction: column;
+    background: var(--bg-raised); border: 1px solid var(--line);
+    border-radius: 18px; overflow: hidden; padding: 0;
+    color: var(--ink); font-family: inherit; text-align: left;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: border-color 0.2s, transform 0.1s;
+  }
+  .reward-tile:active { transform: scale(0.985); }
+  .reward-tile .thumb {
+    aspect-ratio: 4 / 3; background: #0a0c10;
+    border-bottom: 1px solid var(--line);
+    display: grid; place-items: center; color: rgba(240, 180, 84, 0.45);
+    overflow: hidden;
+  }
+  .reward-tile .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .reward-tile .thumb svg { width: 30%; height: auto; opacity: 0.6; }
+  .reward-tile .meta-row { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .reward-tile .title {
+    font-weight: 600; font-size: 15.5px; line-height: 1.25;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .reward-tile .info { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .reward-tile .cost { color: var(--gold); font-weight: 700; font-size: 14px; white-space: nowrap; }
+  .reward-tile .stock {
+    font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-dim);
+    padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px;
+    background: rgba(255,255,255,0.03);
+  }
+  .reward-tile .stock.out { color: var(--bad); border-color: rgba(217, 124, 108, 0.45); }
+  .reward-tile .assignees {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    font-size: 11.5px; color: var(--ink-dim); margin-top: 2px;
+  }
+  .reward-tile .assignees span {
+    padding: 2px 7px; border-radius: 999px;
+    background: rgba(240, 180, 84, 0.08); border: 1px solid rgba(240, 180, 84, 0.2);
+    color: var(--gold);
+  }
+
+  .image-picker {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px; border: 1px dashed var(--line); border-radius: 14px;
+    background: var(--bg-raised);
+  }
+  .image-picker .preview {
+    flex: none; width: 72px; height: 72px; border-radius: 12px;
+    background: #0a0c10; border: 1px solid var(--line);
+    display: grid; place-items: center; color: rgba(240, 180, 84, 0.5);
+    overflow: hidden;
+  }
+  .image-picker .preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .image-picker .preview svg { width: 50%; opacity: 0.55; }
+  .image-picker .picker-body { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .image-picker .picker-body strong { font-size: 14.5px; font-weight: 600; }
+  .image-picker .picker-body small { font-size: 12.5px; color: var(--ink-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .image-picker button {
+    flex: none; padding: 10px 14px; border-radius: 12px;
+    border: 1px solid rgba(240, 180, 84, 0.3);
+    background: linear-gradient(180deg, rgba(240,180,84,0.16), rgba(240,180,84,0.06));
+    color: var(--gold); font-family: inherit; font-size: 13.5px; font-weight: 700;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .image-picker button:active { transform: scale(0.96); }
 
   /* ---------- photos ---------- */
   .photo-grid {
@@ -377,6 +451,10 @@
       <div id="chores-root"><p class="empty-note">Fetching the chore list…</p></div>
     </section>
 
+    <section id="panel-rewards" role="tabpanel" aria-labelledby="tab-rewards" hidden>
+      <div id="rewards-root"><p class="empty-note">Fetching the rewards…</p></div>
+    </section>
+
     <section id="panel-photos" role="tabpanel" aria-labelledby="tab-photos" hidden>
       <div class="upload-banner" id="upload-banner"><span class="spin" aria-hidden="true"></span><span id="upload-text"></span></div>
       <div id="photos-root"><p class="empty-note">Fetching the album…</p></div>
@@ -457,6 +535,60 @@
   </div>
 </form>
 
+<form class="sheet" id="reward-sheet" autocomplete="off">
+  <h2 id="reward-sheet-title">New reward</h2>
+
+  <div class="field">
+    <label for="r-name">Reward</label>
+    <input type="text" id="r-name" placeholder="e.g. Movie night pick" maxlength="60" required>
+  </div>
+
+  <div class="field">
+    <label>Image</label>
+    <div class="image-picker">
+      <div class="preview" id="r-image-preview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+          <rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m3 17 5-5 4 4 3-3 6 6"/>
+        </svg>
+      </div>
+      <div class="picker-body">
+        <strong id="r-image-label">No image yet</strong>
+        <small id="r-image-hint">PNG, JPG, GIF, or WEBP</small>
+      </div>
+      <button type="button" id="r-image-pick">Choose</button>
+    </div>
+  </div>
+
+  <div class="row2">
+    <div class="field">
+      <label>Cost (tokens)</label>
+      <div class="stepper">
+        <button type="button" id="r-cost-minus" aria-label="Lower cost">&minus;</button>
+        <output id="r-cost">5</output>
+        <button type="button" id="r-cost-plus" aria-label="Higher cost">+</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="r-quantity">Stock</label>
+      <input type="number" id="r-quantity" placeholder="Unlimited" min="0" max="9999" inputmode="numeric">
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Who can redeem it?</label>
+    <div class="chips" id="r-assignees"></div>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="btn danger" id="r-delete" aria-label="Delete reward" hidden>
+      <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+    </button>
+    <button type="button" class="btn" id="r-cancel">Cancel</button>
+    <button type="submit" class="btn primary" id="r-save">Save</button>
+  </div>
+</form>
+<input type="file" id="reward-image-input" accept="image/*" hidden>
+
 <div class="toast" id="toast" role="alert"></div>
 
 <nav aria-label="Portal sections">
@@ -468,6 +600,14 @@
         <path d="m9 13 2 2 4-4"/>
       </svg>
       Chores
+    </button>
+    <button class="tab" id="tab-rewards" role="tab" aria-selected="false" aria-controls="panel-rewards" data-panel="rewards">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 8s-1.5-4-4-4a3 3 0 0 0 0 6h4M12 8s1.5-4 4-4a3 3 0 0 1 0 6h-4"/>
+        <rect x="3" y="10" width="18" height="4" rx="1"/>
+        <path d="M5 14v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6M12 10v11"/>
+      </svg>
+      Rewards
     </button>
     <button class="tab" id="tab-photos" role="tab" aria-selected="false" aria-controls="panel-photos" data-panel="photos">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -489,6 +629,8 @@
     var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
     var activeTab = "chores";
     var photosLoaded = false;
+    var rewardsLoaded = false;
+    var fabLabels = { chores: "Add chore", rewards: "Add reward", photos: "Add photos" };
     function show(name) {
       activeTab = name;
       tabs.forEach(function (tab) {
@@ -496,10 +638,14 @@
         tab.setAttribute("aria-selected", String(selected));
         $("panel-" + tab.dataset.panel).hidden = !selected;
       });
-      $("fab-label").textContent = name === "photos" ? "Add photos" : "Add chore";
+      $("fab-label").textContent = fabLabels[name] || "Add";
       if (name === "photos" && !photosLoaded) {
         photosLoaded = true;
         loadPhotos();
+      }
+      if (name === "rewards" && !rewardsLoaded) {
+        rewardsLoaded = true;
+        loadRewards();
       }
     }
     tabs.forEach(function (tab) {
@@ -826,11 +972,16 @@
     $("fab").addEventListener("click", function () {
       if (activeTab === "photos") {
         $("file-input").click();
+      } else if (activeTab === "rewards") {
+        openRewardSheet(null);
       } else {
         openSheet(null);
       }
     });
-    $("backdrop").addEventListener("click", closeSheet);
+    $("backdrop").addEventListener("click", function () {
+      closeSheet();
+      closeRewardSheet();
+    });
     $("btn-cancel").addEventListener("click", closeSheet);
     $("tok-minus").addEventListener("click", function () { setTokens(tokens - 1); });
     $("tok-plus").addEventListener("click", function () { setTokens(tokens + 1); });
@@ -865,7 +1016,250 @@
       });
     });
 
+    /* ---------- rewards ---------- */
+    var rewards = [];
+    var rewardUsers = [];
+    var editingRewardId = null;
+    var rewardCost = 5;
+    var rewardImage = "";              // filename currently set on the form
+    var rewardSelectedAssignees = {};  // name -> true
+
+    function setRewardCost(value) {
+      rewardCost = Math.max(0, Math.min(999, value));
+      $("r-cost").textContent = rewardCost;
+    }
+
+    function loadRewards() {
+      return Promise.all([api("/rewards"), api("/assignees")]).then(function (results) {
+        rewards = results[0].rewards || [];
+        rewardUsers = results[0].users || [];
+        var assigneeNames = (results[1].assignees || []).slice();
+        // Merge anyone known to rewards.yaml so editing keeps existing chips.
+        rewardUsers.forEach(function (u) {
+          if (u && u.name && assigneeNames.indexOf(u.name) === -1) assigneeNames.push(u.name);
+        });
+        assignees = assigneeNames; // shared with chore sheet's picker
+        renderRewards();
+      }).catch(function (err) {
+        $("rewards-root").innerHTML = "";
+        var note = document.createElement("p");
+        note.className = "empty-note";
+        note.textContent = "Couldn't load rewards: " + err.message;
+        $("rewards-root").appendChild(note);
+      });
+    }
+
+    function rewardImageURL(name) {
+      return "/portal/rewards-images/" + encodeURIComponent(name);
+    }
+
+    function placeholderIcon() {
+      return "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' aria-hidden='true'>"
+        + "<path d='M12 8s-1.5-4-4-4a3 3 0 0 0 0 6h4M12 8s1.5-4 4-4a3 3 0 0 1 0 6h-4'/>"
+        + "<rect x='3' y='10' width='18' height='4' rx='1'/>"
+        + "<path d='M5 14v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6M12 10v11'/></svg>";
+    }
+
+    function renderRewards() {
+      var root = $("rewards-root");
+      root.innerHTML = "";
+      if (!rewards.length) {
+        var note = document.createElement("p");
+        note.className = "empty-note";
+        note.textContent = "No rewards yet — tap “Add reward” to create the first one.";
+        root.appendChild(note);
+        return;
+      }
+      var grid = document.createElement("div");
+      grid.className = "reward-grid";
+      rewards.forEach(function (reward) {
+        var tile = document.createElement("button");
+        tile.type = "button";
+        tile.className = "reward-tile";
+        tile.setAttribute("aria-label", "Edit " + (reward.name || "reward"));
+        tile.addEventListener("click", function () { openRewardSheet(reward); });
+
+        var thumb = document.createElement("div");
+        thumb.className = "thumb";
+        if (reward.image) {
+          var img = document.createElement("img");
+          img.loading = "lazy";
+          img.src = rewardImageURL(reward.image);
+          img.alt = "";
+          thumb.appendChild(img);
+        } else {
+          thumb.innerHTML = placeholderIcon();
+        }
+        tile.appendChild(thumb);
+
+        var meta = document.createElement("div");
+        meta.className = "meta-row";
+
+        var title = document.createElement("span");
+        title.className = "title";
+        title.textContent = reward.name || "Unnamed reward";
+        meta.appendChild(title);
+
+        var info = document.createElement("div");
+        info.className = "info";
+        var cost = document.createElement("span");
+        cost.className = "cost";
+        cost.textContent = "✦ " + (typeof reward.cost === "number" ? reward.cost : 0);
+        info.appendChild(cost);
+        if (typeof reward.quantity === "number") {
+          var stock = document.createElement("span");
+          stock.className = "stock" + (reward.quantity <= 0 ? " out" : "");
+          stock.textContent = reward.quantity <= 0 ? "Out" : (reward.quantity + " left");
+          info.appendChild(stock);
+        }
+        meta.appendChild(info);
+
+        var assigneesEl = document.createElement("div");
+        assigneesEl.className = "assignees";
+        var list = Array.isArray(reward.assignedTo) ? reward.assignedTo : [];
+        if (list.length) {
+          list.forEach(function (name) {
+            var chip = document.createElement("span");
+            chip.textContent = name;
+            assigneesEl.appendChild(chip);
+          });
+        } else {
+          assigneesEl.textContent = "No one assigned yet";
+        }
+        meta.appendChild(assigneesEl);
+
+        tile.appendChild(meta);
+        grid.appendChild(tile);
+      });
+      root.appendChild(grid);
+    }
+
+    function renderRewardAssigneeChips() {
+      var box = $("r-assignees");
+      box.innerHTML = "";
+      assignees.forEach(function (name) {
+        var chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chip";
+        chip.textContent = name;
+        chip.setAttribute("aria-pressed", String(!!rewardSelectedAssignees[name]));
+        chip.addEventListener("click", function () {
+          if (rewardSelectedAssignees[name]) delete rewardSelectedAssignees[name];
+          else rewardSelectedAssignees[name] = true;
+          renderRewardAssigneeChips();
+        });
+        box.appendChild(chip);
+      });
+    }
+
+    function refreshRewardImagePreview() {
+      var preview = $("r-image-preview");
+      var label = $("r-image-label");
+      var hint = $("r-image-hint");
+      preview.innerHTML = "";
+      if (rewardImage) {
+        var img = document.createElement("img");
+        img.src = rewardImageURL(rewardImage);
+        img.alt = "";
+        preview.appendChild(img);
+        label.textContent = "Image set";
+        hint.textContent = rewardImage;
+      } else {
+        preview.innerHTML = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.6' aria-hidden='true'>"
+          + "<rect x='3' y='5' width='18' height='14' rx='2'/><circle cx='9' cy='10' r='1.6'/><path d='m3 17 5-5 4 4 3-3 6 6'/></svg>";
+        label.textContent = "No image yet";
+        hint.textContent = "PNG, JPG, GIF, or WEBP";
+      }
+    }
+
+    function openRewardSheet(reward) {
+      editingRewardId = reward ? reward.id : null;
+      $("reward-sheet-title").textContent = reward ? "Edit reward" : "New reward";
+      $("r-name").value = reward ? (reward.name || "") : "";
+      setRewardCost(reward && typeof reward.cost === "number" ? reward.cost : 5);
+      $("r-quantity").value = reward && typeof reward.quantity === "number" ? String(reward.quantity) : "";
+      rewardImage = reward && reward.image ? reward.image : "";
+      rewardSelectedAssignees = {};
+      var list = reward && Array.isArray(reward.assignedTo) ? reward.assignedTo : [];
+      list.forEach(function (name) { rewardSelectedAssignees[name] = true; });
+      refreshRewardImagePreview();
+      renderRewardAssigneeChips();
+      $("r-delete").hidden = !reward;
+      document.body.classList.add("reward-sheet-open");
+      if (!reward) setTimeout(function () { $("r-name").focus(); }, 250);
+    }
+
+    function closeRewardSheet() {
+      document.body.classList.remove("reward-sheet-open");
+    }
+
+    function rewardPayload() {
+      var quantityRaw = $("r-quantity").value.trim();
+      var assignedTo = Object.keys(rewardSelectedAssignees);
+      return {
+        name: $("r-name").value.trim(),
+        cost: rewardCost,
+        quantity: quantityRaw === "" ? null : parseInt(quantityRaw, 10),
+        image: rewardImage,
+        assignedTo: assignedTo
+      };
+    }
+
+    $("r-cost-minus").addEventListener("click", function () { setRewardCost(rewardCost - 1); });
+    $("r-cost-plus").addEventListener("click", function () { setRewardCost(rewardCost + 1); });
+    $("r-cancel").addEventListener("click", closeRewardSheet);
+
+    $("r-image-pick").addEventListener("click", function () { $("reward-image-input").click(); });
+    $("reward-image-input").addEventListener("change", function () {
+      var file = this.files && this.files[0];
+      this.value = "";
+      if (!file) return;
+      var form = new FormData();
+      form.append("image", file);
+      $("r-image-pick").disabled = true;
+      $("r-image-label").textContent = "Uploading…";
+      api("/rewards/image", { method: "POST", body: form }).then(function (body) {
+        rewardImage = body.image || "";
+        refreshRewardImagePreview();
+      }).catch(function (err) {
+        toast(err.message);
+        refreshRewardImagePreview();
+      }).then(function () {
+        $("r-image-pick").disabled = false;
+      });
+    });
+
+    $("reward-sheet").addEventListener("submit", function (event) {
+      event.preventDefault();
+      var body = rewardPayload();
+      if (!body.name) { toast("Give the reward a name"); return; }
+      $("r-save").disabled = true;
+      var req = editingRewardId
+        ? api("/rewards/" + encodeURIComponent(editingRewardId), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+        : api("/rewards", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      req.then(function () {
+        closeRewardSheet();
+        return loadRewards();
+      }).catch(function (err) {
+        toast(err.message);
+      }).then(function () {
+        $("r-save").disabled = false;
+      });
+    });
+
+    $("r-delete").addEventListener("click", function () {
+      if (!editingRewardId) return;
+      if (!window.confirm("Delete this reward from the mirror?")) return;
+      api("/rewards/" + encodeURIComponent(editingRewardId), { method: "DELETE" }).then(function () {
+        closeRewardSheet();
+        return loadRewards();
+      }).catch(function (err) {
+        toast(err.message);
+      });
+    });
+
     if (location.hash === "#photos") show("photos");
+    else if (location.hash === "#rewards") show("rewards");
     loadChores();
   })();
 </script>

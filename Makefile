@@ -187,6 +187,28 @@ deploy-agent-full: build-agent-arm64 ## Deploy and install agent (requires sudo 
 	@echo "Agent deployed and started on $(MM_HOST)"
 
 # ============================================================================
+# Module deploy targets (HOM-70)
+# ============================================================================
+# Modules live in sibling workspace directories. We rsync the source tree
+# (excluding live data, secrets, dev/, and node_modules) and run npm install
+# on the device.
+
+MODULES_DIR ?= /home/sgodfrey/MagicMirror/modules
+
+.PHONY: deploy-recipesage
+deploy-recipesage: ## Deploy MMM-RecipeSage to the Magic Mirror device
+	@echo "Deploying MMM-RecipeSage to $(MM_HOST)..."
+	rsync -av --delete \
+		--exclude '.git/' \
+		--exclude 'node_modules/' \
+		--exclude 'dev/' \
+		--exclude 'selfhost/' \
+		--exclude '.DS_Store' \
+		../MMM-RecipeSage/ $(MM_SSH):$(MODULES_DIR)/MMM-RecipeSage/
+	ssh $(MM_SSH) 'cd $(MODULES_DIR)/MMM-RecipeSage && npm install --omit=dev --no-audit --no-fund'
+	@echo "MMM-RecipeSage deployed. Agent will pm2-restart MagicMirror after the next terraform apply."
+
+# ============================================================================
 # Development targets
 # ============================================================================
 

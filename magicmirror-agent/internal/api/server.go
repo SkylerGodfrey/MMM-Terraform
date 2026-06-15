@@ -10,6 +10,7 @@ import (
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmversion"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/photos"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/portal"
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/rewards"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,8 +20,9 @@ type Server struct {
 	router     *gin.Engine
 	mmManager  *mmconfig.Manager
 	mmVersions *mmversion.Manager
-	choreStore *chores.Store
-	photoStore *photos.Store
+	choreStore  *chores.Store
+	photoStore  *photos.Store
+	rewardStore *rewards.Store
 }
 
 // NewServer creates a new API server
@@ -35,8 +37,9 @@ func NewServer(cfg *config.Config) *Server {
 		router:     router,
 		mmManager:  mmconfig.NewManager(cfg.MagicMirror.ConfigPath, cfg.MagicMirror.RestartCommand),
 		mmVersions: mmversion.NewManager(cfg.MagicMirror.InstallPath()),
-		choreStore: chores.NewStore(cfg.ChoresFile()),
-		photoStore: photos.NewStore(cfg.PhotosDir()),
+		choreStore:  chores.NewStore(cfg.ChoresFile()),
+		photoStore:  photos.NewStore(cfg.PhotosDir()),
+		rewardStore: rewards.NewStore(cfg.RewardsFile(), cfg.RewardsImagesDir()),
 	}
 
 	s.setupRoutes()
@@ -87,6 +90,12 @@ func (s *Server) setupRoutes() {
 	portalAPI.DELETE("/photos/:name", s.deletePhoto)
 	s.router.GET("/portal/photos/:name", s.servePhoto)
 	s.router.GET("/portal/thumbs/:name", s.servePhotoThumb)
+	portalAPI.GET("/rewards", s.listRewards)
+	portalAPI.POST("/rewards", s.createReward)
+	portalAPI.PUT("/rewards/:id", s.updateReward)
+	portalAPI.DELETE("/rewards/:id", s.deleteReward)
+	portalAPI.POST("/rewards/image", s.uploadRewardImage)
+	s.router.GET("/portal/rewards-images/:name", s.serveRewardImage)
 
 	// Layout viewer (HOM-92, L3 of HOM-91 Epic) — read-only visualisation of
 	// the active layout document, plus the L4 drag/resize editor (HOM-93)
