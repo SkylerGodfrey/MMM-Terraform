@@ -62,7 +62,9 @@ func (s *Server) updateCanvas(c *gin.Context) {
 		s.canvasError(c, err)
 		return
 	}
-	s.mmManager.ScheduleRestart()
+	// Intentionally no ScheduleRestart: MMM-Canvas (HOM-105) watches
+	// canvas-layout.json with fs.watch and reflows in place without an
+	// MM restart. That's the live-reflow win HOM-104 + HOM-105 carve out.
 	c.JSON(http.StatusOK, doc.Canvas)
 }
 
@@ -97,7 +99,9 @@ func (s *Server) putPage(c *gin.Context) {
 	// for now the simplest signal is a debounced restart matching what
 	// module CRUD does. A finer-grained notification can land in HOM-105
 	// (LAYOUT_UPDATE socket message).
-	s.mmManager.ScheduleRestart()
+	// Intentionally no ScheduleRestart: MMM-Canvas (HOM-105) watches
+	// canvas-layout.json with fs.watch and reflows in place without an
+	// MM restart. That's the live-reflow win HOM-104 + HOM-105 carve out.
 	c.JSON(http.StatusOK, req)
 }
 
@@ -109,7 +113,9 @@ func (s *Server) deletePage(c *gin.Context) {
 		s.canvasError(c, err)
 		return
 	}
-	s.mmManager.ScheduleRestart()
+	// Intentionally no ScheduleRestart: MMM-Canvas (HOM-105) watches
+	// canvas-layout.json with fs.watch and reflows in place without an
+	// MM restart. That's the live-reflow win HOM-104 + HOM-105 carve out.
 	c.JSON(http.StatusOK, gin.H{"message": "Page deleted"})
 }
 
