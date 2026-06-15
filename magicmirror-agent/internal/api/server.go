@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/canvas"
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/canvaseditor"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/chores"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/config"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/layoutviewer"
@@ -116,6 +117,13 @@ func (s *Server) setupRoutes() {
 	// the L5 Terraform diff emitter (HOM-94), and the L6 live preview/revert
 	// (HOM-95).
 	layoutviewer.Register(s.router, s.mmManager, s.config.LayoutWorkingCopyPath(), s.config.MagicMirror.ConfigPath, s.config.ModulesTfPath())
+
+	// Canvas v2 editor (HOM-108) — drag/resize/page-tabs/save editor for
+	// the slot-based layout. Writes both the live canvas-layout.json (the
+	// document MMM-Canvas reads via fs.watch) AND a pages.tf mirror so
+	// the IaC story stays whole. Distinct from /layout, which keeps
+	// driving the region-based legacy editor.
+	canvaseditor.Register(s.router, s.canvasStore, s.mmManager, s.config.PagesTfPath())
 }
 
 // Run starts the HTTP server

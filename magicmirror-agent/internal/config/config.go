@@ -104,6 +104,15 @@ func (c *Config) CanvasLayoutPath() string {
 	return filepath.Join(filepath.Dir(c.MagicMirror.ConfigPath), "canvas-layout.json")
 }
 
+// PagesTfPath returns where the /canvas editor (HOM-108) writes the
+// generated `magicmirror_canvas` + `magicmirror_page` HCL resources.
+// Sits next to modules.tf so the human-edited modules.tf and the
+// editor-owned pages.tf live side by side; both pick up the existing
+// systemd ReadWritePaths for the config dir.
+func (c *Config) PagesTfPath() string {
+	return filepath.Join(filepath.Dir(c.MagicMirror.ConfigPath), "pages.tf")
+}
+
 // ModulesTfPath returns the location of the Pi-resident modules.tf the
 // agent reads and writes on Save (HOM-96). Defaults next to config.js so
 // the existing systemd ReadWritePaths cover it. Override via the
