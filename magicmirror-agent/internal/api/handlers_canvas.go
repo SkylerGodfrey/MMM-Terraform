@@ -11,6 +11,12 @@ import (
 
 // canvasModuleLister adapts mmconfig.Manager to the canvas.ModuleLister
 // interface — keeps the canvas package free of any mmconfig import.
+//
+// Returns BOTH the agent-assigned module IDs AND the module class names
+// (e.g. "clock", "MMM-CalendarExt3"). MMM-Canvas (HOM-105) matches DOM
+// wrappers via `.module.<class-name>`, so slot.Module is most usefully
+// the class name; legacy HCL referencing `magicmirror_module.<name>.id`
+// also continues to validate.
 type canvasModuleLister struct{ mm *mmconfig.Manager }
 
 func (l *canvasModuleLister) ListModuleIDs() ([]string, error) {
@@ -18,11 +24,16 @@ func (l *canvasModuleLister) ListModuleIDs() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	ids := make([]string, 0, len(mods))
+	out := make([]string, 0, len(mods)*2)
 	for _, m := range mods {
-		ids = append(ids, m.ID)
+		if m.ID != "" {
+			out = append(out, m.ID)
+		}
+		if m.Module != "" {
+			out = append(out, m.Module)
+		}
 	}
-	return ids, nil
+	return out, nil
 }
 
 // getCanvasDocument returns the entire layout document. Useful for the
