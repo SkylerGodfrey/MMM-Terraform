@@ -6,8 +6,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=pi
-Group=pi
+User=sgodfrey
+Group=sgodfrey
 
 # Path to the agent binary
 ExecStart=/usr/local/bin/magicmirror-agent --config /etc/magicmirror-agent/config.yaml
@@ -22,7 +22,7 @@ ProtectSystem=strict
 ProtectHome=read-only
 # config: config.js writes; modules: family-portal chores/photos data and
 # module installs both live under modules/
-ReadWritePaths=-/home/pi/MagicMirror/config -/home/pi/MagicMirror/modules
+ReadWritePaths=-/home/sgodfrey/MagicMirror/config -/home/sgodfrey/MagicMirror/modules
 
 # Environment variables (API key can be set here instead of config file)
 # EnvironmentFile=-/etc/magicmirror-agent/env
