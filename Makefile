@@ -208,6 +208,30 @@ deploy-recipesage: ## Deploy MMM-RecipeSage to the Magic Mirror device
 	ssh $(MM_SSH) 'cd $(MODULES_DIR)/MMM-RecipeSage && npm install --omit=dev --no-audit --no-fund'
 	@echo "MMM-RecipeSage deployed. Agent will pm2-restart MagicMirror after the next terraform apply."
 
+.PHONY: deploy-photoframe
+deploy-photoframe: ## Deploy MMM-PhotoFrame to the Magic Mirror device (HOM-84)
+	@echo "Deploying MMM-PhotoFrame to $(MM_HOST)..."
+	rsync -av --delete \
+		--exclude '.git/' \
+		--exclude 'node_modules/' \
+		--exclude 'dev/' \
+		--exclude '.DS_Store' \
+		../MMM-PhotoFrame/ $(MM_SSH):$(MODULES_DIR)/MMM-PhotoFrame/
+	ssh $(MM_SSH) 'cd $(MODULES_DIR)/MMM-PhotoFrame && npm install --omit=dev --no-audit --no-fund'
+	@echo "MMM-PhotoFrame deployed. Agent will pm2-restart MagicMirror after the next terraform apply."
+
+.PHONY: deploy-layoutbounds
+deploy-layoutbounds: ## Deploy MMM-LayoutBounds to the Magic Mirror device (HOM-90)
+	@echo "Deploying MMM-LayoutBounds to $(MM_HOST)..."
+	rsync -av --delete \
+		--exclude '.git/' \
+		--exclude 'node_modules/' \
+		--exclude 'dev/' \
+		--exclude '.DS_Store' \
+		../MMM-LayoutBounds/ $(MM_SSH):$(MODULES_DIR)/MMM-LayoutBounds/
+	ssh $(MM_SSH) 'cd $(MODULES_DIR)/MMM-LayoutBounds && npm install --omit=dev --no-audit --no-fund'
+	@echo "MMM-LayoutBounds deployed. Agent will pm2-restart MagicMirror after the next terraform apply."
+
 # ============================================================================
 # Development targets
 # ============================================================================
