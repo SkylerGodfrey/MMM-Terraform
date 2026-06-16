@@ -50,6 +50,13 @@ func Register(router *gin.Engine, canvasStore *canvas.Store, mm *mmconfig.Manage
 
 	router.GET("/canvas/api/state", h.getState)
 	router.POST("/canvas/api/save", h.postSave)
+	// HOM-111 polish: debug border toggle (fast path) + modules CRUD
+	// (Modules section). All in-process so the editor doesn't need the
+	// Bearer key the public /api/v1 routes require.
+	router.POST("/canvas/api/debug-toggle", h.postDebugToggle)
+	router.POST("/canvas/api/modules", h.postModule)
+	router.PUT("/canvas/api/modules/:id", h.putModule)
+	router.DELETE("/canvas/api/modules/:id", h.deleteModule)
 }
 
 type handlers struct {
@@ -68,9 +75,12 @@ type stateResponse struct {
 }
 
 type moduleSummary struct {
-	ID     string `json:"id"`
-	Module string `json:"module"`
-	Header string `json:"header,omitempty"`
+	ID       string         `json:"id"`
+	Module   string         `json:"module"`
+	Header   string         `json:"header,omitempty"`
+	Position string         `json:"position,omitempty"`
+	Classes  string         `json:"classes,omitempty"`
+	Config   map[string]any `json:"config,omitempty"`
 }
 
 type pagesTfFileState struct {
@@ -92,9 +102,12 @@ func (h *handlers) getState(c *gin.Context) {
 	mods := make([]moduleSummary, 0, len(cfg.Modules))
 	for _, m := range cfg.Modules {
 		mods = append(mods, moduleSummary{
-			ID:     m.ID,
-			Module: m.Module,
-			Header: m.Header,
+			ID:       m.ID,
+			Module:   m.Module,
+			Header:   m.Header,
+			Position: m.Position,
+			Classes:  m.Classes,
+			Config:   m.Config,
 		})
 	}
 	pagesTfExists := false
@@ -190,6 +203,93 @@ func (h *handlers) postSave(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, out)
+}
+
+// HOM-111: fast-path debug toggle. The editor's debug button calls
+// this to flip canvas-layout.json's debug flags directly, so MMM-Canvas
+// reflows the visible borders via fs.watch without a full Save round.
+type debugToggleRequest struct {
+	Borders *bool `json:"borders,omitempty"`
+	Labels  *bool `json:"labels,omitempty"`
+}
+
+func (h *handlers) postDebugToggle(c *gin.Context) {
+	var req debugToggleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON: " + err.Error()})
+		return
+	}
+	doc, err := h.store.Load()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	cv := doc.Canvas
+	if req.Borders != nil {
+		cv.DebugBorders = *req.Borders
+	}
+	if req.Labels != nil {
+		cv.DebugLabels = *req.Labels
+	}
+	if _, err := h.store.SaveCanvas(cv); err != nil {
+		h.canvasError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, cv)
+}
+
+// HOM-111: Modules registry CRUD. These hit mmconfig.Manager directly
+// so the unauthenticated editor route can drive them without going
+// through the Bearer-token-protected /api/v1/modules endpoints. The
+// payload shape matches mmconfig.Module so the same JSON the public
+// API accepts lands here unchanged.
+func (h *handlers) postModule(c *gin.Context) {
+	var req mmconfig.Module
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON: " + err.Error()})
+		return
+	}
+	if req.Module == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "module name is required"})
+		return
+	}
+	created, err := h.mm.CreateModule(&req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, created)
+}
+
+func (h *handlers) putModule(c *gin.Context) {
+	var req mmconfig.Module
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON: " + err.Error()})
+		return
+	}
+	req.ID = c.Param("id")
+	updated, err := h.mm.UpdateModule(&req)
+	if err != nil {
+		if err == mmconfig.ErrModuleNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "module not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, updated)
+}
+
+func (h *handlers) deleteModule(c *gin.Context) {
+	if err := h.mm.DeleteModule(c.Param("id")); err != nil {
+		if err == mmconfig.ErrModuleNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "module not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
 }
 
 func (h *handlers) canvasError(c *gin.Context, err error) {
