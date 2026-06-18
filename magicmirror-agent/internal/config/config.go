@@ -88,13 +88,6 @@ func (c *Config) RewardsImagesDir() string {
 	return filepath.Join(c.MagicMirror.InstallPath(), "modules", "MMM-Chores", "rewards-images")
 }
 
-// LayoutWorkingCopyPath returns where the L4 layout editor stores its
-// in-flight document (HOM-93). Sits next to config.js so it inherits the
-// systemd ReadWritePaths for the config directory, mode 0644, gitignored.
-func (c *Config) LayoutWorkingCopyPath() string {
-	return filepath.Join(filepath.Dir(c.MagicMirror.ConfigPath), "layout.json")
-}
-
 // CanvasLayoutPath returns the on-disk path of the Canvas v2 layout
 // document (HOM-104). Sits next to config.js so it inherits the same
 // systemd ReadWritePaths the agent already has. Separate from the L4

@@ -9,9 +9,8 @@ import (
 )
 
 // emitPagesTf regenerates the full pages.tf from the canvas + pages
-// map. Full regeneration (rather than diff merging like the legacy
-// layoutviewer's emit.go) is fine here because the editor owns this
-// file end-to-end — there are no human-handwritten comments or attribute
+// map. Full regeneration is fine here because the editor owns this file
+// end-to-end — there are no human-handwritten comments or attribute
 // ordering preferences to preserve. The file's banner makes the
 // "don't edit by hand" contract explicit.
 //

@@ -7,7 +7,6 @@ import (
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/canvaseditor"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/chores"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/config"
-	"github.com/SkylerGodfrey/magicmirror-agent/internal/layoutviewer"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmconfig"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmversion"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/photos"
@@ -111,18 +110,11 @@ func (s *Server) setupRoutes() {
 	portalAPI.POST("/rewards/image", s.uploadRewardImage)
 	s.router.GET("/portal/rewards-images/:name", s.serveRewardImage)
 
-	// Layout viewer (HOM-92, L3 of HOM-91 Epic) — read-only visualisation of
-	// the active layout document, plus the L4 drag/resize editor (HOM-93)
-	// that persists its in-flight document to layout.json next to config.js,
-	// the L5 Terraform diff emitter (HOM-94), and the L6 live preview/revert
-	// (HOM-95).
-	layoutviewer.Register(s.router, s.mmManager, s.config.LayoutWorkingCopyPath(), s.config.MagicMirror.ConfigPath, s.config.ModulesTfPath())
-
 	// Canvas v2 editor (HOM-108) — drag/resize/page-tabs/save editor for
 	// the slot-based layout. Writes both the live canvas-layout.json (the
 	// document MMM-Canvas reads via fs.watch) AND a pages.tf mirror so
-	// the IaC story stays whole. Distinct from /layout, which keeps
-	// driving the region-based legacy editor.
+	// the IaC story stays whole. Superseded the region-based /layout
+	// editor (HOM-91) once every active module made it into a canvas page.
 	canvaseditor.Register(s.router, s.canvasStore, s.mmManager, s.config.PagesTfPath())
 }
 
