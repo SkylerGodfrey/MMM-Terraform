@@ -1328,6 +1328,24 @@ function renderModuleEditPane() {
   nameField.appendChild(nameInput);
   box.appendChild(nameField);
 
+  // HOM-126: Position dropdown. Without a position MM never allocates a
+  // wrapper for the module, so MMM-Canvas can't relocate it into a slot
+  // — the slot silently fails to render. The agent applies
+  // "fullscreen_above" as a default for canvas-managed modules; the
+  // dropdown surfaces it so the user can see/override.
+  const posField = document.createElement("div");
+  posField.className = "field";
+  posField.innerHTML = '<label>Position</label>';
+  const posInput = document.createElement("select");
+  for (const opt of MM_POSITIONS) {
+    const o = document.createElement("option");
+    o.value = opt; o.textContent = opt;
+    posInput.appendChild(o);
+  }
+  posInput.value = m.position || DEFAULT_POSITION;
+  posField.appendChild(posInput);
+  box.appendChild(posField);
+
   const cfgField = document.createElement("div");
   cfgField.className = "field";
   cfgField.innerHTML = '<label>Config (JSON)</label>';
@@ -1354,10 +1372,11 @@ function renderModuleEditPane() {
     try { cfg = JSON.parse(cfgInput.value || "{}"); }
     catch (e) { toast("err", "config JSON: " + e.message); return; }
     if (!nameInput.value.trim()) { toast("err", "module name is required"); return; }
+    const position = posInput.value;
     if (m.id) {
-      await updateRegisteredModule(m.id, { module: nameInput.value.trim(), config: cfg, position: m.position, classes: m.classes });
+      await updateRegisteredModule(m.id, { module: nameInput.value.trim(), config: cfg, position, classes: m.classes });
     } else {
-      await createRegisteredModule({ module: nameInput.value.trim(), config: cfg });
+      await createRegisteredModule({ module: nameInput.value.trim(), config: cfg, position });
     }
   };
   actions.appendChild(save);
@@ -1379,6 +1398,26 @@ function openModuleEditor(id) {
   renderModulesView();
 }
 
+// HOM-126: built-in MagicMirror regions + the canvas-friendly default.
+// Order matters — the agent's CreateModule defaults to DEFAULT_POSITION
+// when missing, so the dropdown lists it first.
+const DEFAULT_POSITION = "fullscreen_above";
+const MM_POSITIONS = [
+  "fullscreen_above",
+  "fullscreen_below",
+  "top_bar",
+  "top_left",
+  "top_center",
+  "top_right",
+  "upper_third",
+  "middle_center",
+  "lower_third",
+  "bottom_left",
+  "bottom_center",
+  "bottom_right",
+  "bottom_bar",
+];
+
 async function createRegisteredModule(data) {
   try {
     const res = await fetch("/canvas/api/modules", {
@@ -1392,9 +1431,18 @@ async function createRegisteredModule(data) {
       return;
     }
     const created = await res.json();
-    state.modules.push({ id: created.id, module: created.module, config: created.config });
+    state.modules.push({
+      id: created.id, module: created.module,
+      position: created.position, config: created.config,
+    });
     state.editingModuleId = null;
-    toast("ok", "module " + data.module + " registered");
+    // HOM-126: surface any server-applied position default so the user
+    // isn't surprised by an "I didn't ask for that" value later.
+    if (data.position !== created.position && created.position) {
+      toast("ok", `module ${data.module} registered — position defaulted to ${created.position}`);
+    } else {
+      toast("ok", "module " + data.module + " registered");
+    }
     renderAll();
   } catch (e) {
     toast("err", "network error: " + e.message);
@@ -1415,7 +1463,10 @@ async function updateRegisteredModule(id, data) {
     }
     const updated = await res.json();
     const idx = state.modules.findIndex((m) => m.id === id);
-    if (idx !== -1) state.modules[idx] = { id: updated.id, module: updated.module, config: updated.config };
+    if (idx !== -1) state.modules[idx] = {
+      id: updated.id, module: updated.module,
+      position: updated.position, config: updated.config,
+    };
     state.editingModuleId = null;
     toast("ok", "saved");
     renderAll();

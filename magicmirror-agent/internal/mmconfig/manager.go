@@ -19,6 +19,16 @@ import (
 // touches many resources restarts MagicMirror once, not once per resource.
 var restartDebounce = 3 * time.Second
 
+// DefaultPosition is applied to modules created without an explicit
+// position (HOM-126). MagicMirror won't allocate a region wrapper for a
+// position-less module, which means MMM-Canvas can never relocate it
+// into a slot — the slot just silently fails to render. fullscreen_above
+// is the safest default for canvas-managed modules: MM always renders
+// it, and Canvas v2 relocates the wrapper out of the fullscreen layer
+// into the configured slot. Update intentionally does NOT apply this
+// default — an explicit edit clearing the field should be respected.
+const DefaultPosition = "fullscreen_above"
+
 // Manager handles Magic Mirror configuration operations
 type Manager struct {
 	configPath     string
@@ -159,6 +169,15 @@ func (m *Manager) CreateModule(module *Module) (*Module, error) {
 	cfg, err := m.readConfigInternal()
 	if err != nil {
 		return nil, err
+	}
+
+	// HOM-126: apply DefaultPosition before ID generation so the ID hash
+	// reflects the persisted form. Callers wanting a different position
+	// must set it themselves; the response carries the applied value back
+	// so editor surfaces can compare and surface a "we defaulted this for
+	// you" toast.
+	if module.Position == "" {
+		module.Position = DefaultPosition
 	}
 
 	// Generate ID if not provided

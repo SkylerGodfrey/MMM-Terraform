@@ -1,6 +1,8 @@
 package mmconfig
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -144,4 +146,74 @@ func TestGenerateEmptyModules(t *testing.T) {
 		t.Errorf("generated config.js missing modules key:\n%s", out)
 	}
 	_ = cfg
+}
+
+// newTestManager writes a minimal config.js to a temp dir and returns a
+// Manager pointed at it with the restart command unset (so ScheduleRestart
+// is a no-op — no pm2 in the test env).
+func newTestManager(t *testing.T) *Manager {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.js")
+	if err := os.WriteFile(path, []byte(realisticConfigJS), 0o644); err != nil {
+		t.Fatalf("write seed config: %v", err)
+	}
+	return NewManager(path, "")
+}
+
+func TestCreateModule_DefaultsPositionWhenEmpty(t *testing.T) {
+	m := newTestManager(t)
+	created, err := m.CreateModule(&Module{Module: "MMM-Mascot"})
+	if err != nil {
+		t.Fatalf("CreateModule: %v", err)
+	}
+	if created.Position != DefaultPosition {
+		t.Errorf("Position: want %q, got %q", DefaultPosition, created.Position)
+	}
+	// Round-trip through disk to confirm the default landed in config.js.
+	cfg, err := m.ReadConfig()
+	if err != nil {
+		t.Fatalf("ReadConfig: %v", err)
+	}
+	var persisted *Module
+	for i := range cfg.Modules {
+		if cfg.Modules[i].ID == created.ID {
+			persisted = &cfg.Modules[i]
+			break
+		}
+	}
+	if persisted == nil {
+		t.Fatalf("created module not found in config")
+	}
+	if persisted.Position != DefaultPosition {
+		t.Errorf("persisted Position: want %q, got %q", DefaultPosition, persisted.Position)
+	}
+}
+
+func TestCreateModule_PreservesExplicitPosition(t *testing.T) {
+	m := newTestManager(t)
+	created, err := m.CreateModule(&Module{Module: "clock", Position: "top_right"})
+	if err != nil {
+		t.Fatalf("CreateModule: %v", err)
+	}
+	if created.Position != "top_right" {
+		t.Errorf("Position: want %q, got %q", "top_right", created.Position)
+	}
+}
+
+func TestUpdateModule_DoesNotApplyDefaultPosition(t *testing.T) {
+	m := newTestManager(t)
+	created, err := m.CreateModule(&Module{Module: "MMM-Mascot", Position: "top_bar"})
+	if err != nil {
+		t.Fatalf("CreateModule: %v", err)
+	}
+	// An explicit edit that clears the position should NOT silently get
+	// re-defaulted — only the create path applies the default.
+	updated, err := m.UpdateModule(&Module{ID: created.ID, Module: "MMM-Mascot", Position: ""})
+	if err != nil {
+		t.Fatalf("UpdateModule: %v", err)
+	}
+	if updated.Position != "" {
+		t.Errorf("UpdateModule should leave Position empty when set explicitly to empty, got %q", updated.Position)
+	}
 }
