@@ -106,6 +106,29 @@ func (c *Config) PagesTfPath() string {
 	return filepath.Join(filepath.Dir(c.MagicMirror.ConfigPath), "pages.tf")
 }
 
+// MascotLayoutPath returns the on-disk path of the MMM-Mascot sprite
+// layout document (HOM-123). Sits next to config.js (same systemd
+// ReadWritePaths as canvas-layout.json). The MMM-Mascot module reads
+// the same file via fs.watch for hot-reload.
+func (c *Config) MascotLayoutPath() string {
+	return filepath.Join(filepath.Dir(c.MagicMirror.ConfigPath), "mascot-layout.json")
+}
+
+// MascotsTfPath returns where the /mascot editor (HOM-123) writes the
+// generated `magicmirror_mascot_layout` HCL mirror. Sits next to
+// pages.tf so the editor-owned IaC files cluster together.
+func (c *Config) MascotsTfPath() string {
+	return filepath.Join(filepath.Dir(c.MagicMirror.ConfigPath), "mascots.tf")
+}
+
+// MascotSpritesDir returns the directory the /mascot editor scans for
+// available sprite catalog entries (HOM-123). Defaults to the
+// MMM-Mascot module's bundled sprites/ folder; override only if you
+// keep a custom sprite library elsewhere on the Pi.
+func (c *Config) MascotSpritesDir() string {
+	return filepath.Join(c.MagicMirror.InstallPath(), "modules", "MMM-Mascot", "sprites")
+}
+
 // ModulesTfPath returns the location of the Pi-resident modules.tf the
 // agent reads and writes on Save (HOM-96). Defaults next to config.js so
 // the existing systemd ReadWritePaths cover it. Override via the

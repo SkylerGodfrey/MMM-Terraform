@@ -7,6 +7,8 @@ import (
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/canvaseditor"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/chores"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/config"
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/mascot"
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/mascoteditor"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmconfig"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmversion"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/photos"
@@ -17,14 +19,15 @@ import (
 
 // Server represents the API server
 type Server struct {
-	config     *config.Config
-	router     *gin.Engine
-	mmManager  *mmconfig.Manager
-	mmVersions *mmversion.Manager
+	config      *config.Config
+	router      *gin.Engine
+	mmManager   *mmconfig.Manager
+	mmVersions  *mmversion.Manager
 	choreStore  *chores.Store
 	photoStore  *photos.Store
 	rewardStore *rewards.Store
 	canvasStore *canvas.Store
+	mascotStore *mascot.Store
 }
 
 // NewServer creates a new API server
@@ -35,15 +38,16 @@ func NewServer(cfg *config.Config) *Server {
 	router.Use(gin.Logger())
 
 	s := &Server{
-		config:     cfg,
-		router:     router,
-		mmManager:  mmconfig.NewManager(cfg.MagicMirror.ConfigPath, cfg.MagicMirror.RestartCommand),
-		mmVersions: mmversion.NewManager(cfg.MagicMirror.InstallPath()),
+		config:      cfg,
+		router:      router,
+		mmManager:   mmconfig.NewManager(cfg.MagicMirror.ConfigPath, cfg.MagicMirror.RestartCommand),
+		mmVersions:  mmversion.NewManager(cfg.MagicMirror.InstallPath()),
 		choreStore:  chores.NewStore(cfg.ChoresFile()),
 		photoStore:  photos.NewStore(cfg.PhotosDir()),
 		rewardStore: rewards.NewStore(cfg.RewardsFile(), cfg.RewardsImagesDir()),
 	}
 	s.canvasStore = canvas.NewStore(cfg.CanvasLayoutPath(), &canvasModuleLister{mm: s.mmManager})
+	s.mascotStore = mascot.NewStore(cfg.MascotLayoutPath())
 
 	s.setupRoutes()
 	return s
@@ -91,6 +95,13 @@ func (s *Server) setupRoutes() {
 	api.PUT("/pages/:name", s.putPage)
 	api.DELETE("/pages/:name", s.deletePage)
 
+	// MMM-Mascot layout (HOM-124). The full document round-trips on one
+	// pair of endpoints because the resource is singleton — a single
+	// magicmirror_mascot_layout block owns canvas + sprites + holidays
+	// together. The /mascot editor uses its own unauthenticated routes.
+	api.GET("/mascot-layout", s.getMascotLayout)
+	api.PUT("/mascot-layout", s.putMascotLayout)
+
 	// Family portal (unauthenticated, LAN data plane — see internal/portal)
 	portalAPI := portal.Register(s.router)
 	portalAPI.GET("/chores", s.listChores)
@@ -116,6 +127,13 @@ func (s *Server) setupRoutes() {
 	// the IaC story stays whole. Superseded the region-based /layout
 	// editor (HOM-91) once every active module made it into a canvas page.
 	canvaseditor.Register(s.router, s.canvasStore, s.mmManager, s.config.PagesTfPath())
+
+	// MMM-Mascot sprite-layout editor (HOM-123) — drag/resize/save editor
+	// for the mascot overlay. Writes both mascot-layout.json (the live
+	// document MMM-Mascot reads via fs.watch) AND a mascots.tf mirror so
+	// the IaC story stays whole — same dual-write pattern as the canvas
+	// editor (HOM-108).
+	mascoteditor.Register(s.router, s.mascotStore, s.config.MascotSpritesDir(), s.config.MascotsTfPath())
 }
 
 // Run starts the HTTP server

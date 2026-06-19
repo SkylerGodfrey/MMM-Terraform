@@ -78,6 +78,42 @@ type Slot struct {
 	Hidden bool   `json:"hidden,omitempty"`
 }
 
+// MascotLayout mirrors the agent's mascot.Document — the full singleton
+// document the magicmirror_mascot_layout resource owns (HOM-124). The
+// agent re-validates everything on PUT so bad geometry and malformed
+// MM-DD windows surface as APIError.
+type MascotLayout struct {
+	SchemaVersion int             `json:"schemaVersion,omitempty"`
+	Canvas        MascotCanvas    `json:"canvas"`
+	Sprites       []MascotSprite  `json:"sprites"`
+	Holidays      []MascotHoliday `json:"holidays,omitempty"`
+}
+
+// MascotCanvas is the sprite design-space dimensions. The MMM-Mascot
+// module scales sprite coords to whatever DOM container Canvas v2 hands it.
+type MascotCanvas struct {
+	Width  int `json:"width"`
+	Height int `json:"height"`
+}
+
+// MascotSprite places one sprite-catalog id at a position on the overlay.
+type MascotSprite struct {
+	ID     string `json:"id"`
+	Sprite string `json:"sprite"`
+	X      int    `json:"x"`
+	Y      int    `json:"y"`
+	W      int    `json:"w"`
+	H      int    `json:"h"`
+}
+
+// MascotHoliday is one [Start, End] MM-DD window where the named state is
+// active. Document order matters: first match wins (HOM-124).
+type MascotHoliday struct {
+	State string `json:"state"`
+	Start string `json:"start"`
+	End   string `json:"end"`
+}
+
 // APIError represents an error response from the API
 type APIError struct {
 	Message string `json:"error"`
@@ -288,6 +324,28 @@ func (c *MagicMirrorClient) UpdateCanvas(canvas *CanvasConfig) (*CanvasConfig, e
 		return nil, err
 	}
 	return parseResponse[CanvasConfig](resp)
+}
+
+// GetMascotLayout retrieves the entire mascot document (HOM-124). The
+// agent returns the seeded default document if no file has been written
+// yet, so this never returns "not found".
+func (c *MagicMirrorClient) GetMascotLayout() (*MascotLayout, error) {
+	resp, err := c.doRequest(http.MethodGet, "/mascot-layout", nil)
+	if err != nil {
+		return nil, err
+	}
+	return parseResponse[MascotLayout](resp)
+}
+
+// PutMascotLayout writes the full mascot document. Validation runs on
+// the agent; bad geometry, malformed MM-DD, and duplicate sprite ids
+// surface as APIError so the failure shows up in `terraform apply`.
+func (c *MagicMirrorClient) PutMascotLayout(doc *MascotLayout) (*MascotLayout, error) {
+	resp, err := c.doRequest(http.MethodPut, "/mascot-layout", doc)
+	if err != nil {
+		return nil, err
+	}
+	return parseResponse[MascotLayout](resp)
 }
 
 // GetPage retrieves a named page. The agent returns 404 when missing,

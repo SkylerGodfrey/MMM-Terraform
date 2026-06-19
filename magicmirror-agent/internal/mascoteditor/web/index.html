@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MMM-Mascot · sprite editor</title>
+  <style>
+    :root {
+      --bg: #11161d;
+      --panel: #1a212c;
+      --panel-2: #232c3a;
+      --ink: #e7eef7;
+      --ink-dim: #94a3b8;
+      --accent: #7dd3fc;
+      --accent-2: #facc15;
+      --danger: #f87171;
+      --grid: rgba(125, 211, 252, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, sans-serif; }
+    body { display: grid; grid-template-columns: 280px 1fr 320px; grid-template-rows: 48px 1fr; }
+    header {
+      grid-column: 1 / -1; display: flex; align-items: center; gap: 16px;
+      padding: 0 16px; background: var(--panel); border-bottom: 1px solid #2a3344;
+    }
+    header h1 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+    header .grow { flex: 1; }
+    header button { border: 0; background: var(--accent); color: #0b1220; padding: 8px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+    header button:disabled { opacity: 0.5; cursor: not-allowed; }
+    header .status { color: var(--ink-dim); font-size: 12px; }
+
+    aside { background: var(--panel); padding: 16px; overflow-y: auto; border-right: 1px solid #2a3344; }
+    aside.right { border-right: 0; border-left: 1px solid #2a3344; }
+    aside h2 { margin: 0 0 8px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
+    aside h2 + p { margin-top: 0; color: var(--ink-dim); font-size: 12px; }
+
+    .catalog { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .catalog .card {
+      background: var(--panel-2); border-radius: 8px; padding: 8px; text-align: center;
+      cursor: grab; user-select: none;
+    }
+    .catalog .card:active { cursor: grabbing; }
+    .catalog .card .thumb {
+      width: 100%; aspect-ratio: 1; background: #0d1320; border-radius: 4px; margin-bottom: 6px;
+      background-size: cover; background-position: center; image-rendering: pixelated;
+    }
+    .catalog .card .name { font-size: 11px; color: var(--ink); word-break: break-all; }
+    .catalog .card .states { font-size: 10px; color: var(--ink-dim); }
+
+    main { position: relative; overflow: auto; padding: 24px; }
+    .stage-wrap { display: flex; align-items: flex-start; justify-content: center; }
+    .stage {
+      position: relative; background: #0d1320 var(--grid-img); background-size: 32px 32px;
+      box-shadow: 0 0 0 1px #2a3344, 0 24px 64px rgba(0,0,0,0.5);
+    }
+    .stage::before {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background-image:
+        linear-gradient(to right, var(--grid) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+      background-size: 64px 64px;
+    }
+    .placed {
+      position: absolute; outline: 1px dashed transparent;
+      background-size: contain; background-repeat: no-repeat; background-position: center;
+      image-rendering: pixelated; cursor: move; user-select: none;
+    }
+    .placed.selected { outline: 2px solid var(--accent); z-index: 2; }
+    .placed .handle {
+      position: absolute; right: -6px; bottom: -6px; width: 14px; height: 14px;
+      background: var(--accent); border: 1px solid #0b1220; border-radius: 3px; cursor: se-resize;
+    }
+
+    .props { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .props label { font-size: 11px; color: var(--ink-dim); display: flex; flex-direction: column; gap: 4px; }
+    .props input, .props select {
+      background: var(--panel-2); color: var(--ink); border: 1px solid #2a3344;
+      border-radius: 4px; padding: 6px 8px; font: inherit;
+    }
+    .props .full { grid-column: 1 / -1; }
+    .props .danger { background: var(--danger); color: #0b1220; border: 0; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: 600; }
+
+    .holidays { display: flex; flex-direction: column; gap: 6px; }
+    .holiday-row { display: grid; grid-template-columns: 1.4fr 1fr 1fr auto; gap: 4px; align-items: center; }
+    .holiday-row input { background: var(--panel-2); color: var(--ink); border: 1px solid #2a3344; border-radius: 4px; padding: 4px 6px; font-family: ui-monospace, monospace; font-size: 12px; }
+    .holiday-row button { background: transparent; color: var(--danger); border: 0; cursor: pointer; font-size: 16px; }
+    .holiday-row.head { color: var(--ink-dim); font-size: 11px; }
+    .holiday-row.head input, .holiday-row.head button { display: none; }
+
+    .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--panel-2); color: var(--ink); padding: 10px 14px; border-radius: 6px; font-size: 13px; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+    .toast.error { color: var(--danger); }
+
+    .muted { color: var(--ink-dim); font-size: 11px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>MMM-Mascot · sprite editor</h1>
+    <span class="status" id="tf-status"></span>
+    <span class="grow"></span>
+    <button id="save-btn" disabled>Save</button>
+  </header>
+
+  <aside>
+    <h2>Sprite catalog</h2>
+    <p>Drag onto the canvas.</p>
+    <div class="catalog" id="catalog"></div>
+    <p class="muted" id="catalog-empty" style="display:none;">No sprites found in <code id="catalog-dir"></code>. Add directories with <code>default.png</code> + <code>default.json</code> there, then reload.</p>
+  </aside>
+
+  <main>
+    <div class="stage-wrap">
+      <div class="stage" id="stage"></div>
+    </div>
+  </main>
+
+  <aside class="right">
+    <h2>Selected sprite</h2>
+    <div id="props-empty" class="muted">Click a placed sprite to edit it.</div>
+    <div id="props-panel" class="props" style="display:none;">
+      <label class="full">ID
+        <input id="prop-id" type="text" autocomplete="off">
+      </label>
+      <label class="full">Sprite
+        <select id="prop-sprite"></select>
+      </label>
+      <label>X <input id="prop-x" type="number" step="1"></label>
+      <label>Y <input id="prop-y" type="number" step="1"></label>
+      <label>W <input id="prop-w" type="number" step="1" min="1"></label>
+      <label>H <input id="prop-h" type="number" step="1" min="1"></label>
+      <button class="danger full" id="prop-delete">Delete sprite</button>
+    </div>
+
+    <h2 style="margin-top: 24px;">Canvas</h2>
+    <div class="props">
+      <label>Width <input id="canvas-w" type="number" step="1" min="1"></label>
+      <label>Height <input id="canvas-h" type="number" step="1" min="1"></label>
+    </div>
+
+    <h2 style="margin-top: 24px;">Holidays</h2>
+    <p class="muted">First match wins. Editor uses today's local date.</p>
+    <div class="holidays">
+      <div class="holiday-row head"><span>State</span><span>Start</span><span>End</span><span></span></div>
+      <div id="holidays-list"></div>
+      <button id="holiday-add" style="background: var(--accent-2); color: #0b1220; border: 0; padding: 6px; border-radius: 4px; cursor: pointer; font-weight: 600; margin-top: 6px;">+ Add holiday</button>
+    </div>
+  </aside>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+// ----- state -----
+const state = {
+  doc: { canvas: { width: 1080, height: 1780 }, sprites: [], holidays: [] },
+  catalog: [],
+  spritesDir: "",
+  mascotsTf: { path: "", exists: false },
+  selectedId: null,
+  dirty: false,
+};
+
+// Editor renders the stage at ~30% of design size so the whole 1080x1780
+// fits in a laptop viewport without scrolling. Sprite/canvas coordinates
+// in state are always design-space (px on the mirror); the stage applies
+// the scale at render time.
+let STAGE_SCALE = 0.34;
+
+// ----- DOM -----
+const $ = (id) => document.getElementById(id);
+const stage = $("stage");
+const catalogEl = $("catalog");
+const saveBtn = $("save-btn");
+const toast = $("toast");
+
+// ----- API -----
+async function api(path, opts) {
+  const res = await fetch(path, opts);
+  if (!res.ok) {
+    let msg = `${res.status} ${res.statusText}`;
+    try { const j = await res.json(); if (j.error) msg = j.error; } catch (_) {}
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+async function hydrate() {
+  const s = await api("/mascot/api/state");
+  state.doc = {
+    canvas: s.document.canvas,
+    sprites: s.document.sprites || [],
+    holidays: s.document.holidays || [],
+  };
+  state.catalog = s.catalog || [];
+  state.spritesDir = s.spritesDir || "";
+  state.mascotsTf = s.mascotsTf || { path: "", exists: false };
+  render();
+}
+
+async function save() {
+  saveBtn.disabled = true;
+  try {
+    const res = await api("/mascot/api/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        canvas: state.doc.canvas,
+        sprites: state.doc.sprites,
+        holidays: state.doc.holidays,
+      }),
+    });
+    state.dirty = false;
+    showToast(`Saved ${res.sprites} sprites, ${res.holidays} holidays.`);
+    updateTfStatus(true);
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    saveBtn.disabled = !state.dirty;
+  }
+}
+
+// ----- render -----
+function render() {
+  renderStage();
+  renderCatalog();
+  renderProps();
+  renderHolidays();
+  renderCanvasFields();
+  updateTfStatus(state.mascotsTf.exists);
+}
+
+function renderStage() {
+  const { width, height } = state.doc.canvas;
+  stage.style.width = (width * STAGE_SCALE) + "px";
+  stage.style.height = (height * STAGE_SCALE) + "px";
+  stage.innerHTML = "";
+  for (const sp of state.doc.sprites) {
+    const div = document.createElement("div");
+    div.className = "placed" + (sp.id === state.selectedId ? " selected" : "");
+    div.dataset.id = sp.id;
+    div.style.left = (sp.x * STAGE_SCALE) + "px";
+    div.style.top = (sp.y * STAGE_SCALE) + "px";
+    div.style.width = (sp.w * STAGE_SCALE) + "px";
+    div.style.height = (sp.h * STAGE_SCALE) + "px";
+    div.style.backgroundImage = `url(${spriteThumbUrl(sp.sprite, "default")})`;
+    const handle = document.createElement("div");
+    handle.className = "handle";
+    div.appendChild(handle);
+    stage.appendChild(div);
+    wireDrag(div, sp, handle);
+  }
+}
+
+function renderCatalog() {
+  catalogEl.innerHTML = "";
+  if (state.catalog.length === 0) {
+    $("catalog-empty").style.display = "block";
+    $("catalog-dir").textContent = state.spritesDir || "(unset)";
+    return;
+  }
+  $("catalog-empty").style.display = "none";
+  for (const c of state.catalog) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.draggable = true;
+    card.dataset.sprite = c.id;
+    const thumb = document.createElement("div");
+    thumb.className = "thumb";
+    thumb.style.backgroundImage = `url(${spriteThumbUrl(c.id, "default")})`;
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = c.id;
+    const states = document.createElement("div");
+    states.className = "states";
+    states.textContent = c.states.join(", ");
+    card.appendChild(thumb);
+    card.appendChild(name);
+    card.appendChild(states);
+    card.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/sprite-id", c.id);
+    });
+    catalogEl.appendChild(card);
+  }
+}
+
+function renderProps() {
+  const panel = $("props-panel");
+  const empty = $("props-empty");
+  const sp = state.doc.sprites.find((s) => s.id === state.selectedId);
+  if (!sp) { panel.style.display = "none"; empty.style.display = "block"; return; }
+  panel.style.display = "grid"; empty.style.display = "none";
+
+  $("prop-id").value = sp.id;
+  $("prop-x").value = sp.x;
+  $("prop-y").value = sp.y;
+  $("prop-w").value = sp.w;
+  $("prop-h").value = sp.h;
+
+  const sel = $("prop-sprite");
+  sel.innerHTML = "";
+  for (const c of state.catalog) {
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.id;
+    sel.appendChild(opt);
+  }
+  if (!state.catalog.find((c) => c.id === sp.sprite)) {
+    const opt = document.createElement("option");
+    opt.value = sp.sprite;
+    opt.textContent = sp.sprite + " (missing on disk)";
+    sel.appendChild(opt);
+  }
+  sel.value = sp.sprite;
+}
+
+function renderHolidays() {
+  const list = $("holidays-list");
+  list.innerHTML = "";
+  state.doc.holidays.forEach((h, i) => {
+    const row = document.createElement("div");
+    row.className = "holiday-row";
+    row.innerHTML = `
+      <input type="text" placeholder="state" value="${escapeAttr(h.state)}" data-k="state">
+      <input type="text" placeholder="MM-DD" value="${escapeAttr(h.start)}" data-k="start">
+      <input type="text" placeholder="MM-DD" value="${escapeAttr(h.end)}" data-k="end">
+      <button title="Remove">×</button>
+    `;
+    row.querySelectorAll("input").forEach((inp) => {
+      inp.addEventListener("input", (e) => {
+        state.doc.holidays[i][e.target.dataset.k] = e.target.value;
+        markDirty();
+      });
+    });
+    row.querySelector("button").addEventListener("click", () => {
+      state.doc.holidays.splice(i, 1);
+      markDirty();
+      renderHolidays();
+    });
+    list.appendChild(row);
+  });
+}
+
+function renderCanvasFields() {
+  $("canvas-w").value = state.doc.canvas.width;
+  $("canvas-h").value = state.doc.canvas.height;
+}
+
+function updateTfStatus(exists) {
+  const el = $("tf-status");
+  if (!state.mascotsTf.path) { el.textContent = ""; return; }
+  el.textContent = exists ? `mascots.tf · ${state.mascotsTf.path}` : `mascots.tf · ${state.mascotsTf.path} (not written yet)`;
+}
+
+// ----- drag & resize on stage -----
+function wireDrag(el, sp, handle) {
+  el.addEventListener("pointerdown", (e) => {
+    if (e.target === handle) return;
+    e.preventDefault();
+    state.selectedId = sp.id;
+    renderProps();
+    renderStage();
+    const startX = e.clientX, startY = e.clientY;
+    const origX = sp.x, origY = sp.y;
+    const move = (ev) => {
+      const dx = (ev.clientX - startX) / STAGE_SCALE;
+      const dy = (ev.clientY - startY) / STAGE_SCALE;
+      sp.x = Math.max(0, Math.min(state.doc.canvas.width - sp.w, Math.round(origX + dx)));
+      sp.y = Math.max(0, Math.min(state.doc.canvas.height - sp.h, Math.round(origY + dy)));
+      el.style.left = (sp.x * STAGE_SCALE) + "px";
+      el.style.top = (sp.y * STAGE_SCALE) + "px";
+      $("prop-x").value = sp.x; $("prop-y").value = sp.y;
+      markDirty();
+    };
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  });
+  handle.addEventListener("pointerdown", (e) => {
+    e.preventDefault(); e.stopPropagation();
+    state.selectedId = sp.id;
+    const startX = e.clientX, startY = e.clientY;
+    const origW = sp.w, origH = sp.h;
+    const move = (ev) => {
+      const dx = (ev.clientX - startX) / STAGE_SCALE;
+      const dy = (ev.clientY - startY) / STAGE_SCALE;
+      sp.w = Math.max(8, Math.min(state.doc.canvas.width - sp.x, Math.round(origW + dx)));
+      sp.h = Math.max(8, Math.min(state.doc.canvas.height - sp.y, Math.round(origH + dy)));
+      el.style.width = (sp.w * STAGE_SCALE) + "px";
+      el.style.height = (sp.h * STAGE_SCALE) + "px";
+      $("prop-w").value = sp.w; $("prop-h").value = sp.h;
+      markDirty();
+    };
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  });
+}
+
+// drag-from-catalog onto stage
+stage.addEventListener("dragover", (e) => { e.preventDefault(); });
+stage.addEventListener("drop", (e) => {
+  e.preventDefault();
+  const spriteId = e.dataTransfer.getData("text/sprite-id");
+  if (!spriteId) return;
+  const rect = stage.getBoundingClientRect();
+  const x = Math.round((e.clientX - rect.left) / STAGE_SCALE);
+  const y = Math.round((e.clientY - rect.top) / STAGE_SCALE);
+  const w = 128, h = 128;
+  const sp = {
+    id: nextId(spriteId),
+    sprite: spriteId,
+    x: clamp(x - w / 2, 0, state.doc.canvas.width - w),
+    y: clamp(y - h / 2, 0, state.doc.canvas.height - h),
+    w, h,
+  };
+  state.doc.sprites.push(sp);
+  state.selectedId = sp.id;
+  markDirty();
+  render();
+});
+
+// ----- helpers -----
+function spriteThumbUrl(id, st) { return `/MMM-Mascot/sprites/${encodeURIComponent(id)}/${encodeURIComponent(st)}.png`; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function escapeAttr(s) { return String(s).replace(/[&"<>]/g, (c) => ({"&":"&amp;","\"":"&quot;","<":"&lt;",">":"&gt;"}[c])); }
+function nextId(baseSprite) {
+  const base = `s_${baseSprite.replace(/[^a-z0-9]/gi, "").slice(0, 8) || "sprite"}`;
+  let i = 1;
+  while (state.doc.sprites.some((s) => s.id === `${base}_${i}`)) i++;
+  return `${base}_${i}`;
+}
+function markDirty() { state.dirty = true; saveBtn.disabled = false; }
+function showToast(msg, isErr) {
+  toast.textContent = msg;
+  toast.classList.toggle("error", !!isErr);
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 3200);
+}
+
+// ----- prop-panel bindings -----
+["x", "y", "w", "h"].forEach((k) => {
+  $(`prop-${k}`).addEventListener("input", (e) => {
+    const sp = state.doc.sprites.find((s) => s.id === state.selectedId);
+    if (!sp) return;
+    sp[k] = Math.max(0, parseInt(e.target.value || "0", 10));
+    markDirty(); renderStage();
+  });
+});
+$("prop-id").addEventListener("change", (e) => {
+  const sp = state.doc.sprites.find((s) => s.id === state.selectedId);
+  if (!sp) return;
+  const newId = e.target.value.trim();
+  if (!newId || state.doc.sprites.some((s) => s !== sp && s.id === newId)) {
+    e.target.value = sp.id;
+    showToast("ID must be unique and non-empty", true);
+    return;
+  }
+  sp.id = newId; state.selectedId = newId;
+  markDirty(); renderStage();
+});
+$("prop-sprite").addEventListener("change", (e) => {
+  const sp = state.doc.sprites.find((s) => s.id === state.selectedId);
+  if (!sp) return;
+  sp.sprite = e.target.value; markDirty(); renderStage();
+});
+$("prop-delete").addEventListener("click", () => {
+  state.doc.sprites = state.doc.sprites.filter((s) => s.id !== state.selectedId);
+  state.selectedId = null;
+  markDirty(); render();
+});
+$("canvas-w").addEventListener("input", (e) => { state.doc.canvas.width = Math.max(1, parseInt(e.target.value || "1", 10)); markDirty(); renderStage(); });
+$("canvas-h").addEventListener("input", (e) => { state.doc.canvas.height = Math.max(1, parseInt(e.target.value || "1", 10)); markDirty(); renderStage(); });
+$("holiday-add").addEventListener("click", () => {
+  state.doc.holidays.push({ state: "", start: "", end: "" });
+  markDirty(); renderHolidays();
+});
+saveBtn.addEventListener("click", save);
+
+window.addEventListener("DOMContentLoaded", () => {
+  hydrate().catch((err) => showToast(err.message, true));
+});
+</script>
+</body>
+</html>

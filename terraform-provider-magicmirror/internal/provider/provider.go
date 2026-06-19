@@ -115,6 +115,7 @@ func (p *MagicMirrorProvider) Resources(ctx context.Context) []func() resource.R
 		NewConfigResource,
 		NewCanvasResource,
 		NewPageResource,
+		NewMascotLayoutResource,
 	}
 }
 
