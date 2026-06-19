@@ -69,9 +69,9 @@ type handlers struct {
 // is a flat list of {id, module} entries so the picker rail can render
 // without a second round-trip.
 type stateResponse struct {
-	Document canvas.Document    `json:"document"`
-	Modules  []moduleSummary    `json:"modules"`
-	PagesTf  pagesTfFileState   `json:"pagesTf"`
+	Document canvas.Document  `json:"document"`
+	Modules  []moduleSummary  `json:"modules"`
+	PagesTf  pagesTfFileState `json:"pagesTf"`
 }
 
 type moduleSummary struct {
@@ -127,19 +127,22 @@ func (h *handlers) getState(c *gin.Context) {
 }
 
 // saveRequest is the editor's full local state on Save. The handler
-// treats the incoming document as the desired state and reconciles
-// against the store: pages absent from the request but present in
-// the store are removed; pages present are upserted.
+// treats the incoming document as the desired state and replaces the
+// stored canvas, sections, and pages atomically via SaveDocument.
+// HOM-119 added Sections; pages absent from the request are removed.
 type saveRequest struct {
-	Canvas canvas.Canvas            `json:"canvas"`
-	Pages  map[string]canvas.Page   `json:"pages"`
+	Canvas   canvas.Canvas             `json:"canvas"`
+	Sections map[string]canvas.Section `json:"sections"`
+	Pages    map[string]canvas.Page    `json:"pages"`
 }
 
 type saveResponse struct {
-	PagesWritten   []string `json:"pagesWritten"`
-	PagesDeleted   []string `json:"pagesDeleted"`
-	PagesTfPath    string   `json:"pagesTfPath"`
-	PagesTfBytes   int      `json:"pagesTfBytes"`
+	PagesWritten    []string `json:"pagesWritten"`
+	PagesDeleted    []string `json:"pagesDeleted"`
+	SectionsWritten []string `json:"sectionsWritten"`
+	SectionsDeleted []string `json:"sectionsDeleted"`
+	PagesTfPath     string   `json:"pagesTfPath"`
+	PagesTfBytes    int      `json:"pagesTfBytes"`
 }
 
 func (h *handlers) postSave(c *gin.Context) {
@@ -151,49 +154,59 @@ func (h *handlers) postSave(c *gin.Context) {
 	if req.Pages == nil {
 		req.Pages = map[string]canvas.Page{}
 	}
+	if req.Sections == nil {
+		req.Sections = map[string]canvas.Section{}
+	}
 
-	// Reconcile pages: figure out what to add/update vs. what to delete.
+	// Diff against the existing doc so the response can name what got
+	// added/removed (purely for the editor's "wrote N pages, removed M
+	// sections" toast; the actual write is atomic).
 	existing, err := h.store.Load()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	existingNames := map[string]struct{}{}
-	for name := range existing.Pages {
-		existingNames[name] = struct{}{}
-	}
 
 	out := saveResponse{
-		PagesWritten: []string{},
-		PagesDeleted: []string{},
+		PagesWritten:    []string{},
+		PagesDeleted:    []string{},
+		SectionsWritten: []string{},
+		SectionsDeleted: []string{},
+	}
+	for name := range req.Pages {
+		out.PagesWritten = append(out.PagesWritten, name)
+	}
+	for name := range existing.Pages {
+		if _, ok := req.Pages[name]; !ok {
+			out.PagesDeleted = append(out.PagesDeleted, name)
+		}
+	}
+	for name := range req.Sections {
+		out.SectionsWritten = append(out.SectionsWritten, name)
+	}
+	for name := range existing.Sections {
+		if _, ok := req.Sections[name]; !ok {
+			out.SectionsDeleted = append(out.SectionsDeleted, name)
+		}
 	}
 
-	// Canvas singleton first — slot validators re-run page bounds against
-	// the new dimensions, so doing this before pages lets us reject a
-	// shrink that would break existing slots without partial writes.
-	if _, err := h.store.SaveCanvas(req.Canvas); err != nil {
+	// Atomic full-doc replace. Sections + pages cross-reference (page
+	// includes section by name, override targets section/module pair)
+	// so the granular SaveCanvas/SaveSection/SavePage path can't validate
+	// without temporarily corrupt intermediate states. SaveDocument
+	// runs the whole validator once and writes the doc in one go.
+	doc := canvas.Document{
+		Canvas:   req.Canvas,
+		Sections: req.Sections,
+		Pages:    req.Pages,
+	}
+	if _, err := h.store.SaveDocument(doc); err != nil {
 		h.canvasError(c, err)
 		return
 	}
 
-	for name, page := range req.Pages {
-		if _, err := h.store.SavePage(name, page); err != nil {
-			h.canvasError(c, err)
-			return
-		}
-		out.PagesWritten = append(out.PagesWritten, name)
-		delete(existingNames, name)
-	}
-	for name := range existingNames {
-		if _, err := h.store.DeletePage(name); err != nil && !errors.Is(err, canvas.ErrPageNotFound) {
-			h.canvasError(c, err)
-			return
-		}
-		out.PagesDeleted = append(out.PagesDeleted, name)
-	}
-
 	if h.pagesTfPath != "" {
-		hcl := emitPagesTf(req.Canvas, req.Pages)
+		hcl := emitPagesTf(req.Canvas, req.Sections, req.Pages)
 		if err := writeAtomic(h.pagesTfPath, []byte(hcl), 0o644); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "write pages.tf: " + err.Error()})
 			return

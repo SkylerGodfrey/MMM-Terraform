@@ -8,18 +8,29 @@ import (
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/canvas"
 )
 
-// emitPagesTf regenerates the full pages.tf from the canvas + pages
-// map. Full regeneration is fine here because the editor owns this file
-// end-to-end — there are no human-handwritten comments or attribute
-// ordering preferences to preserve. The file's banner makes the
-// "don't edit by hand" contract explicit.
+// emitPagesTf regenerates the full pages.tf from the canvas + sections
+// + pages map. Full regeneration is fine here because the editor owns
+// this file end-to-end — there are no human-handwritten comments or
+// attribute ordering preferences to preserve. The file's banner makes
+// the "don't edit by hand" contract explicit.
 //
-// Output is sorted by page name for deterministic diffs across saves.
-func emitPagesTf(c canvas.Canvas, pages map[string]canvas.Page) string {
+// Output is sorted by name (sections, then pages, alphabetical within
+// each group) for deterministic diffs across saves.
+func emitPagesTf(c canvas.Canvas, sections map[string]canvas.Section, pages map[string]canvas.Page) string {
 	var b strings.Builder
 	b.WriteString(banner)
 	b.WriteString("\n")
 	writeCanvas(&b, c)
+
+	sectionNames := make([]string, 0, len(sections))
+	for name := range sections {
+		sectionNames = append(sectionNames, name)
+	}
+	sort.Strings(sectionNames)
+	for _, name := range sectionNames {
+		b.WriteString("\n")
+		writeSection(&b, name, sections[name])
+	}
 
 	names := make([]string, 0, len(pages))
 	for name := range pages {
@@ -53,6 +64,8 @@ func writeCanvas(b *strings.Builder, c canvas.Canvas) {
 func writePage(b *strings.Builder, name string, page canvas.Page) {
 	fmt.Fprintf(b, "resource \"magicmirror_page\" %q {\n", name)
 	fmt.Fprintf(b, "  name = %q\n", name)
+	writeStringList(b, "sections", page.Sections)
+	writeOverrides(b, page.SectionOverrides)
 	if len(page.Slots) == 0 {
 		b.WriteString("  slots = []\n")
 		b.WriteString("}\n")
@@ -64,6 +77,51 @@ func writePage(b *strings.Builder, name string, page canvas.Page) {
 	}
 	b.WriteString("  ]\n")
 	b.WriteString("}\n")
+}
+
+func writeSection(b *strings.Builder, name string, section canvas.Section) {
+	fmt.Fprintf(b, "resource \"magicmirror_section\" %q {\n", name)
+	fmt.Fprintf(b, "  name                = %q\n", name)
+	fmt.Fprintf(b, "  default_on_new_page = %t\n", section.DefaultOnNewPage)
+	if len(section.Slots) == 0 {
+		b.WriteString("  slots = []\n")
+		b.WriteString("}\n")
+		return
+	}
+	b.WriteString("  slots = [\n")
+	for _, slot := range section.Slots {
+		writeSlot(b, slot)
+	}
+	b.WriteString("  ]\n")
+	b.WriteString("}\n")
+}
+
+func writeStringList(b *strings.Builder, attr string, items []string) {
+	if len(items) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "  %s = [", attr)
+	for i, item := range items {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(b, "%q", item)
+	}
+	b.WriteString("]\n")
+}
+
+func writeOverrides(b *strings.Builder, overrides []canvas.SectionOverride) {
+	if len(overrides) == 0 {
+		return
+	}
+	b.WriteString("  section_overrides = [\n")
+	for _, o := range overrides {
+		fmt.Fprintf(b,
+			"    { section = %q, module = %q, x = %d, y = %d, w = %d, h = %d, z_index = %d, hidden = %t },\n",
+			o.Section, o.Module, o.X, o.Y, o.W, o.H, o.ZIndex, o.Hidden,
+		)
+	}
+	b.WriteString("  ]\n")
 }
 
 // One slot per line keeps the diff small when only an x/y changes — the

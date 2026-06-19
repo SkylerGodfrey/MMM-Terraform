@@ -127,6 +127,16 @@
     border-radius: 14px; color: var(--ink-dim); font-size: 12px; }
   .view-pill button.active { background: var(--accent); color: #11141a; font-weight: 600; }
 
+  /* ---------- HOM-120: canvas size inputs ---------- */
+  .canvas-size { display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--ink-dim); }
+  .canvas-size input { width: 56px; background: var(--panel-elev); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 4px; padding: 4px 6px;
+    font: inherit; font-family: ui-monospace, "SF Mono", monospace;
+    font-size: 12px; text-align: right; }
+  .canvas-size input:focus { outline: none; border-color: var(--accent); }
+  .canvas-size .x { color: var(--ink-dim); opacity: 0.6; }
+
   /* ---------- HOM-111: slot inspector right rail ---------- */
   main.with-inspector { grid-template-columns: 260px 1fr 260px; }
   aside.inspector { background: var(--panel); border-left: 1px solid var(--line);
@@ -304,6 +314,57 @@
   .module-card.custom { background: transparent;
     border: 1px dashed var(--line); color: var(--ink-dim); }
   .module-card.custom:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- HOM-119: sections ---------- */
+  /* Section slots in PAGE context are dashed so the user can tell at a
+     glance which slots are shared. Overridden slots get the solid accent
+     border + ✱ badge because the geometry belongs to the page now. */
+  .slot.section { border-style: dashed;
+    background: rgba(180, 200, 240, 0.06); color: #aac0e8; }
+  .slot.section.selected { border-color: #aac0e8;
+    background: rgba(180, 200, 240, 0.14); box-shadow: 0 0 0 1px #aac0e8; }
+  .slot .badge { position: absolute; top: 4px; right: 6px; font-size: 11px;
+    color: var(--accent); pointer-events: none; }
+  /* Sidebar accordion in Layout view: per-page section checkboxes */
+  .sections-rail { margin-top: 18px; }
+  .sections-rail h2 { margin-bottom: 8px; }
+  .section-row { display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; margin-bottom: 3px; border-radius: 5px;
+    background: var(--panel-elev); font-size: 12px;
+    font-family: ui-monospace, "SF Mono", monospace; }
+  .section-row input[type=checkbox] { accent-color: var(--accent); }
+  .section-row .name { flex: 1; }
+  .section-row .default-on { font-size: 10px; color: var(--accent);
+    opacity: 0.8; }
+  /* Sections-view sidebar list */
+  .section-card { display: flex; flex-direction: column; gap: 4px;
+    padding: 10px; margin-bottom: 4px; border-radius: 5px;
+    background: var(--panel-elev); cursor: pointer;
+    border: 1px solid transparent; }
+  .section-card:hover { border-color: var(--line); }
+  .section-card.active { border-color: var(--accent);
+    background: var(--accent-dim); }
+  .section-card .name { font-family: ui-monospace, monospace; font-size: 12px;
+    color: var(--ink); }
+  .section-card.active .name { color: var(--accent); }
+  .section-card .meta { font-size: 10px; color: var(--ink-dim); }
+  /* Inspector banner indicating section/override status */
+  .inspector-banner { font-size: 11px; color: var(--ink-dim);
+    background: var(--panel-elev); border: 1px solid var(--line);
+    padding: 8px 10px; border-radius: 4px; margin-bottom: 12px;
+    line-height: 1.4; }
+  .inspector-banner b { color: var(--ink); }
+  .inspector-banner.override { border-color: var(--accent);
+    color: var(--accent); background: var(--accent-dim); }
+  .inspector-section .accent { width: 100%; padding: 7px; font-size: 12px;
+    background: transparent; color: var(--accent);
+    border-color: var(--accent-dim); }
+  .inspector-section .accent:hover { background: var(--accent-dim); }
+  /* Section settings card in Sections view inspector */
+  .section-settings { margin-top: 14px; padding-top: 14px;
+    border-top: 1px solid var(--line); }
+  .section-settings label.toggle-row { display: flex; align-items: center;
+    gap: 8px; font-size: 12px; color: var(--ink-dim); margin-bottom: 10px; }
 </style>
 </head>
 <body>
@@ -312,10 +373,16 @@
   <div class="title">Canvas&nbsp;<span class="v2">v2</span></div>
   <div class="view-pill">
     <button id="view-layout" class="active">Layout</button>
+    <button id="view-sections">Sections</button>
     <button id="view-modules">Modules</button>
   </div>
   <div class="tabs" id="tabs"></div>
   <button class="subtle" id="new-page">+ Page</button>
+  <label class="canvas-size" title="Canvas dimensions in physical pixels. Set this to your mirror's screen resolution (portrait Pi: 1080 × 1920) so slot coordinates map 1:1 to the screen.">
+    <input type="number" id="canvas-w" min="120" step="20" />
+    <span class="x">×</span>
+    <input type="number" id="canvas-h" min="120" step="20" />
+  </label>
   <button class="toggle" id="debug-toggle" title="Toggle debug borders + labels on the mirror">◑</button>
   <span class="save-status" id="save-status">Loaded</span>
   <button class="primary" id="save" disabled>Save</button>
@@ -328,8 +395,12 @@
 
 <main id="layout-view">
   <aside class="modules">
-    <h2>Modules</h2>
+    <h2 id="rail-header">Modules</h2>
     <div id="modules"></div>
+    <div class="sections-rail" id="sections-rail">
+      <h2>Sections</h2>
+      <div id="sections-list"></div>
+    </div>
   </aside>
   <section class="viewport" id="viewport">
     <div class="canvas" id="canvas">
@@ -364,15 +435,26 @@
 "use strict";
 
 // ---------- state ----------
+// HOM-119: selectedSlot is no longer an int index. With sections in
+// play, the editor can select page slots, section defaults (in the
+// Sections view), shared section slots in page context (read-only by
+// default; drag edits the section default), or per-page overrides.
+// `kind` distinguishes them so drag/inspector/commit code knows which
+// backing array to mutate:
+//   { kind: "page", index }
+//   { kind: "sectionDefault", index }
+//   { kind: "section", section, module }     // a section slot rendered on a page, not overridden
+//   { kind: "override", section, module }    // page-specific override of a section slot
 const state = {
-  doc: null,           // { schemaVersion, canvas, pages }
-  modules: [],         // [{ id, module, config? }]
-  pagesTf: null,       // { path, exists }
+  doc: null,              // { schemaVersion, canvas, sections, pages }
+  modules: [],            // [{ id, module, config? }]
+  pagesTf: null,          // { path, exists }
   activePage: "home",
-  selectedSlot: null,  // index into state.doc.pages[activePage].slots
+  activeSection: null,    // active section when state.view === "sections"
+  selectedSlot: null,     // see selector shape above; null = nothing selected
   dirty: false,
   scale: 1,
-  view: "layout",      // "layout" | "modules"
+  view: "layout",         // "layout" | "sections" | "modules"
   editingModuleId: null,  // module id being edited in the Modules view; null = add
 };
 
@@ -392,7 +474,8 @@ async function loadState() {
   state.modules = data.modules || [];
   state.pagesTf = data.pagesTf;
   if (!state.doc.pages) state.doc.pages = {};
-  if (!state.doc.canvas) state.doc.canvas = { width: 1080, height: 1780, defaultPage: "home" };
+  if (!state.doc.sections) state.doc.sections = {};
+  if (!state.doc.canvas) state.doc.canvas = { width: 1080, height: 1920, defaultPage: "home" };
   // Pick a default active page: existing pages → first; otherwise canvas.defaultPage.
   const pageNames = Object.keys(state.doc.pages);
   state.activePage = pageNames.length
@@ -401,15 +484,116 @@ async function loadState() {
   if (!state.doc.pages[state.activePage]) {
     state.doc.pages[state.activePage] = { slots: [] };
   }
+  // Default active section: first section if any exist.
+  const sectionNames = Object.keys(state.doc.sections);
+  state.activeSection = sectionNames.length ? sectionNames.sort()[0] : null;
   state.dirty = false;
   renderAll();
+}
+
+// ---------- HOM-119: small helpers ----------
+function ensurePageDefaults(page) {
+  if (!page.slots) page.slots = [];
+  if (!page.sections) page.sections = [];
+  if (!page.sectionOverrides) page.sectionOverrides = [];
+  return page;
+}
+
+function findOverride(page, section, module) {
+  return (page.sectionOverrides || []).find(o =>
+    o.section === section && o.module === module);
+}
+
+// resolveBackingSlot returns the actual mutable slot object behind a
+// selectedSlot descriptor — drag/resize/inspector all mutate via this so
+// the dispatch logic stays in one place. Returns null for selectors
+// pointing at a slot that no longer exists (e.g., section deleted).
+function resolveBackingSlot(sel) {
+  if (!sel) return null;
+  if (sel.kind === "page") {
+    const page = state.doc.pages[state.activePage];
+    return page && page.slots ? (page.slots[sel.index] || null) : null;
+  }
+  if (sel.kind === "sectionDefault") {
+    const section = state.doc.sections[state.activeSection];
+    return section && section.slots ? (section.slots[sel.index] || null) : null;
+  }
+  if (sel.kind === "section") {
+    // Editing a section slot from page context edits the section default
+    // (user-specified semantics: "edits apply to the default positioning
+    // but overrides should not be effected by default changing"). The
+    // override flow is separate — see addOverride().
+    const section = state.doc.sections[sel.section];
+    if (!section) return null;
+    return (section.slots || []).find(s => s.module === sel.module) || null;
+  }
+  if (sel.kind === "override") {
+    const page = state.doc.pages[state.activePage];
+    if (!page) return null;
+    return findOverride(page, sel.section, sel.module) || null;
+  }
+  return null;
+}
+
+// activeEntries returns the renderable slot entries for the current
+// view. Each entry carries the slot (read-only view; mutations go via
+// resolveBackingSlot) and a selector identifying it. In Layout view the
+// page's included section slots come first (so page-specific slots
+// overlay them by default CSS source order); in Sections view it's just
+// the active section's slots. Overlap / inspector logic walks this list.
+function activeEntries() {
+  if (state.view === "sections") {
+    if (!state.activeSection) return [];
+    const section = state.doc.sections[state.activeSection];
+    if (!section || !section.slots) return [];
+    return section.slots.map((slot, index) => ({
+      slot, sel: { kind: "sectionDefault", index },
+    }));
+  }
+  const page = state.doc.pages[state.activePage];
+  if (!page) return [];
+  ensurePageDefaults(page);
+  const out = [];
+  for (const sectionName of page.sections) {
+    const section = state.doc.sections[sectionName];
+    if (!section || !section.slots) continue;
+    for (const slot of section.slots) {
+      const override = findOverride(page, sectionName, slot.module);
+      if (override) {
+        out.push({
+          slot: { module: slot.module, x: override.x, y: override.y,
+            w: override.w, h: override.h, zIndex: override.zIndex || 0,
+            hidden: !!override.hidden },
+          sel: { kind: "override", section: sectionName, module: slot.module },
+        });
+      } else {
+        out.push({
+          slot,
+          sel: { kind: "section", section: sectionName, module: slot.module },
+        });
+      }
+    }
+  }
+  page.slots.forEach((slot, index) => {
+    out.push({ slot, sel: { kind: "page", index } });
+  });
+  return out;
+}
+
+function selectorsEqual(a, b) {
+  if (!a || !b) return false;
+  if (a.kind !== b.kind) return false;
+  if (a.kind === "page" || a.kind === "sectionDefault") return a.index === b.index;
+  return a.section === b.section && a.module === b.module;
 }
 
 // ---------- render ----------
 function renderAll() {
   renderView();
   renderTabs();
+  renderCanvasSize();
   renderModules();
+  renderSectionsRail();
   renderCanvas();
   renderInspector();
   renderOverlapBanner();
@@ -417,26 +601,80 @@ function renderAll() {
   renderSaveStatus();
 }
 
+// HOM-120: header width/height inputs reflect the layout's logical
+// canvas dimensions. Edits commit on blur/Enter so a half-typed number
+// (e.g. "1" while typing "1080") doesn't reflow the canvas yet.
+function renderCanvasSize() {
+  const w = $("canvas-w"), h = $("canvas-h");
+  // Don't clobber the active input — would lose the user's caret while
+  // they're mid-edit.
+  if (document.activeElement !== w) w.value = state.doc.canvas.width;
+  if (document.activeElement !== h) h.value = state.doc.canvas.height;
+}
+
+function commitCanvasSize(field, raw) {
+  const val = parseInt(raw, 10);
+  if (!Number.isFinite(val) || val <= 0) return;
+  // Reject sizes that would put existing slots out of bounds. The agent
+  // will reject these on Save anyway; catching client-side gives a
+  // friendlier toast and keeps the editor's preview consistent.
+  for (const [pageName, page] of Object.entries(state.doc.pages || {})) {
+    for (const slot of (page.slots || [])) {
+      if (field === "width" && slot.x + slot.w > val) {
+        toast("err", `slot "${slot.module}" on page "${pageName}" extends past width ${val}`);
+        renderCanvasSize();
+        return;
+      }
+      if (field === "height" && slot.y + slot.h > val) {
+        toast("err", `slot "${slot.module}" on page "${pageName}" extends past height ${val}`);
+        renderCanvasSize();
+        return;
+      }
+    }
+  }
+  if (state.doc.canvas[field] === val) return;
+  state.doc.canvas[field] = val;
+  markDirty();
+  renderCanvas();
+}
+
 function renderView() {
   $("view-layout").classList.toggle("active", state.view === "layout");
+  $("view-sections").classList.toggle("active", state.view === "sections");
   $("view-modules").classList.toggle("active", state.view === "modules");
   document.body.classList.toggle("view-modules", state.view === "modules");
+  // HOM-119: the Layout view and Sections view share the same DOM
+  // shell (sidebar / canvas / inspector). renderTabs / renderCanvas /
+  // renderSectionsRail switch their contents based on state.view.
+  // The "+ Page" button is re-labelled to "+ Section" in sections view.
+  $("new-page").textContent = state.view === "sections" ? "+ Section" : "+ Page";
+  $("rail-header").textContent = state.view === "sections" ? "Add slot" : "Modules";
   if (state.view === "modules") renderModulesView();
 }
 
 function renderTabs() {
   const root = $("tabs");
   root.innerHTML = "";
-  const names = Object.keys(state.doc.pages).sort();
+  if (state.view === "modules") return;
+  const isSections = state.view === "sections";
+  const names = isSections
+    ? Object.keys(state.doc.sections || {}).sort()
+    : Object.keys(state.doc.pages).sort();
+  const active = isSections ? state.activeSection : state.activePage;
   for (const name of names) {
     const el = document.createElement("div");
-    el.className = "tab" + (name === state.activePage ? " active" : "");
+    el.className = "tab" + (name === active ? " active" : "");
     el.textContent = name;
-    el.onclick = () => switchPage(name);
-    if (name === state.activePage && names.length > 1) {
+    el.onclick = () => isSections ? switchSection(name) : switchPage(name);
+    if (name === active) {
       const x = document.createElement("span");
       x.className = "x"; x.textContent = "×";
-      x.onclick = (e) => { e.stopPropagation(); deletePage(name); };
+      x.onclick = (e) => {
+        e.stopPropagation();
+        if (isSections) deleteSection(name);
+        else if (names.length > 1) deletePage(name);
+        else toast("err", "can't delete the only page");
+      };
       el.appendChild(x);
     }
     root.appendChild(el);
@@ -450,43 +688,121 @@ function renderModules() {
     root.innerHTML = '<div style="color:var(--ink-dim);font-size:12px">No modules registered yet. Add them via your modules.tf, then refresh.</div>';
     return;
   }
-  // Build a moduleName → set of pages that already place it.
+  // Placement summary: where a module is currently used. In Layout view
+  // we track pages; in Sections view, sections. Helps the author avoid
+  // double-placing (which the validators reject).
   const placement = {};
-  for (const [pageName, page] of Object.entries(state.doc.pages)) {
-    for (const slot of (page.slots || [])) {
-      (placement[slot.module] = placement[slot.module] || new Set()).add(pageName);
+  if (state.view === "sections") {
+    for (const [sectionName, section] of Object.entries(state.doc.sections || {})) {
+      for (const slot of (section.slots || [])) {
+        (placement[slot.module] = placement[slot.module] || new Set()).add(sectionName);
+      }
+    }
+  } else {
+    for (const [pageName, page] of Object.entries(state.doc.pages)) {
+      for (const slot of (page.slots || [])) {
+        (placement[slot.module] = placement[slot.module] || new Set()).add(pageName);
+      }
     }
   }
-  // Sort modules alphabetically.
   const sorted = state.modules.slice().sort((a, b) => a.module.localeCompare(b.module));
   for (const m of sorted) {
     const placedIn = placement[m.module];
     const card = document.createElement("div");
     card.className = "module-card" + (placedIn ? " placed" : "");
-    card.title = "Click to add this module to the current page";
+    card.title = state.view === "sections"
+      ? "Click to add this module to the current section"
+      : "Click to add this module to the current page";
     const name = document.createElement("span");
     name.className = "name"; name.textContent = m.module;
     card.appendChild(name);
     if (placedIn) {
-      const pages = document.createElement("span");
-      pages.className = "pages";
-      pages.textContent = "in " + Array.from(placedIn).sort().join(", ");
-      card.appendChild(pages);
+      const inLabel = document.createElement("span");
+      inLabel.className = "pages";
+      inLabel.textContent = "in " + Array.from(placedIn).sort().join(", ");
+      card.appendChild(inLabel);
     }
     card.onclick = () => addSlot(m.module);
     root.appendChild(card);
   }
 
-  // HOM-111: quick-add for an unregistered module. Lets the layout
-  // author drop a slot for a module that isn't in the registry yet —
-  // the slot saves fine (validators only require non-empty name);
-  // the Modules view is the place to formally register it later.
+  // HOM-111: quick-add for an unregistered module.
   const custom = document.createElement("div");
   custom.className = "module-card custom";
   custom.textContent = "+ Custom module…";
   custom.title = "Add a slot for a module that isn't registered yet";
   custom.onclick = quickAddCustom;
   root.appendChild(custom);
+}
+
+// HOM-119: the sections rail switches duty by view.
+// - layout: per-page checkboxes (toggle inclusion of each section)
+// - sections: cards listing sections, click to switch active
+// - modules: hidden (sidebar isn't even shown by parent layout)
+function renderSectionsRail() {
+  const rail = $("sections-rail");
+  const list = $("sections-list");
+  list.innerHTML = "";
+  const sectionNames = Object.keys(state.doc.sections || {}).sort();
+  if (state.view === "modules") {
+    rail.style.display = "none";
+    return;
+  }
+  rail.style.display = "";
+  rail.querySelector("h2").textContent = state.view === "sections" ? "Sections" : "Page sections";
+  if (sectionNames.length === 0) {
+    const hint = document.createElement("div");
+    hint.style.cssText = "color:var(--ink-dim);font-size:11px;padding:4px 2px;line-height:1.4;";
+    hint.textContent = state.view === "sections"
+      ? "No sections yet. Click + Section above to create a reusable group of slots."
+      : "No sections yet. Use the Sections view to author shared slot groups.";
+    list.appendChild(hint);
+    return;
+  }
+  if (state.view === "sections") {
+    for (const name of sectionNames) {
+      const card = document.createElement("div");
+      card.className = "section-card" + (name === state.activeSection ? " active" : "");
+      const nm = document.createElement("div");
+      nm.className = "name"; nm.textContent = name;
+      card.appendChild(nm);
+      const section = state.doc.sections[name];
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      const slotCount = (section.slots || []).length;
+      const tags = [];
+      tags.push(slotCount + " slot" + (slotCount === 1 ? "" : "s"));
+      if (section.defaultOnNewPage) tags.push("default on new pages");
+      meta.textContent = tags.join(" · ");
+      card.appendChild(meta);
+      card.onclick = () => switchSection(name);
+      list.appendChild(card);
+    }
+    return;
+  }
+  // Layout view: checkboxes for per-page section inclusion.
+  const page = state.doc.pages[state.activePage];
+  if (!page) return;
+  ensurePageDefaults(page);
+  for (const name of sectionNames) {
+    const row = document.createElement("div");
+    row.className = "section-row";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = page.sections.includes(name);
+    cb.onchange = () => toggleSectionInclusion(name, cb.checked);
+    row.appendChild(cb);
+    const nm = document.createElement("span");
+    nm.className = "name"; nm.textContent = name;
+    row.appendChild(nm);
+    if (state.doc.sections[name].defaultOnNewPage) {
+      const flag = document.createElement("span");
+      flag.className = "default-on"; flag.textContent = "auto";
+      flag.title = "Auto-included when a new page is created";
+      row.appendChild(flag);
+    }
+    list.appendChild(row);
+  }
 }
 
 function renderCanvas() {
@@ -503,36 +819,62 @@ function renderCanvas() {
 
   // Wipe and re-render all slots.
   Array.from(canvas.querySelectorAll(".slot")).forEach(n => n.remove());
-  const page = state.doc.pages[state.activePage] || { slots: [] };
-  $("empty-note").style.display = page.slots.length ? "none" : "block";
-  const overlapSet = computeOverlappingIndices(page.slots);
-  page.slots.forEach((slot, i) => {
-    canvas.appendChild(buildSlotEl(slot, i, overlapSet.has(i)));
+  const entries = activeEntries();
+  const emptyNote = $("empty-note");
+  if (entries.length === 0) {
+    emptyNote.style.display = "block";
+    emptyNote.textContent = state.view === "sections"
+      ? (state.activeSection
+        ? "Click a module on the left to add it to this section."
+        : "Click + Section above to create your first reusable section.")
+      : "Click a module on the left to place a slot.";
+  } else {
+    emptyNote.style.display = "none";
+  }
+  const overlapSet = computeOverlappingEntries(entries);
+  entries.forEach((entry, i) => {
+    canvas.appendChild(buildSlotEl(entry, overlapSet.has(i)));
   });
 }
 
-function buildSlotEl(slot, index, isOverlapping) {
+function buildSlotEl(entry, isOverlapping) {
+  const { slot, sel } = entry;
   const el = document.createElement("div");
+  const selected = selectorsEqual(state.selectedSlot, sel);
   el.className = "slot"
-    + (state.selectedSlot === index ? " selected" : "")
+    + (sel.kind === "section" ? " section" : "")
+    + (selected ? " selected" : "")
     + (isOverlapping ? " overlap" : "");
   el.style.left = (slot.x * state.scale) + "px";
   el.style.top = (slot.y * state.scale) + "px";
   el.style.width = (slot.w * state.scale) + "px";
   el.style.height = (slot.h * state.scale) + "px";
-  el.dataset.index = index;
+  el.dataset.kind = sel.kind;
 
   const info = document.createElement("div");
   info.className = "info";
-  info.textContent = `${slot.module}  ${slot.w}×${slot.h}`;
+  let prefix = "";
+  if (sel.kind === "section") prefix = "§ ";
+  if (sel.kind === "override") prefix = "✱ ";
+  if (sel.kind === "sectionDefault") prefix = "§ ";
+  info.textContent = prefix + slot.module + "  " + slot.w + "×" + slot.h;
   el.appendChild(info);
 
-  el.onmousedown = (e) => beginDrag(e, index);
-  if (state.selectedSlot === index) {
+  // Override badge in page context — instantly readable signal that
+  // this page has its own copy of the section's slot.
+  if (sel.kind === "override") {
+    const badge = document.createElement("div");
+    badge.className = "badge"; badge.textContent = "✱";
+    badge.title = "Page-specific override of " + sel.section + "/" + sel.module;
+    el.appendChild(badge);
+  }
+
+  el.onmousedown = (e) => beginDrag(e, sel);
+  if (selected) {
     ["nw","ne","sw","se"].forEach(corner => {
       const h = document.createElement("div");
       h.className = "handle " + corner;
-      h.onmousedown = (e) => { e.stopPropagation(); beginResize(e, index, corner); };
+      h.onmousedown = (e) => { e.stopPropagation(); beginResize(e, sel, corner); };
       el.appendChild(h);
     });
   }
@@ -553,41 +895,156 @@ function renderSaveStatus() {
   }
 }
 
-// ---------- HOM-111: inspector ----------
+// ---------- HOM-111 + HOM-119: inspector ----------
 function renderInspector() {
   const main = $("layout-view");
   const body = $("inspector-body");
-  const page = state.doc.pages[state.activePage];
-  const slot = page && state.selectedSlot != null ? page.slots[state.selectedSlot] : null;
+  const slot = resolveBackingSlot(state.selectedSlot);
+  const sel = state.selectedSlot;
 
-  // Toggle the 3-column layout: inspector visible only with a selection.
-  main.classList.toggle("with-inspector", !!slot);
+  // In Modules view there's no canvas inspector — short-circuit.
+  if (state.view === "modules") { main.classList.remove("with-inspector"); return; }
+
+  main.classList.toggle("with-inspector", !!slot || state.view === "sections");
   if (!slot) {
+    if (state.view === "sections") {
+      renderSectionSettingsInspector(body);
+      return;
+    }
     body.innerHTML = '<div class="empty-inspector">Click a slot in the canvas to edit its module, position, size, z-index, or hidden state.</div>';
     return;
   }
 
   body.innerHTML = "";
-  const rows = [
-    inspectorSelectRow("Module", "module", slot.module, true),
-    inspectorIntRow("X", "x", slot.x),
-    inspectorIntRow("Y", "y", slot.y),
-    inspectorIntRow("W", "w", slot.w),
-    inspectorIntRow("H", "h", slot.h),
-    inspectorIntRow("Z", "zIndex", slot.zIndex || 0, { min: -100, max: 100, step: 1 }),
-    inspectorCheckRow("Hidden", "hidden", !!slot.hidden),
-  ];
+
+  // Banner explains context — especially important when the user is
+  // editing a section default from page context (changes propagate to
+  // every page that uses the section without an override).
+  if (sel.kind === "section") {
+    body.appendChild(inspectorBanner(
+      "<b>Section default:</b> " + escapeHTML(sel.section) + "/" + escapeHTML(sel.module)
+      + ". Edits here change every page that uses this section without an override."));
+  } else if (sel.kind === "override") {
+    body.appendChild(inspectorBanner(
+      "<b>Page override:</b> " + escapeHTML(sel.section) + "/" + escapeHTML(sel.module)
+      + ". Section default changes won't affect this page until you drop the override.",
+      "override"));
+  } else if (sel.kind === "sectionDefault") {
+    body.appendChild(inspectorBanner(
+      "<b>Section slot</b> in <b>" + escapeHTML(state.activeSection) + "</b>. "
+      + "Pages that include this section render this slot at this geometry by default."));
+  }
+
+  const rows = [];
+  // Module is editable only in mutable page-slot / section-default
+  // contexts. Section + override slots derive the module from the
+  // section definition, so changing it would orphan the override.
+  if (sel.kind === "page" || sel.kind === "sectionDefault") {
+    rows.push(inspectorSelectRow("Module", "module", slot.module, true));
+  } else {
+    rows.push(inspectorTextRow("Module", slot.module));
+  }
+  rows.push(inspectorIntRow("X", "x", slot.x));
+  rows.push(inspectorIntRow("Y", "y", slot.y));
+  rows.push(inspectorIntRow("W", "w", slot.w));
+  rows.push(inspectorIntRow("H", "h", slot.h));
+  rows.push(inspectorIntRow("Z", "zIndex", slot.zIndex || 0, { min: -100, max: 100, step: 1 }));
+  rows.push(inspectorCheckRow("Hidden", "hidden", !!slot.hidden));
   rows.forEach(r => body.appendChild(r));
 
-  // Danger zone: remove this slot.
-  const section = document.createElement("div");
-  section.className = "inspector-section";
-  const removeBtn = document.createElement("button");
-  removeBtn.className = "danger";
-  removeBtn.textContent = "Remove slot from page";
-  removeBtn.onclick = deleteSelectedSlot;
-  section.appendChild(removeBtn);
-  body.appendChild(section);
+  // Action section — varies by selection kind. HOM-119 override controls.
+  const actions = document.createElement("div");
+  actions.className = "inspector-section";
+  if (sel.kind === "section") {
+    const overrideBtn = document.createElement("button");
+    overrideBtn.className = "accent";
+    overrideBtn.textContent = "Override on this page";
+    overrideBtn.title = "Snapshot the current geometry as a page-specific override. Future section default changes won't affect this page.";
+    overrideBtn.onclick = () => createOverride(sel.section, sel.module);
+    actions.appendChild(overrideBtn);
+  } else if (sel.kind === "override") {
+    const dropBtn = document.createElement("button");
+    dropBtn.className = "accent";
+    dropBtn.textContent = "Drop override";
+    dropBtn.title = "Revert this page to using the section's default geometry.";
+    dropBtn.onclick = () => dropOverride(sel.section, sel.module);
+    actions.appendChild(dropBtn);
+  } else {
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "danger";
+    removeBtn.textContent = sel.kind === "sectionDefault"
+      ? "Remove slot from section"
+      : "Remove slot from page";
+    removeBtn.onclick = deleteSelectedSlot;
+    actions.appendChild(removeBtn);
+  }
+  body.appendChild(actions);
+}
+
+function inspectorBanner(html, variant) {
+  const div = document.createElement("div");
+  div.className = "inspector-banner" + (variant ? " " + variant : "");
+  div.innerHTML = html;
+  return div;
+}
+
+function inspectorTextRow(label, value) {
+  const row = inspectorRow(label);
+  const input = document.createElement("input");
+  input.type = "text"; input.value = value; input.disabled = true;
+  row.appendChild(input);
+  return row;
+}
+
+// HOM-119: when there's no slot selected in Sections view, the inspector
+// shows section-level controls (name, default-on-new-page toggle,
+// delete). Kept here rather than embedded in the sidebar so the
+// inspector stays the single source of "the thing you're editing."
+function renderSectionSettingsInspector(body) {
+  body.innerHTML = "";
+  if (!state.activeSection) {
+    body.innerHTML = '<div class="empty-inspector">No section selected. Click + Section in the toolbar to create one, or pick an existing section from the tabs.</div>';
+    return;
+  }
+  const section = state.doc.sections[state.activeSection];
+  if (!section) { body.innerHTML = ""; return; }
+
+  const banner = inspectorBanner(
+    "Editing section <b>" + escapeHTML(state.activeSection) + "</b>. "
+    + "Add slots from the left rail; pages opt in via the Sections checkboxes in Layout view.");
+  body.appendChild(banner);
+
+  const settings = document.createElement("div");
+  settings.className = "section-settings";
+
+  const onLabel = document.createElement("label");
+  onLabel.className = "toggle-row";
+  const cb = document.createElement("input");
+  cb.type = "checkbox"; cb.checked = !!section.defaultOnNewPage;
+  cb.onchange = () => {
+    section.defaultOnNewPage = cb.checked;
+    markDirty();
+    renderSectionsRail();
+  };
+  onLabel.appendChild(cb);
+  const txt = document.createElement("span");
+  txt.textContent = "Include in new pages by default";
+  onLabel.appendChild(txt);
+  settings.appendChild(onLabel);
+
+  const delBtn = document.createElement("button");
+  delBtn.className = "danger";
+  delBtn.style.cssText = "width:100%;padding:7px;font-size:12px;background:transparent;border-color:rgba(224,98,92,0.4);color:#f4a39e;";
+  delBtn.textContent = "Delete section";
+  delBtn.onclick = () => deleteSection(state.activeSection);
+  settings.appendChild(delBtn);
+
+  body.appendChild(settings);
+}
+
+function escapeHTML(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function inspectorRow(label) {
@@ -652,9 +1109,8 @@ function inspectorCheckRow(label, field, value) {
 }
 
 function commitSlotField(field, value) {
-  const page = state.doc.pages[state.activePage];
-  if (!page || state.selectedSlot == null) return;
-  const slot = page.slots[state.selectedSlot];
+  const slot = resolveBackingSlot(state.selectedSlot);
+  if (!slot) return;
   // Bounds-check geometry fields against the canvas.
   if (field === "x") value = clamp(value, 0, state.doc.canvas.width - slot.w);
   if (field === "y") value = clamp(value, 0, state.doc.canvas.height - slot.h);
@@ -667,14 +1123,19 @@ function commitSlotField(field, value) {
   renderOverlapBanner();
 }
 
-// ---------- HOM-111: overlap detection ----------
-function computeOverlappingIndices(slots) {
+// ---------- HOM-111 + HOM-119: overlap detection ----------
+// computeOverlappingEntries works on the entry array (which already
+// merges page + section + override slots), so the overlap UI reflects
+// what the agent will validate at Save time.
+function computeOverlappingEntries(entries) {
   const out = new Set();
-  for (let i = 0; i < slots.length; i++) {
-    if (slots[i].hidden) continue;
-    for (let j = i + 1; j < slots.length; j++) {
-      if (slots[j].hidden) continue;
-      if (rectsOverlap(slots[i], slots[j])) {
+  for (let i = 0; i < entries.length; i++) {
+    const a = entries[i].slot;
+    if (a.hidden) continue;
+    for (let j = i + 1; j < entries.length; j++) {
+      const b = entries[j].slot;
+      if (b.hidden) continue;
+      if (rectsOverlap(a, b)) {
         out.add(i); out.add(j);
       }
     }
@@ -688,41 +1149,46 @@ function rectsOverlap(a, b) {
 }
 
 function renderOverlapBanner() {
-  const page = state.doc.pages[state.activePage];
-  if (!page) return;
-  const overlapping = computeOverlappingIndices(page.slots);
+  const entries = activeEntries();
+  const overlapping = computeOverlappingEntries(entries);
   const banner = $("overlap-banner");
   if (overlapping.size === 0) { banner.classList.remove("show"); return; }
-  // Count distinct overlapping pairs.
   let pairs = 0;
-  for (let i = 0; i < page.slots.length; i++) {
-    if (page.slots[i].hidden) continue;
-    for (let j = i + 1; j < page.slots.length; j++) {
-      if (page.slots[j].hidden) continue;
-      if (rectsOverlap(page.slots[i], page.slots[j])) pairs++;
+  for (let i = 0; i < entries.length; i++) {
+    if (entries[i].slot.hidden) continue;
+    for (let j = i + 1; j < entries.length; j++) {
+      if (entries[j].slot.hidden) continue;
+      if (rectsOverlap(entries[i].slot, entries[j].slot)) pairs++;
     }
   }
-  $("overlap-msg").textContent = `${pairs} overlapping slot pair${pairs === 1 ? "" : "s"} on this page — Save will be rejected by the agent until resolved.`;
+  const scope = state.view === "sections" ? "section" : "page";
+  $("overlap-msg").textContent = pairs + " overlapping slot pair" + (pairs === 1 ? "" : "s")
+    + " on this " + scope + " — Save will be rejected by the agent until resolved.";
   banner.classList.add("show");
 }
 
 function autoResolveOverlaps() {
-  const page = state.doc.pages[state.activePage];
-  if (!page) return;
-  // Shrink each overlapping slot by 20px from its right/bottom edges until
-  // it stops overlapping any earlier slot. Simple greedy pass; users with
-  // pathological layouts can manually fix the residue.
-  for (let i = 1; i < page.slots.length; i++) {
-    if (page.slots[i].hidden) continue;
+  // Auto-resolve only operates on the active list of MUTABLE slots in
+  // the current view. In layout view that's the page's own slots; in
+  // sections view, the active section's slots. Section/override slots
+  // mixed with page slots are not auto-shrunk — those should be
+  // resolved deliberately (drag the page slot away, or move the
+  // section default).
+  const list = (state.view === "sections")
+    ? (state.doc.sections[state.activeSection] || {}).slots
+    : (state.doc.pages[state.activePage] || {}).slots;
+  if (!list) return;
+  for (let i = 1; i < list.length; i++) {
+    if (list[i].hidden) continue;
     let attempts = 0;
     while (attempts < 50) {
       let conflict = false;
       for (let j = 0; j < i; j++) {
-        if (page.slots[j].hidden) continue;
-        if (rectsOverlap(page.slots[i], page.slots[j])) { conflict = true; break; }
+        if (list[j].hidden) continue;
+        if (rectsOverlap(list[i], list[j])) { conflict = true; break; }
       }
       if (!conflict) break;
-      const s = page.slots[i];
+      const s = list[i];
       if (s.w > SNAP_PX * 2) s.w -= SNAP_PX;
       else if (s.h > SNAP_PX * 2) s.h -= SNAP_PX;
       else break;
@@ -1008,33 +1474,90 @@ function switchPage(name) {
   renderAll();
 }
 
+function switchSection(name) {
+  state.activeSection = name;
+  state.selectedSlot = null;
+  renderAll();
+}
+
 function addSlot(moduleName) {
-  const page = ensurePage(state.activePage);
-  // Drop a sensible default rect — 400x200 centered, snapped to grid.
   const { width, height } = state.doc.canvas;
   const w = 400, h = 200;
   const x = snap(Math.max(0, Math.floor((width - w) / 2)));
   const y = snap(Math.max(0, Math.floor((height - h) / 2)));
-  page.slots.push({ module: moduleName, x, y, w, h, zIndex: 0, hidden: false });
-  state.selectedSlot = page.slots.length - 1;
+  const newSlot = { module: moduleName, x, y, w, h, zIndex: 0, hidden: false };
+  if (state.view === "sections") {
+    if (!state.activeSection) {
+      toast("err", "no active section — create one with + Section first");
+      return;
+    }
+    const section = state.doc.sections[state.activeSection];
+    if (!section.slots) section.slots = [];
+    // Section validator rejects duplicate modules (overrides identify by
+    // module). Surface the conflict client-side with a friendlier toast.
+    if (section.slots.some(s => s.module === moduleName)) {
+      toast("err", "section already contains a slot for " + moduleName);
+      return;
+    }
+    section.slots.push(newSlot);
+    state.selectedSlot = { kind: "sectionDefault", index: section.slots.length - 1 };
+  } else {
+    const page = ensurePage(state.activePage);
+    page.slots.push(newSlot);
+    state.selectedSlot = { kind: "page", index: page.slots.length - 1 };
+  }
   markDirty();
   renderAll();
 }
 
 function ensurePage(name) {
-  if (!state.doc.pages[name]) state.doc.pages[name] = { slots: [] };
-  return state.doc.pages[name];
+  if (!state.doc.pages[name]) {
+    state.doc.pages[name] = { slots: [], sections: [], sectionOverrides: [] };
+  }
+  return ensurePageDefaults(state.doc.pages[name]);
+}
+
+// HOM-119: new pages auto-include any section with defaultOnNewPage.
+// The user can still uncheck them via the Layout-view sidebar.
+function defaultSectionsForNewPage() {
+  return Object.entries(state.doc.sections || {})
+    .filter(([, section]) => section.defaultOnNewPage)
+    .map(([name]) => name);
 }
 
 function newPage() {
+  if (state.view === "sections") { newSection(); return; }
   const name = prompt("Page name (lowercase, no spaces):", "page" + (Object.keys(state.doc.pages).length + 1));
   if (!name) return;
   if (state.doc.pages[name]) {
     toast("err", `page "${name}" already exists`);
     return;
   }
-  ensurePage(name);
+  state.doc.pages[name] = {
+    slots: [],
+    sections: defaultSectionsForNewPage(),
+    sectionOverrides: [],
+  };
   state.activePage = name;
+  state.selectedSlot = null;
+  markDirty();
+  renderAll();
+}
+
+function newSection() {
+  const name = prompt(
+    "Section name (lowercase identifier — e.g. \"scene-strip\", \"mascot\"):",
+    "section" + (Object.keys(state.doc.sections || {}).length + 1),
+  );
+  if (!name) return;
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  if (state.doc.sections[trimmed]) {
+    toast("err", `section "${trimmed}" already exists`);
+    return;
+  }
+  state.doc.sections[trimmed] = { slots: [], defaultOnNewPage: false };
+  state.activeSection = trimmed;
   state.selectedSlot = null;
   markDirty();
   renderAll();
@@ -1053,11 +1576,100 @@ function deletePage(name) {
   renderAll();
 }
 
-function deleteSelectedSlot() {
-  const page = state.doc.pages[state.activePage];
-  if (!page || state.selectedSlot == null) return;
-  page.slots.splice(state.selectedSlot, 1);
+function deleteSection(name) {
+  if (!confirm(`Delete section "${name}"? Pages that included it lose those slots; modules stay in the registry.`)) return;
+  delete state.doc.sections[name];
+  // Strip references + overrides from every page so the doc stays
+  // internally consistent (matches the agent-side DeleteSection behavior).
+  for (const page of Object.values(state.doc.pages)) {
+    ensurePageDefaults(page);
+    page.sections = page.sections.filter(s => s !== name);
+    page.sectionOverrides = page.sectionOverrides.filter(o => o.section !== name);
+  }
+  if (state.activeSection === name) {
+    const remaining = Object.keys(state.doc.sections);
+    state.activeSection = remaining.length ? remaining.sort()[0] : null;
+  }
   state.selectedSlot = null;
+  markDirty();
+  renderAll();
+}
+
+function deleteSelectedSlot() {
+  const sel = state.selectedSlot;
+  if (!sel) return;
+  if (sel.kind === "page") {
+    const page = state.doc.pages[state.activePage];
+    if (!page) return;
+    page.slots.splice(sel.index, 1);
+  } else if (sel.kind === "sectionDefault") {
+    const section = state.doc.sections[state.activeSection];
+    if (!section) return;
+    const removed = section.slots[sel.index];
+    section.slots.splice(sel.index, 1);
+    // Drop any orphaned overrides across pages — their target slot
+    // module is gone. Mirrors the store's section-change validation.
+    if (removed) {
+      for (const page of Object.values(state.doc.pages)) {
+        ensurePageDefaults(page);
+        page.sectionOverrides = page.sectionOverrides.filter(
+          o => !(o.section === state.activeSection && o.module === removed.module));
+      }
+    }
+  }
+  state.selectedSlot = null;
+  markDirty();
+  renderAll();
+}
+
+// HOM-119: section inclusion checkbox on the Layout sidebar.
+function toggleSectionInclusion(name, include) {
+  const page = ensurePage(state.activePage);
+  if (include) {
+    if (!page.sections.includes(name)) page.sections.push(name);
+  } else {
+    page.sections = page.sections.filter(s => s !== name);
+    // Drop any overrides for the section we just removed — the override
+    // would be orphaned otherwise.
+    page.sectionOverrides = page.sectionOverrides.filter(o => o.section !== name);
+    // If the selected slot belonged to the removed section, clear it.
+    const sel = state.selectedSlot;
+    if (sel && (sel.kind === "section" || sel.kind === "override") && sel.section === name) {
+      state.selectedSlot = null;
+    }
+  }
+  markDirty();
+  renderAll();
+}
+
+// HOM-119: snapshot the current section default geometry as a per-page
+// override. The next renderCanvas surfaces the override (solid border,
+// ✱ badge) and selecting it points the inspector at the override.
+function createOverride(section, module) {
+  const page = ensurePage(state.activePage);
+  if (findOverride(page, section, module)) return;
+  const sectionDef = state.doc.sections[section];
+  if (!sectionDef) return;
+  const slot = (sectionDef.slots || []).find(s => s.module === module);
+  if (!slot) return;
+  page.sectionOverrides.push({
+    section, module,
+    x: slot.x, y: slot.y, w: slot.w, h: slot.h,
+    zIndex: slot.zIndex || 0,
+    hidden: !!slot.hidden,
+  });
+  state.selectedSlot = { kind: "override", section, module };
+  markDirty();
+  renderAll();
+}
+
+function dropOverride(section, module) {
+  const page = state.doc.pages[state.activePage];
+  if (!page || !page.sectionOverrides) return;
+  page.sectionOverrides = page.sectionOverrides.filter(
+    o => !(o.section === section && o.module === module));
+  // After dropping, re-select the section default slot.
+  state.selectedSlot = { kind: "section", section, module };
   markDirty();
   renderAll();
 }
@@ -1065,13 +1677,16 @@ function deleteSelectedSlot() {
 function markDirty() { state.dirty = true; renderSaveStatus(); }
 
 // ---------- drag / resize ----------
-function beginDrag(e, index) {
+// HOM-119: drag/resize take a selector and mutate via resolveBackingSlot,
+// so dragging a section slot in page context edits the section default
+// (no override created), dragging an override edits the override, etc.
+function beginDrag(e, sel) {
   e.preventDefault();
-  const newSelection = state.selectedSlot !== index;
-  state.selectedSlot = index;
+  const newSelection = !selectorsEqual(state.selectedSlot, sel);
+  state.selectedSlot = sel;
   if (newSelection) renderInspector();
-  const page = state.doc.pages[state.activePage];
-  const slot = page.slots[index];
+  const slot = resolveBackingSlot(sel);
+  if (!slot) { renderCanvas(); return; }
   const startX = e.clientX, startY = e.clientY;
   const origX = slot.x, origY = slot.y;
 
@@ -1090,14 +1705,14 @@ function beginDrag(e, index) {
   };
   window.addEventListener("mousemove", move);
   window.addEventListener("mouseup", up);
-  // Selection re-render for handles to appear on the FIRST click.
+  // First-click re-render so handles appear immediately.
   renderCanvas();
 }
 
-function beginResize(e, index, corner) {
+function beginResize(e, sel, corner) {
   e.preventDefault();
-  const page = state.doc.pages[state.activePage];
-  const slot = page.slots[index];
+  const slot = resolveBackingSlot(sel);
+  if (!slot) return;
   const startX = e.clientX, startY = e.clientY;
   const origX = slot.x, origY = slot.y, origW = slot.w, origH = slot.h;
 
@@ -1109,7 +1724,6 @@ function beginResize(e, index, corner) {
     if (corner.includes("s")) h = snap(origH + dy);
     if (corner.includes("w")) { x = snap(origX + dx); w = origW - (x - origX); }
     if (corner.includes("n")) { y = snap(origY + dy); h = origH - (y - origY); }
-    // Enforce minimum + bounds.
     w = Math.max(SNAP_PX, w);
     h = Math.max(SNAP_PX, h);
     x = clamp(x, 0, state.doc.canvas.width - w);
@@ -1138,6 +1752,7 @@ async function save() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         canvas: state.doc.canvas,
+        sections: state.doc.sections || {},
         pages: state.doc.pages,
       }),
     });
@@ -1154,9 +1769,13 @@ async function save() {
     setTimeout(() => { if (!state.dirty) status.className = "save-status"; }, 2000);
     const wrote = result.pagesWritten || [];
     const removed = result.pagesDeleted || [];
+    const wroteSec = result.sectionsWritten || [];
+    const removedSec = result.sectionsDeleted || [];
     const parts = [];
     if (wrote.length) parts.push(`wrote ${wrote.length} page${wrote.length === 1 ? "" : "s"}`);
-    if (removed.length) parts.push(`removed ${removed.length}`);
+    if (removed.length) parts.push(`removed ${removed.length} page${removed.length === 1 ? "" : "s"}`);
+    if (wroteSec.length) parts.push(`wrote ${wroteSec.length} section${wroteSec.length === 1 ? "" : "s"}`);
+    if (removedSec.length) parts.push(`removed ${removedSec.length} section${removedSec.length === 1 ? "" : "s"}`);
     if (result.pagesTfBytes) parts.push(`pages.tf ${result.pagesTfBytes}B`);
     toast("ok", parts.length ? parts.join(" · ") : "no changes");
   } catch (e) {
@@ -1182,7 +1801,31 @@ function toast(kind, msg) {
 // ---------- wire ----------
 $("new-page").onclick = newPage;
 $("save").onclick = save;
-$("view-layout").onclick = () => { state.view = "layout"; renderAll(); };
+// HOM-120: commit on blur or Enter so partial typing doesn't reflow.
+function wireCanvasSizeInput(el, field) {
+  el.addEventListener("change", () => commitCanvasSize(field, el.value));
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") el.blur();
+  });
+}
+wireCanvasSizeInput($("canvas-w"), "width");
+wireCanvasSizeInput($("canvas-h"), "height");
+$("view-layout").onclick = () => {
+  state.view = "layout";
+  state.selectedSlot = null;
+  renderAll();
+};
+$("view-sections").onclick = () => {
+  state.view = "sections";
+  state.selectedSlot = null;
+  // Default to the first section, or create a sentinel "untitled" via
+  // the +Section prompt the user already drives. No auto-create here.
+  if (!state.activeSection) {
+    const names = Object.keys(state.doc.sections || {}).sort();
+    state.activeSection = names[0] || null;
+  }
+  renderAll();
+};
 $("view-modules").onclick = () => {
   state.view = "modules";
   state.editingModuleId = null;
@@ -1193,11 +1836,19 @@ $("overlap-resolve").onclick = autoResolveOverlaps;
 $("add-module-btn").onclick = () => { state.editingModuleId = ""; renderModulesView(); };
 window.addEventListener("keydown", (e) => {
   if ((e.key === "Delete" || e.key === "Backspace")
-      && state.selectedSlot != null
+      && state.selectedSlot
       && e.target.tagName !== "INPUT"
       && e.target.tagName !== "TEXTAREA") {
-    e.preventDefault();
-    deleteSelectedSlot();
+    // Delete key only operates on slots we own — page slots and
+    // section-default slots. Section slots in page context and overrides
+    // have their own dedicated actions in the inspector (Drop override)
+    // and getting deleted from a section's slot list would surprise the
+    // user editing a page.
+    const k = state.selectedSlot.kind;
+    if (k === "page" || k === "sectionDefault") {
+      e.preventDefault();
+      deleteSelectedSlot();
+    }
   }
 });
 $("canvas").addEventListener("mousedown", (e) => {

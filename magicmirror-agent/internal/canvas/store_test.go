@@ -113,13 +113,13 @@ func TestSavePage_RejectsOutOfBoundsSlot(t *testing.T) {
 	_, _ = s.SaveCanvas(Canvas{Width: 1080, Height: 1780, DefaultPage: "home"})
 
 	cases := map[string]Slot{
-		"negative x":         {Module: "clock", X: -1, Y: 0, W: 100, H: 100},
-		"negative y":         {Module: "clock", X: 0, Y: -1, W: 100, H: 100},
-		"zero width":         {Module: "clock", X: 0, Y: 0, W: 0, H: 100},
-		"zero height":        {Module: "clock", X: 0, Y: 0, W: 100, H: 0},
-		"exceeds canvas x":   {Module: "clock", X: 1000, Y: 0, W: 200, H: 100},
-		"exceeds canvas y":   {Module: "clock", X: 0, Y: 1700, W: 100, H: 200},
-		"empty module name":  {Module: "", X: 0, Y: 0, W: 100, H: 100},
+		"negative x":        {Module: "clock", X: -1, Y: 0, W: 100, H: 100},
+		"negative y":        {Module: "clock", X: 0, Y: -1, W: 100, H: 100},
+		"zero width":        {Module: "clock", X: 0, Y: 0, W: 0, H: 100},
+		"zero height":       {Module: "clock", X: 0, Y: 0, W: 100, H: 0},
+		"exceeds canvas x":  {Module: "clock", X: 1000, Y: 0, W: 200, H: 100},
+		"exceeds canvas y":  {Module: "clock", X: 0, Y: 1700, W: 100, H: 200},
+		"empty module name": {Module: "", X: 0, Y: 0, W: 100, H: 100},
 	}
 	for name, slot := range cases {
 		t.Run(name, func(t *testing.T) {
