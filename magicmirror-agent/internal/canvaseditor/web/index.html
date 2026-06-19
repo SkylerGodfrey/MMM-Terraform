@@ -155,39 +155,149 @@
     color: #f4a39e; width: 100%; padding: 7px; font-size: 12px; }
   .inspector-section .danger:hover { background: rgba(224, 98, 92, 0.1); }
 
-  /* ---------- HOM-111: Modules view ---------- */
-  section.modules-view { display: none; padding: 24px; overflow-y: auto;
-    background: var(--bg); height: 100%; }
+  /* ---------- HOM-111: Modules view (HOM-117 polish) ---------- */
+  /* Flex column so the action header stays put and the list scrolls
+     internally — the previous `height: 100%` didn't subtract the page
+     header, so the bottom of the section sat in the body's clipped
+     region and the "+ Add module" button at the bottom of the list
+     could be touch-scrolled past but never reached (HOM-117 bug). */
+  section.modules-view {
+    display: none;
+    flex-direction: column;
+    background: var(--bg);
+    height: 100%;
+    overflow: hidden;
+  }
   body.view-modules main { display: none; }
-  body.view-modules section.modules-view { display: block; }
-  .modules-view h1 { margin: 0 0 18px; font-size: 18px; }
-  .modules-view .module-row { display: grid;
-    grid-template-columns: 1fr 200px 90px 90px; align-items: center;
-    gap: 12px; padding: 12px 14px; border-radius: 6px;
-    background: var(--panel); margin-bottom: 6px; border: 1px solid transparent; }
-  .modules-view .module-row:hover { border-color: var(--line); }
-  .modules-view .module-row .name { font-family: ui-monospace, monospace;
-    font-size: 13px; }
-  .modules-view .module-row .placed { font-size: 11px; color: var(--ink-dim); }
-  .modules-view .module-row button.subtle { font-size: 11px; padding: 5px 10px; }
-  .modules-view .add-row { margin-top: 14px; }
+  body.view-modules section.modules-view { display: flex; }
 
-  .module-edit-pane { background: var(--panel); padding: 16px; border-radius: 8px;
-    margin-top: 12px; border: 1px solid var(--line); }
-  .module-edit-pane h3 { margin: 0 0 12px; font-size: 13px; color: var(--accent); }
-  .module-edit-pane .field { margin-bottom: 12px; }
-  .module-edit-pane label { display: block; font-size: 11px; color: var(--ink-dim);
-    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .modules-view .view-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 18px;
+    padding: 20px 28px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+  .modules-view .view-header h1 {
+    margin: 0; font-size: 18px; letter-spacing: 0.01em;
+  }
+  .modules-view .view-header h1 .count {
+    margin-left: 10px; color: var(--ink-dim); font-weight: 400; font-size: 13px;
+  }
+  .modules-view .view-header .hint {
+    margin: 4px 0 0; font-size: 12px; color: var(--ink-dim); max-width: 44ch;
+  }
+  .modules-view .view-header .primary { padding: 9px 18px; }
+
+  .modules-scroll {
+    flex: 1; min-height: 0;
+    overflow-y: auto;
+    padding: 18px 28px 48px;
+  }
+
+  .modules-view .module-row {
+    display: grid;
+    grid-template-columns: 1fr 240px auto;
+    align-items: center;
+    gap: 16px;
+    padding: 13px 16px;
+    border-radius: 8px;
+    background: var(--panel);
+    margin-bottom: 6px;
+    border: 1px solid transparent;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .modules-view .module-row:hover {
+    border-color: var(--line); background: var(--panel-elev);
+  }
+  .modules-view .module-row .name {
+    display: flex; align-items: center; gap: 10px;
+    font-family: ui-monospace, "JetBrains Mono", monospace;
+    font-size: 13px; color: var(--ink);
+  }
+  .modules-view .module-row .name::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--success); flex-shrink: 0;
+    box-shadow: 0 0 0 3px rgba(95, 184, 120, 0.12);
+  }
+  .modules-view .module-row.unplaced .name { color: var(--ink-dim); }
+  .modules-view .module-row.unplaced .name::before {
+    background: var(--ink-dim); box-shadow: none; opacity: 0.5;
+  }
+  .modules-view .module-row .placed {
+    font-size: 11px; color: var(--ink-dim);
+    display: flex; flex-direction: column; gap: 2px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .modules-view .module-row .placed .pages {
+    font-family: ui-monospace, monospace; font-size: 12px;
+    color: var(--ink); text-transform: none; letter-spacing: 0;
+  }
+  .modules-view .module-row .row-actions { display: flex; gap: 6px; }
+  .modules-view .module-row button.subtle { font-size: 12px; padding: 6px 12px; }
+
+  /* Empty state: invite the primary action without depending on the
+     sticky header (the empty page should still feel directed). */
+  .modules-view .empty-state {
+    margin: 32px auto;
+    max-width: 380px; text-align: center;
+    padding: 32px 28px;
+    border: 1px dashed var(--line); border-radius: 12px;
+    color: var(--ink-dim);
+    background: linear-gradient(180deg, var(--panel) 0%, transparent 100%);
+  }
+  .modules-view .empty-state h3 {
+    margin: 0 0 6px; color: var(--ink); font-size: 15px; font-weight: 600;
+  }
+  .modules-view .empty-state p {
+    margin: 0 0 18px; line-height: 1.5;
+  }
+  .modules-view .empty-state button.primary { padding: 9px 22px; }
+
+  .module-edit-pane {
+    background: var(--panel); padding: 18px 18px 0;
+    border-radius: 10px; border: 1px solid var(--line);
+    margin-top: 24px; position: relative;
+  }
+  .module-edit-pane h3 {
+    margin: 0 0 14px; font-size: 11px; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  .module-edit-pane .field { margin-bottom: 14px; }
+  .module-edit-pane label {
+    display: block; font-size: 11px; color: var(--ink-dim);
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;
+  }
   .module-edit-pane input[type=text] {
     width: 100%; background: var(--panel-elev); color: var(--ink);
-    border: 1px solid var(--line); border-radius: 4px; padding: 7px 10px;
-    font: inherit; font-family: ui-monospace, monospace; font-size: 12px; }
+    border: 1px solid var(--line); border-radius: 5px; padding: 8px 10px;
+    font: inherit; font-family: ui-monospace, monospace; font-size: 12px;
+  }
+  .module-edit-pane input[type=text]:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
   .module-edit-pane textarea {
     width: 100%; min-height: 180px; resize: vertical;
     background: #0a0d12; color: var(--ink);
-    border: 1px solid var(--line); border-radius: 4px; padding: 10px;
-    font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.5; }
-  .module-edit-pane .actions { display: flex; gap: 8px; }
+    border: 1px solid var(--line); border-radius: 5px; padding: 10px;
+    font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.5;
+  }
+  .module-edit-pane textarea:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+  /* Sticky action bar inside the pane so Save/Cancel are always one
+     click away even when the JSON textarea grows. */
+  .module-edit-pane .actions {
+    display: flex; gap: 8px;
+    position: sticky; bottom: 0;
+    margin: 16px -18px 0; padding: 12px 18px;
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+    border-radius: 0 0 10px 10px;
+  }
   .module-edit-pane .actions .spacer { flex: 1; }
 
   /* HOM-111: "+ Custom" entry in module rail */
@@ -235,12 +345,17 @@
 </main>
 
 <section class="modules-view" id="modules-view">
-  <h1>Modules</h1>
-  <div id="modules-list"></div>
-  <div class="add-row">
-    <button class="subtle" id="add-module-btn">+ Add module</button>
+  <header class="view-header">
+    <div>
+      <h1>Modules <span class="count" id="modules-count"></span></h1>
+      <p class="hint">Anything you place on a page must be registered here first.</p>
+    </div>
+    <button class="primary" id="add-module-btn">+ Add module</button>
+  </header>
+  <div class="modules-scroll">
+    <div id="modules-list"></div>
+    <div id="module-edit"></div>
   </div>
-  <div id="module-edit"></div>
 </section>
 
 <div class="toast" id="toast"></div>
@@ -653,10 +768,11 @@ async function toggleDebug() {
   }
 }
 
-// ---------- HOM-111: Modules view ----------
+// ---------- HOM-111: Modules view (HOM-117 polish) ----------
 function renderModulesView() {
   const list = $("modules-list");
   list.innerHTML = "";
+
   const placement = {};
   for (const [pageName, page] of Object.entries(state.doc.pages || {})) {
     for (const slot of (page.slots || [])) {
@@ -664,34 +780,58 @@ function renderModulesView() {
     }
   }
   const sorted = state.modules.slice().sort((a, b) => a.module.localeCompare(b.module));
+  $("modules-count").textContent = sorted.length ? `· ${sorted.length}` : "";
+
   if (sorted.length === 0) {
-    list.innerHTML = '<div style="color:var(--ink-dim);font-size:12px;padding:14px 0;">No modules registered. Click + Add module below.</div>';
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.innerHTML = `
+      <h3>No modules registered</h3>
+      <p>Modules are the building blocks every page slot draws from. Add your first one — you can rename or remove it later.</p>
+      <button class="primary" type="button">+ Add your first module</button>
+    `;
+    empty.querySelector("button").onclick = () => {
+      state.editingModuleId = ""; renderModulesView();
+    };
+    list.appendChild(empty);
   }
+
   for (const m of sorted) {
+    const placedPages = placement[m.module] ? Array.from(placement[m.module]).sort() : null;
+    const isPlaced = !!placedPages;
+
     const row = document.createElement("div");
-    row.className = "module-row";
+    row.className = "module-row" + (isPlaced ? "" : " unplaced");
+
     const name = document.createElement("div");
-    name.className = "name"; name.textContent = m.module;
+    name.className = "name";
+    name.textContent = m.module;
     row.appendChild(name);
+
     const placed = document.createElement("div");
     placed.className = "placed";
-    placed.textContent = placement[m.module]
-      ? "Placed in: " + Array.from(placement[m.module]).sort().join(", ")
-      : "Unplaced";
+    placed.innerHTML = isPlaced
+      ? `<span>Placed on</span><span class="pages">${placedPages.join(", ")}</span>`
+      : `<span>Not placed</span>`;
     row.appendChild(placed);
+
+    const actions = document.createElement("div");
+    actions.className = "row-actions";
     const edit = document.createElement("button");
     edit.className = "subtle";
     edit.textContent = "Edit";
     edit.onclick = () => openModuleEditor(m.id);
-    row.appendChild(edit);
+    actions.appendChild(edit);
     const del = document.createElement("button");
     del.className = "subtle";
     del.textContent = "Delete";
     del.onclick = () => hardDeleteModule(m.id, m.module);
-    row.appendChild(del);
+    actions.appendChild(del);
+    row.appendChild(actions);
+
     list.appendChild(row);
   }
-  // If a module is being edited, render its pane below.
+
   renderModuleEditPane();
 }
 
@@ -758,6 +898,14 @@ function renderModuleEditPane() {
   box.appendChild(actions);
 
   pane.appendChild(box);
+
+  // HOM-117: bring the pane into view and focus the obvious entry
+  // point. For adds the name input; for edits the JSON textarea (since
+  // the name is locked and the body of work is the config).
+  requestAnimationFrame(() => {
+    box.scrollIntoView({ behavior: "smooth", block: "center" });
+    (m.id ? cfgInput : nameInput).focus();
+  });
 }
 
 function openModuleEditor(id) {
