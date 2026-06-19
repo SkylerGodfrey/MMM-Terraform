@@ -28,6 +28,7 @@ import (
 
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/canvas"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mmconfig"
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/scenes2sync"
 	"github.com/gin-gonic/gin"
 )
 
@@ -137,12 +138,22 @@ type saveRequest struct {
 }
 
 type saveResponse struct {
-	PagesWritten    []string `json:"pagesWritten"`
-	PagesDeleted    []string `json:"pagesDeleted"`
-	SectionsWritten []string `json:"sectionsWritten"`
-	SectionsDeleted []string `json:"sectionsDeleted"`
-	PagesTfPath     string   `json:"pagesTfPath"`
-	PagesTfBytes    int      `json:"pagesTfBytes"`
+	PagesWritten    []string         `json:"pagesWritten"`
+	PagesDeleted    []string         `json:"pagesDeleted"`
+	SectionsWritten []string         `json:"sectionsWritten"`
+	SectionsDeleted []string         `json:"sectionsDeleted"`
+	PagesTfPath     string           `json:"pagesTfPath"`
+	PagesTfBytes    int              `json:"pagesTfBytes"`
+	Scenes2Sync     *scenes2SyncInfo `json:"scenes2Sync,omitempty"`
+}
+
+// HOM-127: surfaces the MMM-Scenes2 / MMM-Canvas auto-sync result so
+// the editor can show a toast "added Scenes2 button for <page>".
+type scenes2SyncInfo struct {
+	AddedScenes   []string `json:"addedScenes,omitempty"`
+	RemovedScenes []string `json:"removedScenes,omitempty"`
+	CanvasUpdated bool     `json:"canvasUpdated"`
+	ScenesUpdated bool     `json:"scenesUpdated"`
 }
 
 func (h *handlers) postSave(c *gin.Context) {
@@ -215,6 +226,36 @@ func (h *handlers) postSave(c *gin.Context) {
 		out.PagesTfBytes = len(hcl)
 	}
 
+	// HOM-127: keep MMM-Scenes2 + MMM-Canvas in step with the canvas
+	// page set so a newly-added page is reachable from the mirror
+	// without the user hand-editing two module config blocks. We
+	// reconcile against the full page set rather than diffing this
+	// save's adds/removes — that self-heals pages that pre-date the
+	// sync feature or got out of step via direct config edits. The
+	// reconcile runs on every save; idempotent when nothing changed.
+	pageNames := make([]string, 0, len(req.Pages))
+	for name := range req.Pages {
+		pageNames = append(pageNames, name)
+	}
+	syncRes, err := scenes2sync.Reconcile(h.mm, pageNames)
+	if err != nil {
+		// Layout is already saved; sync failure shouldn't undo that.
+		// Surface in the response so the editor toast can warn.
+		out.Scenes2Sync = &scenes2SyncInfo{}
+		c.JSON(http.StatusOK, gin.H{
+			"saveResponse":     out,
+			"scenes2SyncError": err.Error(),
+		})
+		return
+	}
+	if syncRes.CanvasUpdated || syncRes.ScenesUpdated || len(syncRes.AddedScenes) > 0 || len(syncRes.RemovedScenes) > 0 {
+		out.Scenes2Sync = &scenes2SyncInfo{
+			AddedScenes:   syncRes.AddedScenes,
+			RemovedScenes: syncRes.RemovedScenes,
+			CanvasUpdated: syncRes.CanvasUpdated,
+			ScenesUpdated: syncRes.ScenesUpdated,
+		}
+	}
 	c.JSON(http.StatusOK, out)
 }
 
