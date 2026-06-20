@@ -18,6 +18,7 @@ type Config struct {
 // PortalConfig holds family-portal settings
 type PortalConfig struct {
 	ChoresFile       string `mapstructure:"chores_file"`
+	ChoresDBPath     string `mapstructure:"chores_db_path"`
 	PhotosDir        string `mapstructure:"photos_dir"`
 	RewardsFile      string `mapstructure:"rewards_file"`
 	RewardsImagesDir string `mapstructure:"rewards_images_dir"`
@@ -56,6 +57,18 @@ func (c *Config) ChoresFile() string {
 		return c.Portal.ChoresFile
 	}
 	return filepath.Join(c.MagicMirror.InstallPath(), "modules", "MMM-Chores", "chores.yaml")
+}
+
+// ChoresDBPath returns the MMM-Chores runtime-state SQLite file the family
+// portal reads and writes (HOM-132). The Node module owns the schema; the
+// agent opens the same file in WAL mode for concurrent access. Defaults to the
+// module's data/chores.db under the MagicMirror install (matching store/index.js
+// in MMM-Chores), so existing agent configs need no edit.
+func (c *Config) ChoresDBPath() string {
+	if c.Portal.ChoresDBPath != "" {
+		return c.Portal.ChoresDBPath
+	}
+	return filepath.Join(c.MagicMirror.InstallPath(), "modules", "MMM-Chores", "data", "chores.db")
 }
 
 // PhotosDir returns the slideshow album directory edited by the family

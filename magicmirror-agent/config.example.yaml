@@ -20,6 +20,10 @@ portal:
   # Path to the MMM-Chores chores.yaml edited by the family portal
   # (defaults to <install>/modules/MMM-Chores/chores.yaml)
   # chores_file: "/home/pi/MagicMirror/modules/MMM-Chores/chores.yaml"
+  # Path to the MMM-Chores runtime-state SQLite DB (HOM-132). The Node module
+  # owns the schema; the agent opens the same file in WAL mode for the portal.
+  # (defaults to <install>/modules/MMM-Chores/data/chores.db)
+  # chores_db_path: "/home/sgodfrey/MagicMirror/modules/MMM-Chores/data/chores.db"
   # Slideshow album directory managed by the family portal
   # (defaults to <install>/modules/MagicMirrorPhotos)
   # photos_dir: "/home/pi/MagicMirror/modules/MagicMirrorPhotos"
