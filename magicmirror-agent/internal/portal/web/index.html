@@ -199,6 +199,110 @@
   .chore .tokens { flex: none; font-size: 13px; font-weight: 700; color: var(--gold); white-space: nowrap; }
   .empty-note { text-align: center; color: var(--ink-dim); font-size: 14.5px; padding: 28px 0 10px; }
 
+  /* ---------- toggle switch ---------- */
+  .toggle-field { display: flex; align-items: center; gap: 14px; }
+  .toggle-text { flex: 1; min-width: 0; }
+  .toggle-text strong { display: block; font-size: 15px; font-weight: 600; }
+  .toggle-text small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--ink-dim); line-height: 1.4; }
+  .switch {
+    flex: none; width: 50px; height: 30px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--bg-raised);
+    position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .switch span {
+    position: absolute; top: 3px; left: 3px; width: 22px; height: 22px;
+    border-radius: 50%; background: var(--ink-dim); transition: transform 0.2s, background 0.2s;
+  }
+  .switch[aria-checked="true"] {
+    background: linear-gradient(180deg, rgba(240,180,84,0.3), rgba(240,180,84,0.12));
+    border-color: rgba(240, 180, 84, 0.55);
+  }
+  .switch[aria-checked="true"] span { transform: translateX(20px); background: var(--gold); }
+
+  /* ---------- task cards (HOM-138 grouped-by-task) ---------- */
+  .task {
+    background: var(--bg-raised); border: 1px solid var(--line);
+    border-radius: 18px; padding: 15px 16px; margin-bottom: 10px;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: border-color 0.2s, transform 0.1s;
+    animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .task:active { transform: scale(0.99); }
+  .task .task-top { display: flex; align-items: baseline; gap: 10px; }
+  .task .task-name { font-weight: 600; font-size: 16.5px; flex: 1; min-width: 0; }
+  .task .task-tokens { flex: none; font-size: 13px; font-weight: 700; color: var(--gold); white-space: nowrap; }
+  .task .who { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .task .who span {
+    padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+    background: rgba(240, 180, 84, 0.1); border: 1px solid rgba(240, 180, 84, 0.22); color: var(--gold);
+  }
+  .task .who span.bounty { background: rgba(125,201,143,0.1); border-color: rgba(125,201,143,0.3); color: var(--ok); }
+  .task .who span.none { background: rgba(255,255,255,0.03); border-color: var(--line); color: var(--ink-dim); }
+  .task .task-meta {
+    display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 10px;
+    font-size: 12px; color: var(--ink-dim);
+  }
+  .task .task-meta .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; font-size: 11px;
+  }
+  .task .task-meta .tag.auto { color: var(--ok); }
+  .task .task-meta .tag.high { color: var(--gold); }
+
+  /* ---------- approval queue (HOM-139) ---------- */
+  .approve-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+  .approve-bar .count-pill { flex: 1; font-size: 14px; color: var(--ink-dim); }
+  .approve-bar .count-pill b { color: var(--ink); }
+  .pending-item {
+    background: var(--bg-raised); border: 1px solid var(--line);
+    border-radius: 18px; padding: 15px 16px; margin-bottom: 10px;
+    animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .pending-item .p-top { display: flex; align-items: baseline; gap: 10px; }
+  .pending-item .p-name { font-weight: 600; font-size: 16px; flex: 1; min-width: 0; }
+  .pending-item .p-tokens { flex: none; font-size: 13px; font-weight: 700; color: var(--gold); }
+  .pending-item .p-sub { margin-top: 4px; font-size: 13px; color: var(--ink-dim); }
+  .pending-item .p-sub b { color: var(--ink); font-weight: 600; }
+  .pending-item .p-actions { display: flex; gap: 10px; margin-top: 13px; }
+  .pending-item .p-actions .btn { padding: 11px; font-size: 14.5px; }
+  .btn.ok {
+    background: linear-gradient(150deg, var(--ok), #5aa873);
+    border-color: transparent; color: #0a1c0f;
+  }
+  .btn.deny { color: var(--bad); border-color: rgba(217, 124, 108, 0.4); }
+
+  /* ---------- activity log (HOM-140) ---------- */
+  .log-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .retention-note { margin: 0 4px 14px; font-size: 12.5px; color: var(--ink-dim); text-align: center; }
+  .event {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--bg-raised); border: 1px solid var(--line);
+    border-radius: 16px; padding: 13px 14px; margin-bottom: 8px;
+    animation: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .event .e-icon {
+    flex: none; width: 38px; height: 38px; border-radius: 11px;
+    display: grid; place-items: center; font-size: 18px;
+    background: rgba(240,180,84,0.08); border: 1px solid rgba(240,180,84,0.2);
+  }
+  .event.is-reverted .e-icon { opacity: 0.5; }
+  .event .e-body { flex: 1; min-width: 0; }
+  .event .e-title { font-weight: 600; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .event .e-sub { margin-top: 2px; font-size: 12px; color: var(--ink-dim); }
+  .event.is-reverted .e-title { text-decoration: line-through; text-decoration-color: rgba(154,160,168,0.6); color: var(--ink-dim); }
+  .event .e-revert {
+    flex: none; padding: 8px 14px; border-radius: 12px;
+    border: 1px solid rgba(217, 124, 108, 0.35); background: var(--bg-raised);
+    color: var(--bad); font-family: inherit; font-size: 13px; font-weight: 700;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .event .e-revert:active { transform: scale(0.96); }
+  .event .e-reverted-tag {
+    flex: none; font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--ink-dim);
+  }
+
   .fab {
     position: fixed; right: max(18px, env(safe-area-inset-right));
     bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + 14px);
@@ -457,6 +561,16 @@
       <div id="chores-root"><p class="empty-note">Fetching the chore list…</p></div>
     </section>
 
+    <section id="panel-approvals" role="tabpanel" aria-labelledby="tab-approvals" hidden>
+      <div id="approvals-root"><p class="empty-note">Checking the queue…</p></div>
+    </section>
+
+    <section id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" hidden>
+      <div class="log-filters" id="log-filters"></div>
+      <p class="retention-note" id="retention-note"></p>
+      <div id="activity-root"><p class="empty-note">Loading activity…</p></div>
+    </section>
+
     <section id="panel-rewards" role="tabpanel" aria-labelledby="tab-rewards" hidden>
       <div id="rewards-root"><p class="empty-note">Fetching the rewards…</p></div>
     </section>
@@ -499,6 +613,31 @@
   <div class="field">
     <label>Who does it?</label>
     <div class="chips" id="f-assignee"></div>
+  </div>
+
+  <div class="field" id="f-mode-field">
+    <label>How is it shared?</label>
+    <div class="chips" id="f-mode">
+      <button type="button" class="chip" data-mode="shared">Shared &mdash; first to finish</button>
+      <button type="button" class="chip" data-mode="independent">Each person their own</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>When?</label>
+    <div class="chips" id="f-time">
+      <button type="button" class="chip" data-time="anytime">Anytime</button>
+      <button type="button" class="chip" data-time="morning">Morning</button>
+      <button type="button" class="chip" data-time="nightly">Nightly</button>
+    </div>
+  </div>
+
+  <div class="field toggle-field" id="f-autoapprove-field">
+    <div class="toggle-text">
+      <strong>Auto-approve</strong>
+      <small>Skip the approval queue &mdash; tokens granted on check-off</small>
+    </div>
+    <button type="button" class="switch" id="f-autoapprove" role="switch" aria-checked="false"><span></span></button>
   </div>
 
   <div class="row2">
@@ -607,6 +746,21 @@
       </svg>
       Chores
     </button>
+    <button class="tab" id="tab-approvals" role="tab" aria-selected="false" aria-controls="panel-approvals" data-panel="approvals">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 11l3 3L22 4"/>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      </svg>
+      Approve
+    </button>
+    <button class="tab" id="tab-activity" role="tab" aria-selected="false" aria-controls="panel-activity" data-panel="activity">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 8v4l3 3"/>
+        <path d="M3.05 11a9 9 0 1 1 .5 4"/>
+        <path d="M3 4v4h4"/>
+      </svg>
+      Activity
+    </button>
     <button class="tab" id="tab-rewards" role="tab" aria-selected="false" aria-controls="panel-rewards" data-panel="rewards">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M12 8s-1.5-4-4-4a3 3 0 0 0 0 6h4M12 8s1.5-4 4-4a3 3 0 0 1 0 6h-4"/>
@@ -637,6 +791,7 @@
     var photosLoaded = false;
     var rewardsLoaded = false;
     var fabLabels = { chores: "Add chore", rewards: "Add reward", photos: "Add photos" };
+    var fabTabs = { chores: true, rewards: true, photos: true };
     function show(name) {
       activeTab = name;
       tabs.forEach(function (tab) {
@@ -644,6 +799,7 @@
         tab.setAttribute("aria-selected", String(selected));
         $("panel-" + tab.dataset.panel).hidden = !selected;
       });
+      $("fab").hidden = !fabTabs[name];
       $("fab-label").textContent = fabLabels[name] || "Add";
       if (name === "photos" && !photosLoaded) {
         photosLoaded = true;
@@ -653,6 +809,10 @@
         rewardsLoaded = true;
         loadRewards();
       }
+      // Approvals and Activity always refresh on entry — they're time-sensitive
+      // parent surfaces and small enough that a re-fetch is cheap.
+      if (name === "approvals") loadPending();
+      if (name === "activity") loadActivity();
     }
     tabs.forEach(function (tab) {
       tab.addEventListener("click", function () {
@@ -717,6 +877,20 @@
       return "";
     }
 
+    function choreAssignees(chore) {
+      if (Array.isArray(chore.assignees)) return chore.assignees.filter(Boolean);
+      if (chore.assignee) return [chore.assignee];
+      return [];
+    }
+
+    function timeLabel(t) {
+      if (t === "morning") return "Morning";
+      if (t === "nightly") return "Nightly";
+      return "";
+    }
+
+    // HOM-138: one card PER TASK (not per user), so a parent manages the whole
+    // family from a single row — assignees, mode, schedule, tokens, auto-approve.
     function render() {
       var root = $("chores-root");
       root.innerHTML = "";
@@ -728,113 +902,164 @@
         return;
       }
 
-      var groups = {};
-      var order = [];
       chores.forEach(function (chore) {
-        var key = chore.anyone ? "✨ Anyone can claim" : (chore.assignee || "Unassigned");
-        if (!groups[key]) { groups[key] = []; order.push(key); }
-        groups[key].push(chore);
-      });
-
-      order.forEach(function (key) {
-        var section = document.createElement("div");
-        section.className = "group";
-        var h = document.createElement("h3");
-        h.textContent = key + " ";
-        var count = document.createElement("span");
-        count.className = "count";
-        count.textContent = groups[key].length;
-        h.appendChild(count);
-        section.appendChild(h);
-
-        var ul = document.createElement("ul");
-        groups[key].forEach(function (chore) {
-          var li = document.createElement("li");
-          var btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "chore" + (chore.completed ? " is-done" : "");
-          btn.addEventListener("click", function () { openSheet(chore); });
-
-          var tick = document.createElement("span");
-          tick.className = "tick";
-          tick.innerHTML = "<svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='m5 13 4 4 10-10'/></svg>";
-          btn.appendChild(tick);
-
-          var body = document.createElement("span");
-          body.className = "body";
-          var title = document.createElement("span");
-          title.className = "title";
-          title.textContent = chore.name || "Unnamed chore";
-          body.appendChild(title);
-
-          var metaParts = [];
-          var rep = repeatLabel(chore.repeat);
-          if (rep) metaParts.push(rep);
-          if (chore.completed && chore.claimedBy) metaParts.push("done by " + chore.claimedBy);
-          var meta = document.createElement("span");
-          meta.className = "meta";
-          if (chore.priority === "high") {
-            var hi = document.createElement("span");
-            hi.className = "hi";
-            hi.textContent = "high priority";
-            meta.appendChild(hi);
-          }
-          metaParts.forEach(function (part) {
-            var sp = document.createElement("span");
-            sp.textContent = part;
-            meta.appendChild(sp);
-          });
-          if (meta.childNodes.length) body.appendChild(meta);
-          btn.appendChild(body);
-
-          if (typeof chore.tokens === "number") {
-            var tok = document.createElement("span");
-            tok.className = "tokens";
-            tok.textContent = "✦ " + chore.tokens;
-            btn.appendChild(tok);
-          }
-
-          li.appendChild(btn);
-          ul.appendChild(li);
+        var card = document.createElement("div");
+        card.className = "task";
+        card.setAttribute("role", "button");
+        card.setAttribute("tabindex", "0");
+        card.addEventListener("click", function () { openSheet(chore); });
+        card.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSheet(chore); }
         });
-        section.appendChild(ul);
-        root.appendChild(section);
+
+        var top = document.createElement("div");
+        top.className = "task-top";
+        var name = document.createElement("span");
+        name.className = "task-name";
+        name.textContent = chore.name || "Unnamed chore";
+        top.appendChild(name);
+        if (typeof chore.tokens === "number") {
+          var tok = document.createElement("span");
+          tok.className = "task-tokens";
+          tok.textContent = "✦ " + chore.tokens;
+          top.appendChild(tok);
+        }
+        card.appendChild(top);
+
+        var who = document.createElement("div");
+        who.className = "who";
+        if (chore.anyone) {
+          var b = document.createElement("span");
+          b.className = "bounty";
+          b.textContent = "✨ Anyone can claim";
+          who.appendChild(b);
+        } else {
+          var names = choreAssignees(chore);
+          if (names.length) {
+            names.forEach(function (n) {
+              var sp = document.createElement("span");
+              sp.textContent = n;
+              who.appendChild(sp);
+            });
+          } else {
+            var noneSp = document.createElement("span");
+            noneSp.className = "none";
+            noneSp.textContent = "No one assigned";
+            who.appendChild(noneSp);
+          }
+        }
+        card.appendChild(who);
+
+        var meta = document.createElement("div");
+        meta.className = "task-meta";
+        function tag(text, cls) {
+          var t = document.createElement("span");
+          t.className = "tag" + (cls ? " " + cls : "");
+          t.textContent = text;
+          meta.appendChild(t);
+        }
+        if (!chore.anyone && choreAssignees(chore).length > 1) {
+          tag(chore.mode === "independent" ? "Each their own" : "Shared");
+        }
+        var tl = timeLabel(chore.timeOfDay);
+        if (tl) tag(tl);
+        var rep = repeatLabel(chore.repeat);
+        if (rep) tag(rep);
+        if (chore.priority === "high") tag("High priority", "high");
+        if (chore.autoApprove) tag("Auto-approve", "auto");
+        if (meta.childNodes.length) card.appendChild(meta);
+
+        root.appendChild(card);
       });
     }
 
     /* ---------- bottom sheet ---------- */
     var editingId = null;
     var tokens = 1;
-    var selectedAssignee = null; // name string, or true for "anyone"
+    // Multi-assignee (HOM-138): a set of selected names, plus a bounty flag.
+    var selectedNames = {};   // name -> true
+    var bountyMode = false;   // "✨ Anyone" selected (clears names)
+    var choreMode = "shared"; // "shared" | "independent"
+    var choreTime = "anytime";
+    var autoApprove = false;
 
     function setTokens(value) {
       tokens = Math.max(0, Math.min(99, value));
       $("f-tokens").textContent = tokens;
     }
 
+    function selectedNameList() { return Object.keys(selectedNames); }
+
     function renderChips() {
       var box = $("f-assignee");
       box.innerHTML = "";
       var names = assignees.slice();
-      if (typeof selectedAssignee === "string" && names.indexOf(selectedAssignee) === -1) {
-        names.push(selectedAssignee);
-      }
-      names.forEach(function (name) { box.appendChild(makeChip(name, name)); });
-      box.appendChild(makeChip("✨ Anyone", true));
+      // Keep any selected name not in the known list (e.g. a legacy assignee).
+      selectedNameList().forEach(function (n) {
+        if (names.indexOf(n) === -1) names.push(n);
+      });
+      names.forEach(function (name) { box.appendChild(makeNameChip(name)); });
+
+      var anyone = document.createElement("button");
+      anyone.type = "button";
+      anyone.className = "chip";
+      anyone.textContent = "✨ Anyone";
+      anyone.setAttribute("aria-pressed", String(bountyMode));
+      anyone.addEventListener("click", function () {
+        bountyMode = !bountyMode;
+        if (bountyMode) selectedNames = {};
+        renderChips();
+        syncModeVisibility();
+      });
+      box.appendChild(anyone);
     }
 
-    function makeChip(label, value) {
+    function makeNameChip(name) {
       var chip = document.createElement("button");
       chip.type = "button";
       chip.className = "chip";
-      chip.textContent = label;
-      chip.setAttribute("aria-pressed", String(selectedAssignee === value));
+      chip.textContent = name;
+      chip.setAttribute("aria-pressed", String(!!selectedNames[name]));
       chip.addEventListener("click", function () {
-        selectedAssignee = value;
+        if (selectedNames[name]) delete selectedNames[name];
+        else { selectedNames[name] = true; bountyMode = false; }
         renderChips();
+        syncModeVisibility();
       });
       return chip;
     }
+
+    // The mode toggle only matters with 2+ assignees; auto-approve doesn't apply
+    // to bounty chores (they're claimed, not approved per assignee).
+    function syncModeVisibility() {
+      $("f-mode-field").style.display = (!bountyMode && selectedNameList().length > 1) ? "" : "none";
+      $("f-autoapprove-field").style.display = bountyMode ? "none" : "";
+    }
+
+    function renderModeChips() {
+      Array.prototype.forEach.call($("f-mode").children, function (chip) {
+        chip.setAttribute("aria-pressed", String(chip.dataset.mode === choreMode));
+      });
+    }
+    function renderTimeChips() {
+      Array.prototype.forEach.call($("f-time").children, function (chip) {
+        chip.setAttribute("aria-pressed", String(chip.dataset.time === choreTime));
+      });
+    }
+    function renderAutoApprove() {
+      $("f-autoapprove").setAttribute("aria-checked", String(autoApprove));
+    }
+
+    Array.prototype.forEach.call($("f-mode").children, function (chip) {
+      chip.addEventListener("click", function () { choreMode = chip.dataset.mode; renderModeChips(); });
+    });
+    Array.prototype.forEach.call($("f-time").children, function (chip) {
+      chip.addEventListener("click", function () { choreTime = chip.dataset.time; renderTimeChips(); });
+    });
+    $("f-autoapprove").addEventListener("click", function () {
+      autoApprove = !autoApprove;
+      renderAutoApprove();
+    });
 
     function ensureRepeatOption(repeat) {
       var select = $("f-repeat");
@@ -852,8 +1077,22 @@
       editingId = chore ? chore.id : null;
       $("sheet-title").textContent = chore ? "Edit chore" : "New chore";
       $("f-name").value = chore ? (chore.name || "") : "";
-      selectedAssignee = chore ? (chore.anyone ? true : (chore.assignee || null)) : null;
+
+      selectedNames = {};
+      bountyMode = chore ? !!chore.anyone : false;
+      if (chore && !chore.anyone) {
+        choreAssignees(chore).forEach(function (n) { selectedNames[n] = true; });
+      }
+      choreMode = chore && chore.mode === "independent" ? "independent" : "shared";
+      choreTime = chore && chore.timeOfDay ? chore.timeOfDay : "anytime";
+      autoApprove = chore ? !!chore.autoApprove : false;
+
       renderChips();
+      renderModeChips();
+      renderTimeChips();
+      renderAutoApprove();
+      syncModeVisibility();
+
       if (chore && typeof chore.repeat === "number") ensureRepeatOption(chore.repeat);
       $("f-repeat").value = chore && chore.repeat != null ? String(chore.repeat) : "";
       $("f-priority").value = chore && chore.priority ? chore.priority : "";
@@ -872,10 +1111,14 @@
       var repeat = null;
       if (repeatRaw === "daily" || repeatRaw === "weekly" || repeatRaw === "monthly") repeat = repeatRaw;
       else if (repeatRaw !== "") repeat = parseInt(repeatRaw, 10);
+      var names = selectedNameList();
       return {
         name: $("f-name").value.trim(),
-        assignee: typeof selectedAssignee === "string" ? selectedAssignee : "",
-        anyone: selectedAssignee === true,
+        assignees: bountyMode ? [] : names,
+        anyone: bountyMode,
+        mode: choreMode,
+        timeOfDay: choreTime,
+        autoApprove: bountyMode ? false : autoApprove,
         repeat: repeat,
         priority: $("f-priority").value,
         tokens: tokens
@@ -996,7 +1239,7 @@
       event.preventDefault();
       var body = payload();
       if (!body.name) { toast("Give the chore a name"); return; }
-      if (!body.anyone && !body.assignee) { toast("Pick who does it (or Anyone)"); return; }
+      if (!body.anyone && !body.assignees.length) { toast("Pick who does it (or Anyone)"); return; }
       $("btn-save").disabled = true;
       var req = editingId
         ? api("/chores/" + encodeURIComponent(editingId), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
@@ -1264,8 +1507,291 @@
       });
     });
 
+    /* ---------- approvals (HOM-139) ---------- */
+    function loadPending() {
+      var root = $("approvals-root");
+      return api("/pending").then(function (body) {
+        renderPending(body.pending || [], body.available !== false);
+      }).catch(function (err) {
+        root.innerHTML = "";
+        var note = document.createElement("p");
+        note.className = "empty-note";
+        note.textContent = "Couldn't load the queue: " + err.message;
+        root.appendChild(note);
+      });
+    }
+
+    function timeAgo(iso) {
+      if (!iso) return "";
+      var then = new Date(iso).getTime();
+      if (isNaN(then)) return "";
+      var secs = Math.max(0, Math.round((Date.now() - then) / 1000));
+      if (secs < 60) return "just now";
+      var mins = Math.round(secs / 60);
+      if (mins < 60) return mins + "m ago";
+      var hrs = Math.round(mins / 60);
+      if (hrs < 24) return hrs + "h ago";
+      return Math.round(hrs / 24) + "d ago";
+    }
+
+    function renderPending(items, available) {
+      var root = $("approvals-root");
+      root.innerHTML = "";
+      if (!available) {
+        var off = document.createElement("p");
+        off.className = "empty-note";
+        off.textContent = "The mirror's chore database isn't ready yet — approvals appear once the mirror has run.";
+        root.appendChild(off);
+        return;
+      }
+      if (!items.length) {
+        var note = document.createElement("p");
+        note.className = "empty-note";
+        note.textContent = "Nothing waiting — every chore is approved. ✦";
+        root.appendChild(note);
+        return;
+      }
+
+      var bar = document.createElement("div");
+      bar.className = "approve-bar";
+      var pill = document.createElement("div");
+      pill.className = "count-pill";
+      pill.innerHTML = "<b>" + items.length + "</b> waiting for approval";
+      bar.appendChild(pill);
+      var all = document.createElement("button");
+      all.type = "button";
+      all.className = "btn ok";
+      all.style.flex = "none";
+      all.style.padding = "10px 16px";
+      all.textContent = "Approve all";
+      all.addEventListener("click", function () { approveAll(items); });
+      bar.appendChild(all);
+      root.appendChild(bar);
+
+      items.forEach(function (item) {
+        var card = document.createElement("div");
+        card.className = "pending-item";
+
+        var top = document.createElement("div");
+        top.className = "p-top";
+        var name = document.createElement("span");
+        name.className = "p-name";
+        name.textContent = item.choreName || "Chore";
+        top.appendChild(name);
+        if (typeof item.tokens === "number" && item.tokens) {
+          var tk = document.createElement("span");
+          tk.className = "p-tokens";
+          tk.textContent = "✦ " + item.tokens;
+          top.appendChild(tk);
+        }
+        card.appendChild(top);
+
+        var sub = document.createElement("div");
+        sub.className = "p-sub";
+        sub.innerHTML = "<b>" + escapeHTML(item.user) + "</b>"
+          + (item.mode === "shared" && (item.assignees || []).length > 1 ? " · closes it for everyone" : "")
+          + " · " + timeAgo(item.createdAt);
+        card.appendChild(sub);
+
+        var actions = document.createElement("div");
+        actions.className = "p-actions";
+        var deny = document.createElement("button");
+        deny.type = "button";
+        deny.className = "btn deny";
+        deny.textContent = "Deny";
+        deny.addEventListener("click", function () { decide(item.id, "deny", deny, approve); });
+        var approve = document.createElement("button");
+        approve.type = "button";
+        approve.className = "btn ok";
+        approve.textContent = "Approve";
+        approve.addEventListener("click", function () { decide(item.id, "approve", deny, approve); });
+        actions.appendChild(deny);
+        actions.appendChild(approve);
+        card.appendChild(actions);
+
+        root.appendChild(card);
+      });
+    }
+
+    function decide(id, action, denyBtn, approveBtn) {
+      if (denyBtn) denyBtn.disabled = true;
+      if (approveBtn) approveBtn.disabled = true;
+      return api("/pending/" + encodeURIComponent(id) + "/" + action, { method: "POST" })
+        .then(function () { return loadPending(); })
+        .catch(function (err) {
+          toast(err.message);
+          if (denyBtn) denyBtn.disabled = false;
+          if (approveBtn) approveBtn.disabled = false;
+        });
+    }
+
+    function approveAll(items) {
+      if (!items.length) return;
+      if (!window.confirm("Approve all " + items.length + " pending chores?")) return;
+      var chain = Promise.resolve();
+      items.forEach(function (item) {
+        chain = chain.then(function () {
+          return api("/pending/" + encodeURIComponent(item.id) + "/approve", { method: "POST" })
+            .catch(function (err) { toast(err.message); });
+        });
+      });
+      chain.then(function () { loadPending(); });
+    }
+
+    /* ---------- activity log (HOM-140) ---------- */
+    var logTypeFilter = ""; // "" = all; else one of the four types
+    var EVENT_TYPES = [
+      { key: "", label: "All" },
+      { key: "chore_completed", label: "Chores", icon: "✓" },
+      { key: "tokens_earned", label: "Bonuses", icon: "✦" },
+      { key: "reward_redeemed", label: "Rewards", icon: "🎁" },
+      { key: "pokemon_catch", label: "Catches", icon: "◓" }
+    ];
+
+    function renderLogFilters() {
+      var box = $("log-filters");
+      box.innerHTML = "";
+      EVENT_TYPES.forEach(function (t) {
+        var chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chip";
+        chip.textContent = t.label;
+        chip.setAttribute("aria-pressed", String(logTypeFilter === t.key));
+        chip.addEventListener("click", function () {
+          logTypeFilter = t.key;
+          renderLogFilters();
+          loadActivity();
+        });
+        box.appendChild(chip);
+      });
+    }
+
+    function eventMeta(type) {
+      for (var i = 0; i < EVENT_TYPES.length; i++) {
+        if (EVENT_TYPES[i].key === type) return EVENT_TYPES[i];
+      }
+      return { label: type, icon: "•" };
+    }
+
+    function loadActivity() {
+      renderLogFilters();
+      var path = "/events" + (logTypeFilter ? "?type=" + encodeURIComponent(logTypeFilter) : "");
+      return api(path).then(function (body) {
+        var days = body.retentionDays;
+        $("retention-note").textContent = days
+          ? ("Showing the last " + days + " days. Older actions are pruned and can't be reverted.")
+          : "";
+        renderActivity(body.events || [], body.available !== false);
+      }).catch(function (err) {
+        $("activity-root").innerHTML = "";
+        var note = document.createElement("p");
+        note.className = "empty-note";
+        note.textContent = "Couldn't load activity: " + err.message;
+        $("activity-root").appendChild(note);
+      });
+    }
+
+    function eventTitle(ev) {
+      var p = ev.payload || {};
+      var who = ev.user || "Someone";
+      switch (ev.type) {
+        case "chore_completed": return who + " finished " + (p.name || "a chore");
+        case "tokens_earned": return who + " earned " + (p.amount || 0) + " bonus token" + ((p.amount === 1) ? "" : "s");
+        case "reward_redeemed": return who + " redeemed " + (p.reward || "a reward");
+        case "pokemon_catch": return who + " caught " + (p.pokemon || "a Pokémon");
+        default: return who + " — " + ev.type;
+      }
+    }
+
+    function eventSub(ev) {
+      var p = ev.payload || {};
+      var parts = [];
+      if (ev.type === "chore_completed" && typeof p.tokens === "number") parts.push("✦ " + p.tokens);
+      if (ev.type === "reward_redeemed" && typeof p.cost === "number") parts.push("✦ " + p.cost);
+      parts.push(timeAgo(ev.createdAt));
+      return parts.join(" · ");
+    }
+
+    function renderActivity(events, available) {
+      var root = $("activity-root");
+      root.innerHTML = "";
+      if (!available) {
+        var off = document.createElement("p");
+        off.className = "empty-note";
+        off.textContent = "The mirror's chore database isn't ready yet — activity appears once the mirror has run.";
+        root.appendChild(off);
+        return;
+      }
+      if (!events.length) {
+        var note = document.createElement("p");
+        note.className = "empty-note";
+        note.textContent = "No activity in this window yet.";
+        root.appendChild(note);
+        return;
+      }
+      events.forEach(function (ev) {
+        var reverted = !!ev.revertedAt;
+        var row = document.createElement("div");
+        row.className = "event" + (reverted ? " is-reverted" : "");
+
+        var icon = document.createElement("div");
+        icon.className = "e-icon";
+        icon.textContent = eventMeta(ev.type).icon || "•";
+        row.appendChild(icon);
+
+        var body = document.createElement("div");
+        body.className = "e-body";
+        var title = document.createElement("div");
+        title.className = "e-title";
+        title.textContent = eventTitle(ev);
+        body.appendChild(title);
+        var sub = document.createElement("div");
+        sub.className = "e-sub";
+        sub.textContent = eventSub(ev);
+        body.appendChild(sub);
+        row.appendChild(body);
+
+        if (reverted) {
+          var tag = document.createElement("span");
+          tag.className = "e-reverted-tag";
+          tag.textContent = "Reverted";
+          row.appendChild(tag);
+        } else if (ev.type !== "pokemon_catch") {
+          // pokemon_catch reverts are theme-side (HOM-137), not from the portal.
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "e-revert";
+          btn.textContent = "Revert";
+          btn.addEventListener("click", function () { revertEvent(ev, btn); });
+          row.appendChild(btn);
+        }
+        root.appendChild(row);
+      });
+    }
+
+    function revertEvent(ev, btn) {
+      var what = {
+        chore_completed: "reopen the chore and remove its tokens",
+        tokens_earned: "take back those bonus tokens",
+        reward_redeemed: "refund the cost and restock the reward"
+      }[ev.type] || "undo this";
+      if (!window.confirm("Revert — this will " + what + ".")) return;
+      btn.disabled = true;
+      api("/events/" + encodeURIComponent(ev.id) + "/revert", { method: "POST" })
+        .then(function () { return loadActivity(); })
+        .catch(function (err) { toast(err.message); btn.disabled = false; });
+    }
+
+    function escapeHTML(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+
     if (location.hash === "#photos") show("photos");
     else if (location.hash === "#rewards") show("rewards");
+    else if (location.hash === "#approvals") show("approvals");
+    else if (location.hash === "#activity") show("activity");
     loadChores();
   })();
 </script>

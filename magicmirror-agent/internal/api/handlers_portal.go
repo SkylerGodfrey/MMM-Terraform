@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/chores"
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/choresdb"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
 )
@@ -51,11 +52,47 @@ func (s *Server) updateChore(c *gin.Context) {
 }
 
 func (s *Server) deleteChore(c *gin.Context) {
-	if err := s.choreStore.Delete(c.Param("id")); err != nil {
+	id := c.Param("id")
+	if err := s.choreStore.Delete(id); err != nil {
 		choreError(c, err)
 		return
 	}
+	// Clear the chore's per-user runtime state so no orphaned completions or
+	// pending items survive the definition delete (matches the module's
+	// deleteChore on the same DB). Best-effort: the YAML definition is already
+	// gone, so a DB hiccup must not fail the delete the family just saw succeed.
+	if db, err := s.openChoresDB(); err != nil {
+		log.Printf("portal chores: delete %s: opening chores db: %v", id, err)
+	} else if db != nil {
+		defer db.Close()
+		if err := db.DeleteChore(id); err != nil {
+			log.Printf("portal chores: delete %s: clearing completions: %v", id, err)
+		}
+		for _, p := range listPendingForChore(db, id) {
+			if err := db.DeletePending(p.ID); err != nil {
+				log.Printf("portal chores: delete %s: clearing pending %s: %v", id, p.ID, err)
+			}
+		}
+	}
 	c.Status(http.StatusNoContent)
+}
+
+// listPendingForChore returns the pending-queue rows belonging to a chore.
+// Small helper so deleteChore can drain the queue without a dedicated query;
+// the queue is tiny (one parent's verification backlog).
+func listPendingForChore(db *choresdb.Store, choreID string) []choresdb.PendingItem {
+	all, err := db.ListPending()
+	if err != nil {
+		log.Printf("portal chores: list pending for %s: %v", choreID, err)
+		return nil
+	}
+	var out []choresdb.PendingItem
+	for _, p := range all {
+		if p.ChoreID == choreID {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // listAssignees returns the known family names for the portal's picker:
@@ -71,6 +108,14 @@ func (s *Server) listAssignees(c *gin.Context) {
 		return
 	}
 	for _, chore := range list {
+		// List() normalizes to assignees[]; still read legacy assignee defensively.
+		if list, ok := chore["assignees"].([]any); ok {
+			for _, v := range list {
+				if name, ok := v.(string); ok && name != "" {
+					names[name] = true
+				}
+			}
+		}
 		if name, ok := chore["assignee"].(string); ok && name != "" {
 			names[name] = true
 		}

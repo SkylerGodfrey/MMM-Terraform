@@ -103,6 +103,93 @@ func (s *Store) Users() ([]map[string]any, error) {
 	return out, nil
 }
 
+// AdjustTokens changes a user's token balance by delta, clamped at zero,
+// creating the user if absent — matching node_helper.js adjustTokens exactly.
+// Used by the portal's approve (grant) and revert (debit/refund) flows so the
+// agent and module compute balances identically. Returns the new balance.
+func (s *Store) AdjustTokens(userName string, delta int) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	doc, err := s.load()
+	if err != nil {
+		return 0, err
+	}
+	balance := adjustUserTokens(doc, userName, delta)
+	if err := s.save(doc); err != nil {
+		return 0, err
+	}
+	return balance, nil
+}
+
+// AdjustTokensAndRestock applies a token delta (clamped at zero) AND, when
+// restockReward is non-empty, +1s that reward's quantity if it tracks stock —
+// the exact compound mutation node_helper.revertEvent performs for a reverted
+// redemption (refund cost + restore one unit). Both mutations land in a single
+// atomic write so a revert can't half-apply. Returns the user's new balance.
+func (s *Store) AdjustTokensAndRestock(userName string, delta int, restockReward string) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	doc, err := s.load()
+	if err != nil {
+		return 0, err
+	}
+	if restockReward != "" {
+		rewards := rewardSlice(doc)
+		for _, r := range rewards {
+			if name, _ := r["name"].(string); name == restockReward {
+				if q, ok := r["quantity"].(int); ok {
+					r["quantity"] = q + 1
+				} else if q, ok := r["quantity"].(float64); ok {
+					r["quantity"] = int(q) + 1
+				}
+				break
+			}
+		}
+		doc["rewards"] = toAnySlice(rewards)
+	}
+	balance := adjustUserTokens(doc, userName, delta)
+	if err := s.save(doc); err != nil {
+		return 0, err
+	}
+	return balance, nil
+}
+
+// adjustUserTokens mutates the users[] section in place, mirroring
+// node_helper.js adjustTokens: find-or-create the user, clamp balance at zero.
+func adjustUserTokens(doc map[string]any, userName string, delta int) int {
+	users, _ := doc["users"].([]any)
+	for _, item := range users {
+		u, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		if name, _ := u["name"].(string); name == userName {
+			cur := 0
+			switch t := u["tokens"].(type) {
+			case int:
+				cur = t
+			case float64:
+				cur = int(t)
+			}
+			next := cur + delta
+			if next < 0 {
+				next = 0
+			}
+			u["tokens"] = next
+			return next
+		}
+	}
+	// Unknown user: create with a clamped balance, matching the module.
+	next := delta
+	if next < 0 {
+		next = 0
+	}
+	doc["users"] = append(users, map[string]any{"name": userName, "tokens": next})
+	return next
+}
+
 func (s *Store) Create(in Input) (map[string]any, error) {
 	if err := validate(in); err != nil {
 		return nil, err

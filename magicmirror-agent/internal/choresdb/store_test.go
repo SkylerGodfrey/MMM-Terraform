@@ -307,6 +307,78 @@ func TestPendingNilPayloadStoresNull(t *testing.T) {
 	}
 }
 
+// ---- DeleteChore / FindPending (HOM-138/139) --------------------------------
+
+func TestDeleteChoreClearsCompletions(t *testing.T) {
+	s := openTestStore(t)
+
+	if _, err := s.UpsertCompletion("c1", "Dad", "done", ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.UpsertCompletion("c1", "Gavin", "pending", ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.UpsertCompletion("c2", "Savannah", "done", ""); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.DeleteChore("c1"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := s.GetCompletion("c1", "Dad"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("c1/Dad should be gone, got %v", err)
+	}
+	if _, err := s.GetCompletion("c1", "Gavin"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("c1/Gavin should be gone, got %v", err)
+	}
+	// Other chores untouched.
+	if _, err := s.GetCompletion("c2", "Savannah"); err != nil {
+		t.Errorf("c2/Savannah should survive: %v", err)
+	}
+
+	// Deleting a chore with no completions is a no-op.
+	if err := s.DeleteChore("nope"); err != nil {
+		t.Fatalf("delete of missing chore should not error: %v", err)
+	}
+}
+
+func TestFindPending(t *testing.T) {
+	s := openTestStore(t)
+
+	if _, err := s.FindPending("c1", "Dad"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("want ErrNotFound for empty queue, got %v", err)
+	}
+
+	ins, err := s.InsertPending(PendingItem{ChoreID: "c1", User: "Dad", Tokens: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.FindPending("c1", "Dad")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != ins.ID || got.Tokens != 2 {
+		t.Fatalf("find returned wrong row: %+v", got)
+	}
+	// Different user is not a match.
+	if _, err := s.FindPending("c1", "Gavin"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("want ErrNotFound for other user, got %v", err)
+	}
+}
+
+func TestDeleteChoreRefusedOnSchemaMismatch(t *testing.T) {
+	path := newSchemaDB(t, SchemaVersion+1)
+	s, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if err := s.DeleteChore("c1"); !errors.Is(err, ErrSchemaMismatch) {
+		t.Fatalf("DeleteChore: want ErrSchemaMismatch, got %v", err)
+	}
+}
+
 // ---- events ------------------------------------------------------------------
 
 func TestEvents(t *testing.T) {

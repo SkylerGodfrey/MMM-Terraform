@@ -102,6 +102,20 @@ func (s *Store) UpsertCompletion(choreID, user, status, completedAt string) (*Co
 	return s.GetCompletion(choreID, user)
 }
 
+// DeleteChore removes every completions row for a chore, matching db.js
+// deleteChore (completionDeleteChore). Called when the portal deletes a chore
+// definition so no per-user state is orphaned. Deleting completions for a chore
+// with none is a no-op.
+func (s *Store) DeleteChore(choreID string) error {
+	if err := s.requireWritable(); err != nil {
+		return err
+	}
+	if _, err := s.db.Exec("DELETE FROM completions WHERE chore_id = ?", choreID); err != nil {
+		return fmt.Errorf("%w: delete chore completions: %w", ErrStorage, err)
+	}
+	return nil
+}
+
 // ---- pending queue ----------------------------------------------------------
 
 // PendingItem is a verification-queue row awaiting parent approval. ThemePayload
@@ -171,6 +185,24 @@ func (s *Store) GetPending(id string) (*PendingItem, error) {
 	}
 	if err != nil {
 		return nil, fmt.Errorf("%w: get pending: %w", ErrStorage, err)
+	}
+	return p, nil
+}
+
+// FindPending returns the pending-queue row for (chore,user), or ErrNotFound
+// when none exists, matching db.js findPending (pendingByChoreUser). The
+// approval queue uses this to dedupe and to locate the row to clear on approve.
+func (s *Store) FindPending(choreID, user string) (*PendingItem, error) {
+	row := s.db.QueryRow(
+		"SELECT id, chore_id, user, tokens, theme_payload, created_at FROM pending_queue WHERE chore_id = ? AND user = ?",
+		choreID, user,
+	)
+	p, err := scanPending(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("%w: find pending: %w", ErrStorage, err)
 	}
 	return p, nil
 }

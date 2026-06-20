@@ -1,11 +1,13 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/canvas"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/canvaseditor"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/chores"
+	"github.com/SkylerGodfrey/magicmirror-agent/internal/choresdb"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/config"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mascot"
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mascoteditor"
@@ -19,15 +21,38 @@ import (
 
 // Server represents the API server
 type Server struct {
-	config      *config.Config
-	router      *gin.Engine
-	mmManager   *mmconfig.Manager
-	mmVersions  *mmversion.Manager
-	choreStore  *chores.Store
-	photoStore  *photos.Store
-	rewardStore *rewards.Store
-	canvasStore *canvas.Store
-	mascotStore *mascot.Store
+	config       *config.Config
+	router       *gin.Engine
+	mmManager    *mmconfig.Manager
+	mmVersions   *mmversion.Manager
+	choreStore   *chores.Store
+	choresDBPath string // runtime-state SQLite; opened per-request (module owns it)
+	photoStore   *photos.Store
+	rewardStore  *rewards.Store
+	canvasStore  *canvas.Store
+	mascotStore  *mascot.Store
+}
+
+// retentionDaysDefault matches the MMM-Chores module's database.retentionDays
+// default (store/index.js). The portal surfaces it on the activity log so it's
+// clear why entries older than the window are absent. The module owns the
+// actual prune; the agent only reports the window.
+const retentionDaysDefault = 14
+
+// openChoresDB opens the runtime-state SQLite per request rather than holding a
+// handle, because the module owns the file's lifecycle (it may not exist until
+// the module first runs, and is recreated on schema migration). Callers must
+// Close the returned store. A nil store + nil error means "unavailable, degrade
+// gracefully" — the family UI shows an empty queue/log rather than an error.
+func (s *Server) openChoresDB() (*choresdb.Store, error) {
+	store, err := choresdb.Open(s.choresDBPath)
+	if err != nil {
+		if errors.Is(err, choresdb.ErrUnavailable) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return store, nil
 }
 
 // NewServer creates a new API server
@@ -38,13 +63,14 @@ func NewServer(cfg *config.Config) *Server {
 	router.Use(gin.Logger())
 
 	s := &Server{
-		config:      cfg,
-		router:      router,
-		mmManager:   mmconfig.NewManager(cfg.MagicMirror.ConfigPath, cfg.MagicMirror.RestartCommand),
-		mmVersions:  mmversion.NewManager(cfg.MagicMirror.InstallPath()),
-		choreStore:  chores.NewStore(cfg.ChoresFile()),
-		photoStore:  photos.NewStore(cfg.PhotosDir()),
-		rewardStore: rewards.NewStore(cfg.RewardsFile(), cfg.RewardsImagesDir()),
+		config:       cfg,
+		router:       router,
+		mmManager:    mmconfig.NewManager(cfg.MagicMirror.ConfigPath, cfg.MagicMirror.RestartCommand),
+		mmVersions:   mmversion.NewManager(cfg.MagicMirror.InstallPath()),
+		choreStore:   chores.NewStore(cfg.ChoresFile()),
+		choresDBPath: cfg.ChoresDBPath(),
+		photoStore:   photos.NewStore(cfg.PhotosDir()),
+		rewardStore:  rewards.NewStore(cfg.RewardsFile(), cfg.RewardsImagesDir()),
 	}
 	s.canvasStore = canvas.NewStore(cfg.CanvasLayoutPath(), &canvasModuleLister{mm: s.mmManager})
 	s.mascotStore = mascot.NewStore(cfg.MascotLayoutPath())
@@ -109,6 +135,15 @@ func (s *Server) setupRoutes() {
 	portalAPI.PUT("/chores/:id", s.updateChore)
 	portalAPI.DELETE("/chores/:id", s.deleteChore)
 	portalAPI.GET("/assignees", s.listAssignees)
+
+	// Pending-approval queue (HOM-139) and activity log + revert (HOM-140).
+	// Both read/write the MMM-Chores runtime-state SQLite the module owns.
+	portalAPI.GET("/pending", s.listPending)
+	portalAPI.POST("/pending/:id/approve", s.approvePending)
+	portalAPI.POST("/pending/:id/deny", s.denyPending)
+	portalAPI.GET("/events", s.listEvents)
+	portalAPI.POST("/events/:id/revert", s.revertEvent)
+
 	portalAPI.GET("/photos", s.listPhotos)
 	portalAPI.POST("/photos", s.uploadPhoto)
 	portalAPI.DELETE("/photos/:name", s.deletePhoto)

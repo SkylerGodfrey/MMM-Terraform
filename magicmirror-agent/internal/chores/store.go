@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 
 	"gopkg.in/yaml.v3"
@@ -26,15 +27,50 @@ var ErrNotFound = errors.New("chore not found")
 // detail from the family-facing UI while it still lands in the agent log.
 var ErrStorage = errors.New("chores storage error")
 
-// Fields the portal is allowed to set. "anyone" and "assignee" are mutually
-// exclusive: bounty chores have anyone=true and no assignee.
+// Fields the portal is allowed to set. "anyone" and "assignees" are mutually
+// exclusive: bounty chores have anyone=true and no assignees.
+//
+// HOM-138 multi-assignee model (matches MMM-Chores store/choreModel.js):
+//   - Assignees: 0, 1, or many names; replaces the legacy single Assignee.
+//   - Mode: "independent" (each assignee earns their own tokens) | "shared"
+//     (first to complete closes it for everyone). Single-assignee behaves the
+//     same either way; the module defaults shared.
+//   - TimeOfDay: "anytime" | "morning" | "nightly" (HOM-134 scheduling gate).
+//   - AutoApprove: skip the parent verification queue (HOM-135).
+//
+// Assignee (singular) is still accepted on input for back-compat: it is folded
+// into Assignees on apply. Anyone (bounty) takes precedence over both.
 type Input struct {
-	Name     string `json:"name"`
-	Assignee string `json:"assignee"`
-	Anyone   bool   `json:"anyone"`
-	Repeat   any    `json:"repeat"`   // "daily" | "weekly" | "monthly" | positive int | nil
-	Priority string `json:"priority"` // "high" | "low" | "" (normal)
-	Tokens   *int   `json:"tokens"`
+	Name        string   `json:"name"`
+	Assignee    string   `json:"assignee"` // legacy single assignee, folded into Assignees
+	Assignees   []string `json:"assignees"`
+	Mode        string   `json:"mode"`      // "independent" | "shared" (default shared when assigned)
+	TimeOfDay   string   `json:"timeOfDay"` // "anytime" | "morning" | "nightly"
+	Anyone      bool     `json:"anyone"`
+	AutoApprove bool     `json:"autoApprove"`
+	Repeat      any      `json:"repeat"`   // "daily" | "weekly" | "monthly" | positive int | nil
+	Priority    string   `json:"priority"` // "high" | "low" | "" (normal)
+	Tokens      *int     `json:"tokens"`
+}
+
+// inputAssignees returns the effective assignee list, folding a legacy single
+// Assignee into Assignees and dropping blanks. Order is preserved.
+func inputAssignees(in Input) []string {
+	out := make([]string, 0, len(in.Assignees)+1)
+	seen := map[string]bool{}
+	add := func(name string) {
+		name = strings.TrimSpace(name)
+		if name == "" || seen[name] {
+			return
+		}
+		seen[name] = true
+		out = append(out, name)
+	}
+	for _, name := range in.Assignees {
+		add(name)
+	}
+	add(in.Assignee)
+	return out
 }
 
 type Store struct {
@@ -48,7 +84,11 @@ func NewStore(path string) *Store {
 
 func (s *Store) Path() string { return s.path }
 
-// List returns the chores exactly as stored (all fields), for display.
+// List returns the chores for display. Legacy single-assignee chores are
+// normalized on read (assignee → assignees, default mode) the same way the
+// module's migrateChores does, so the portal UI always sees the multi-assignee
+// shape. This does not persist — the file is migrated lazily by whichever writer
+// touches the chore next (matching the module's read-then-persist pattern).
 func (s *Store) List() ([]map[string]any, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -56,7 +96,31 @@ func (s *Store) List() ([]map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return choreSlice(doc), nil
+	chores := choreSlice(doc)
+	for _, chore := range chores {
+		migrateChore(chore)
+	}
+	return chores, nil
+}
+
+// migrateChore normalizes one chore in place: legacy `assignee: X` becomes
+// `assignees: [X]`, and assigned chores get a default `mode`. Bounty chores
+// (anyone:true) are left alone. Mirrors store/choreModel.js migrateChores.
+func migrateChore(chore map[string]any) {
+	if v, _ := chore["anyone"].(bool); v {
+		return
+	}
+	if _, ok := chore["assignees"].([]any); !ok {
+		var list []any
+		if name, ok := chore["assignee"].(string); ok && name != "" {
+			list = append(list, name)
+		}
+		chore["assignees"] = list
+		delete(chore, "assignee")
+	}
+	if mode, _ := chore["mode"].(string); mode != "independent" && mode != "shared" {
+		chore["mode"] = "shared"
+	}
 }
 
 func (s *Store) Create(in Input) (map[string]any, error) {
@@ -141,7 +205,7 @@ func (s *Store) load() (map[string]any, error) {
 // Key order for serialized chores, matching the hand-written file and
 // js-yaml's output so portal writes produce minimal diffs. Unknown keys
 // land at the end, alphabetically.
-var keyOrder = []string{"name", "assignee", "anyone", "due", "repeat", "priority", "completed", "completedAt", "claimedBy", "tokens", "id"}
+var keyOrder = []string{"name", "assignee", "assignees", "mode", "anyone", "timeOfDay", "autoApprove", "due", "repeat", "priority", "completed", "completedAt", "claimedBy", "tokens", "id"}
 
 func docNode(doc map[string]any) (*yaml.Node, error) {
 	root := &yaml.Node{Kind: yaml.MappingNode}
@@ -290,12 +354,47 @@ func findChore(chores []map[string]any, id string) map[string]any {
 func applyInput(chore map[string]any, in Input) {
 	chore["name"] = in.Name
 
+	// Always drop the legacy singular field; the model is multi-assignee now.
+	delete(chore, "assignee")
+
 	if in.Anyone {
+		// Bounty chores have no assignees/mode/schedule/auto-approve.
 		chore["anyone"] = true
-		delete(chore, "assignee")
+		delete(chore, "assignees")
+		delete(chore, "mode")
+		delete(chore, "timeOfDay")
+		delete(chore, "autoApprove")
 	} else {
-		chore["assignee"] = in.Assignee
 		delete(chore, "anyone")
+
+		assignees := inputAssignees(in)
+		list := make([]any, len(assignees))
+		for i, name := range assignees {
+			list[i] = name
+		}
+		chore["assignees"] = list
+
+		// Always write mode for assigned chores (matches the module's migrate,
+		// which stamps a mode on every assigned chore). Default "shared".
+		mode := in.Mode
+		if mode != "independent" && mode != "shared" {
+			mode = "shared"
+		}
+		chore["mode"] = mode
+
+		// Omit timeOfDay when "anytime" (the default the module assumes on read).
+		if in.TimeOfDay == "" || in.TimeOfDay == "anytime" {
+			delete(chore, "timeOfDay")
+		} else {
+			chore["timeOfDay"] = in.TimeOfDay
+		}
+
+		// Omit autoApprove when false.
+		if in.AutoApprove {
+			chore["autoApprove"] = true
+		} else {
+			delete(chore, "autoApprove")
+		}
 	}
 
 	if f, ok := in.Repeat.(float64); ok { // JSON numbers decode as float64
@@ -346,11 +445,18 @@ func validate(in Input) error {
 	if in.Name == "" {
 		return errors.New("name is required")
 	}
-	if !in.Anyone && in.Assignee == "" {
-		return errors.New("assignee is required unless the chore is open to anyone")
+	assignees := inputAssignees(in)
+	if !in.Anyone && len(assignees) == 0 {
+		return errors.New("pick at least one person, or open the chore to anyone")
 	}
-	if in.Anyone && in.Assignee != "" {
+	if in.Anyone && (len(assignees) > 0) {
 		return errors.New("a chore is either assigned or open to anyone, not both")
+	}
+	if in.Mode != "" && in.Mode != "independent" && in.Mode != "shared" {
+		return errors.New("mode must be independent or shared")
+	}
+	if in.TimeOfDay != "" && in.TimeOfDay != "anytime" && in.TimeOfDay != "morning" && in.TimeOfDay != "nightly" {
+		return errors.New("schedule must be anytime, morning, or nightly")
 	}
 	switch r := in.Repeat.(type) {
 	case nil:

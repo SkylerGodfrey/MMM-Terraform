@@ -197,11 +197,156 @@ func TestSerializedStyleMatchesHandWrittenFile(t *testing.T) {
 	raw, _ := os.ReadFile(s.Path())
 	got := string(raw)
 	for _, want := range []string{
-		"  - name: Take out trash\n    assignee: Dad\n    repeat: daily\n    priority: high\n    completed: false\n    tokens: 2\n    id: chtgo0x",
+		// HOM-138: the portal now writes the multi-assignee shape — a single
+		// `assignee` folds into `assignees: [..]` with a default `mode`.
+		"  - name: Take out trash\n    assignees:\n      - Dad\n    mode: shared\n    repeat: daily\n    priority: high\n    completed: false\n    tokens: 2\n    id: chtgo0x",
 		"  - name: Water the plants\n    anyone: true\n    repeat: weekly\n    completed: true\n    completedAt:",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("serialized style drifted; want block:\n%s\ngot file:\n%s", want, got)
+		}
+	}
+}
+
+// ---- HOM-138 multi-assignee model -------------------------------------------
+
+func assigneeStrings(chore map[string]any) []string {
+	out := []string{}
+	if list, ok := chore["assignees"].([]any); ok {
+		for _, v := range list {
+			if name, ok := v.(string); ok {
+				out = append(out, name)
+			}
+		}
+	}
+	return out
+}
+
+func TestCreateMultiAssigneeWritesAssigneesAndMode(t *testing.T) {
+	s := newTestStore(t)
+	created, err := s.Create(Input{
+		Name:      "Set the table",
+		Assignees: []string{"Gavin", "Savannah"},
+		Mode:      "independent",
+		TimeOfDay: "nightly",
+		Tokens:    intPtr(1),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := assigneeStrings(created); len(got) != 2 || got[0] != "Gavin" || got[1] != "Savannah" {
+		t.Errorf("assignees not written: %v", created["assignees"])
+	}
+	if created["mode"] != "independent" {
+		t.Errorf("mode not written: %v", created["mode"])
+	}
+	if created["timeOfDay"] != "nightly" {
+		t.Errorf("timeOfDay not written: %v", created["timeOfDay"])
+	}
+	if _, has := created["assignee"]; has {
+		t.Errorf("legacy singular assignee should never be written: %v", created)
+	}
+}
+
+func TestCreateDefaultsModeSharedAndOmitsDefaults(t *testing.T) {
+	s := newTestStore(t)
+	created, err := s.Create(Input{Name: "Sweep", Assignees: []string{"Dad"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created["mode"] != "shared" {
+		t.Errorf("mode should default to shared, got %v", created["mode"])
+	}
+	if _, has := created["timeOfDay"]; has {
+		t.Errorf("anytime schedule should be omitted, got %v", created["timeOfDay"])
+	}
+	if _, has := created["autoApprove"]; has {
+		t.Errorf("autoApprove:false should be omitted, got %v", created["autoApprove"])
+	}
+}
+
+func TestAutoApproveWrittenWhenTrue(t *testing.T) {
+	s := newTestStore(t)
+	created, err := s.Create(Input{Name: "Brush teeth", Assignees: []string{"Gavin"}, AutoApprove: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created["autoApprove"] != true {
+		t.Errorf("autoApprove:true should be written, got %v", created["autoApprove"])
+	}
+}
+
+func TestLegacyAssigneeFoldsIntoAssignees(t *testing.T) {
+	s := newTestStore(t)
+	// A client still sending the singular field gets folded into assignees[].
+	created, err := s.Create(Input{Name: "Vacuum", Assignee: "Mom"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := assigneeStrings(created); len(got) != 1 || got[0] != "Mom" {
+		t.Errorf("legacy assignee not folded: %v", created["assignees"])
+	}
+}
+
+func TestListMigratesLegacyAssigneeOnRead(t *testing.T) {
+	s := newTestStore(t)
+	// The sample file's "Take out trash" has a legacy `assignee: Dad`.
+	chores, err := s.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var trash map[string]any
+	for _, c := range chores {
+		if c["id"] == "chtgo0x" {
+			trash = c
+		}
+	}
+	if trash == nil {
+		t.Fatal("missing chore")
+	}
+	if got := assigneeStrings(trash); len(got) != 1 || got[0] != "Dad" {
+		t.Errorf("legacy assignee not migrated on read: %v", trash["assignees"])
+	}
+	if trash["mode"] != "shared" {
+		t.Errorf("migrated chore should get default mode shared, got %v", trash["mode"])
+	}
+	if _, has := trash["assignee"]; has {
+		t.Errorf("migrated read should drop legacy assignee, got %v", trash)
+	}
+}
+
+func TestSwitchToBountyClearsMultiAssigneeFields(t *testing.T) {
+	s := newTestStore(t)
+	// Start as a scheduled, auto-approve, multi-assignee chore.
+	if _, err := s.Update("chtgo0x", Input{
+		Name: "Take out trash", Assignees: []string{"Dad", "Gavin"},
+		Mode: "independent", TimeOfDay: "morning", AutoApprove: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// Now flip to a bounty — every assigned-only field must clear.
+	updated, err := s.Update("chtgo0x", Input{Name: "Take out trash", Anyone: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, k := range []string{"assignees", "mode", "timeOfDay", "autoApprove", "assignee"} {
+		if _, has := updated[k]; has {
+			t.Errorf("bounty chore should not carry %q: %v", k, updated)
+		}
+	}
+}
+
+func TestValidationMultiAssignee(t *testing.T) {
+	s := newTestStore(t)
+	bad := []Input{
+		{Name: "x"}, // no assignees, not anyone
+		{Name: "x", Assignees: []string{"Dad"}, Anyone: true},          // both assigned and anyone
+		{Name: "x", Assignees: []string{"Dad"}, Mode: "team"},          // bad mode
+		{Name: "x", Assignees: []string{"Dad"}, TimeOfDay: "midnight"}, // bad schedule
+	}
+	for i, in := range bad {
+		if _, err := s.Create(in); err == nil {
+			t.Errorf("case %d: want validation error for %+v", i, in)
 		}
 	}
 }
