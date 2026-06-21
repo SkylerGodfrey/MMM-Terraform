@@ -5,3 +5,6 @@ my-mirror/
 magicmirror-agent/magicmirror-agent
 magicmirror-agent/magicmirror-agent-linux-arm64
 terraform-provider-magicmirror/terraform-provider-magicmirror
+
+# Claude Code worktrees / local agent scratch
+.claude/
