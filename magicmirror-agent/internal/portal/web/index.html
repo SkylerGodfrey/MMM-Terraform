@@ -1301,6 +1301,7 @@
     /* ---------- rewards ---------- */
     var rewards = [];
     var rewardUsers = [];
+    var rewardsDisabledUsers = [];  // names with the token economy switched off (MMM-Chores config)
     var editingRewardId = null;
     var rewardCost = 5;
     var rewardImage = "";              // filename currently set on the form
@@ -1315,6 +1316,7 @@
       return Promise.all([api("/rewards"), api("/assignees")]).then(function (results) {
         rewards = results[0].rewards || [];
         rewardUsers = results[0].users || [];
+        rewardsDisabledUsers = results[0].disabledUsers || [];
         var assigneeNames = (results[1].assignees || []).slice();
         // Merge anyone known to rewards.yaml so editing keeps existing chips.
         rewardUsers.forEach(function (u) {
@@ -1496,7 +1498,11 @@
     function renderRewardAssigneeChips() {
       var box = $("r-assignees");
       box.innerHTML = "";
-      assignees.forEach(function (name) {
+      // assignees is shared with the chore sheet (which keeps disabled users,
+      // since they still do chores) — drop them only from the redeemer picker.
+      assignees.filter(function (name) {
+        return rewardsDisabledUsers.indexOf(name) === -1;
+      }).forEach(function (name) {
         var chip = document.createElement("button");
         chip.type = "button";
         chip.className = "chip";
