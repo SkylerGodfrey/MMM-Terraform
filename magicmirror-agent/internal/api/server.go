@@ -157,6 +157,14 @@ func (s *Server) setupRoutes() {
 	portalAPI.DELETE("/packs/:id", s.deletePack)
 	portalAPI.GET("/pokedex", s.getPokedex)
 
+	// Pokémon Theme v2 caught-dex admin (HOM-153). Per-user browse, manual
+	// grant, and remove of caught form-entries in theme_kv (pokemon/state),
+	// each logged as a revertible event reusing the HOM-140 action-log/revert
+	// infra (revertEvent dispatches the dex-admin types to revertDexAdmin).
+	portalAPI.GET("/dex/:user", s.listDex)
+	portalAPI.POST("/dex/:user/grant", s.grantDex)
+	portalAPI.POST("/dex/:user/remove", s.removeDex)
+
 	portalAPI.GET("/photos", s.listPhotos)
 	portalAPI.POST("/photos", s.uploadPhoto)
 	portalAPI.DELETE("/photos/:name", s.deletePhoto)

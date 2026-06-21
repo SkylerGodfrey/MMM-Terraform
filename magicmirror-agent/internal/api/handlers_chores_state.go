@@ -334,6 +334,15 @@ func (s *Server) revertEvent(c *gin.Context) {
 		return
 	}
 
+	// HOM-153: dex-admin events (manual grant / remove of a caught Pokémon) are
+	// reverted against theme_kv (pokemon/state), not the token/completion engine.
+	// They reuse this same event/revert plumbing — handled here before the
+	// generic revertActions dispatch, which only knows the chore/token types.
+	if isDexAdminEvent(event.Type) {
+		s.revertDexAdmin(c, db, event)
+		return
+	}
+
 	act, ok := revertActions(event)
 	if !ok {
 		// pokemon_catch and any unknown type land here (revertActions returns

@@ -340,6 +340,8 @@
   .reward-sheet-open #reward-sheet { transform: none; }
   .pack-sheet-open .backdrop { opacity: 1; pointer-events: auto; }
   .pack-sheet-open #pack-sheet { transform: none; }
+  .dex-sheet-open .backdrop { opacity: 1; pointer-events: auto; }
+  .dex-sheet-open #dex-sheet { transform: none; }
 
   /* ---------- packs (HOM-150) ---------- */
   .pack-row {
@@ -381,6 +383,22 @@
   .form-row.is-picked .fr-check { opacity: 1; }
   .picked-count { font-size: 13px; color: var(--ink-dim); margin-bottom: 8px; }
   .picker-note { font-size: 13px; color: var(--ink-dim); padding: 14px; text-align: center; }
+
+  /* ---------- dex admin (HOM-153) ---------- */
+  .dex-user-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .dex-entry {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 16px; border: 1px solid var(--line); border-radius: 16px;
+    background: var(--bg-raised); margin-bottom: 9px;
+  }
+  .dex-entry .de-body { flex: 1; min-width: 0; }
+  .dex-entry .de-name { font-size: 15.5px; font-weight: 700; }
+  .dex-entry .de-meta { font-size: 12.5px; color: var(--ink-dim); margin-top: 2px; }
+  .dex-entry .de-shiny { color: var(--gold); }
+  .dex-entry .de-remove {
+    flex: none; padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(217, 124, 108, 0.4);
+    background: none; color: var(--bad); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;
+  }
   .sheet h2 { font-family: "Fraunces", Georgia, serif; font-size: 24px; font-weight: 600; margin-bottom: 18px; }
 
   .field { margin-bottom: 16px; }
@@ -662,6 +680,12 @@
       <p class="photo-note">Packs are the Pokémon pool the mirror draws from. They run back-to-back without overlapping; when none covers today, the mirror falls back to the Unown set.</p>
     </section>
 
+    <section id="panel-dex" role="tabpanel" aria-labelledby="tab-dex" hidden>
+      <div class="dex-user-tabs" id="dex-user-tabs"></div>
+      <div id="dex-root"><p class="empty-note">Pick a person to manage their catches.</p></div>
+      <p class="photo-note">Grant or remove caught Pokémon for one person. Every change is logged in Activity and can be reverted there.</p>
+    </section>
+
     <footer>The mirror is listening &middot; magicmirror&#8209;agent
   </main>
 </div>
@@ -850,6 +874,19 @@
   </div>
 </form>
 
+<form class="sheet" id="dex-sheet" autocomplete="off">
+  <h2 id="dex-sheet-title">Grant a Pokémon</h2>
+  <div class="field">
+    <input type="text" class="picker-search" id="d-search" placeholder="Search by name or number…">
+    <div class="picker-tabs" id="d-filter"></div>
+    <div class="picker-results" id="d-results"><p class="picker-note">Loading the dataset…</p></div>
+  </div>
+  <div class="actions">
+    <button type="button" class="btn" id="d-cancel">Cancel</button>
+    <button type="submit" class="btn primary" id="d-save">Grant</button>
+  </div>
+</form>
+
 <div class="toast" id="toast" role="alert"></div>
 
 <nav aria-label="Portal sections">
@@ -900,6 +937,14 @@
       </svg>
       Packs
     </button>
+    <button class="tab" id="tab-dex" role="tab" aria-selected="false" aria-controls="panel-dex" data-panel="dex">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M3 12h18"/>
+        <circle cx="12" cy="12" r="2.4"/>
+      </svg>
+      Dex
+    </button>
   </div>
 </nav>
 
@@ -941,6 +986,8 @@
       // parent surfaces and small enough that a re-fetch is cheap.
       if (name === "approvals") loadPending();
       if (name === "activity") loadActivity();
+      // Dex always refreshes on entry — a parent may have just granted/removed.
+      if (name === "dex") loadDex();
     }
     tabs.forEach(function (tab) {
       tab.addEventListener("click", function () {
@@ -1361,6 +1408,7 @@
       closeSheet();
       closeRewardSheet();
       closePackSheet();
+      closeDexSheet();
     });
     $("btn-cancel").addEventListener("click", closeSheet);
     $("tok-minus").addEventListener("click", function () { setTokens(tokens - 1); });
@@ -2264,11 +2312,158 @@
         .catch(function (err) { toast(err.message); });
     });
 
+    /* ---------- dex admin (HOM-153) ---------- */
+    var dexUser = null;
+    var dexEntries = [];        // current user's caught form-entries
+    var dexState = { query: "", filter: "all", picked: new Set() };
+
+    function loadDex() {
+      // Reuse the same family-name list the rest of the portal uses.
+      return api("/assignees").then(function (body) {
+        var names = body.assignees || [];
+        renderDexUsers(names);
+        if (dexUser && names.indexOf(dexUser) !== -1) loadDexEntries(dexUser);
+        else renderDexEntries();
+      }).catch(function (err) { toast(err.message); });
+    }
+
+    function renderDexUsers(names) {
+      var root = $("dex-user-tabs");
+      root.innerHTML = "";
+      names.forEach(function (name) {
+        var chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chip";
+        chip.textContent = name;
+        chip.setAttribute("aria-pressed", String(dexUser === name));
+        chip.addEventListener("click", function () { dexUser = name; renderDexUsers(names); loadDexEntries(name); });
+        root.appendChild(chip);
+      });
+    }
+
+    function loadDexEntries(user) {
+      $("dex-root").innerHTML = "<p class=\"empty-note\">Loading " + escapeHTML(user) + "’s catches…</p>";
+      return api("/dex/" + encodeURIComponent(user)).then(function (body) {
+        dexEntries = body.caught || [];
+        renderDexEntries();
+      }).catch(function (err) {
+        $("dex-root").innerHTML = "";
+        var p = document.createElement("p");
+        p.className = "empty-note";
+        p.textContent = err.message;
+        $("dex-root").appendChild(p);
+      });
+    }
+
+    function renderDexEntries() {
+      var root = $("dex-root");
+      root.innerHTML = "";
+      if (!dexUser) {
+        var pick = document.createElement("p");
+        pick.className = "empty-note";
+        pick.textContent = "Pick a person above to manage their catches.";
+        root.appendChild(pick);
+        return;
+      }
+      var grant = document.createElement("button");
+      grant.type = "button";
+      grant.className = "btn primary";
+      grant.style.marginBottom = "14px";
+      grant.textContent = "Grant a Pokémon to " + dexUser;
+      grant.addEventListener("click", function () { openDexSheet(); });
+      root.appendChild(grant);
+
+      if (!dexEntries.length) {
+        var note = document.createElement("p");
+        note.className = "empty-note";
+        note.textContent = dexUser + " hasn’t caught anything yet.";
+        root.appendChild(note);
+        return;
+      }
+      dexEntries.forEach(function (e) {
+        var row = document.createElement("div");
+        row.className = "dex-entry";
+        var body = document.createElement("div");
+        body.className = "de-body";
+        var name = document.createElement("div");
+        name.className = "de-name";
+        name.textContent = e.name || e.formKey;
+        if (e.shiny) { var s = document.createElement("span"); s.className = "de-shiny"; s.textContent = " ✦"; name.appendChild(s); }
+        var meta = document.createElement("div");
+        meta.className = "de-meta";
+        var bits = ["#" + e.species, e.category || "normal"];
+        if (e.count > 1) bits.push("×" + e.count);
+        if (e.master) bits.push("master");
+        meta.textContent = bits.join(" · ");
+        body.appendChild(name); body.appendChild(meta);
+        var rm = document.createElement("button");
+        rm.type = "button";
+        rm.className = "de-remove";
+        rm.textContent = "Remove";
+        rm.addEventListener("click", function () { removeDexEntry(e, rm); });
+        row.appendChild(body); row.appendChild(rm);
+        root.appendChild(row);
+      });
+    }
+
+    function removeDexEntry(entry, btn) {
+      var label = entry.name || entry.formKey;
+      if (!window.confirm("Remove " + label + " from " + dexUser + "’s dex? This is logged and can be reverted from Activity.")) return;
+      btn.disabled = true;
+      api("/dex/" + encodeURIComponent(dexUser) + "/remove", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formKey: entry.formKey })
+      })
+        .then(function () { return loadDexEntries(dexUser); })
+        .catch(function (err) { toast(err.message); btn.disabled = false; });
+    }
+
+    function openDexSheet() {
+      dexState = { query: "", filter: "all", picked: new Set() };
+      $("d-search").value = "";
+      $("dex-sheet-title").textContent = "Grant to " + dexUser;
+      document.body.classList.add("dex-sheet-open");
+      renderFilterTabs($("d-filter"), dexState, refreshDexResults);
+      loadDataset().then(refreshDexResults).catch(function () { refreshDexResults(); });
+      refreshDexResults();
+    }
+
+    function refreshDexResults() {
+      renderFilterTabs($("d-filter"), dexState, refreshDexResults);
+      // Single-select: picking a row replaces the selection.
+      renderResults($("d-results"), dexState, function (entry) {
+        dexState.picked = new Set([entry.formKey]);
+        refreshDexResults();
+      });
+    }
+
+    function closeDexSheet() { document.body.classList.remove("dex-sheet-open"); }
+
+    $("d-search").addEventListener("input", function () { dexState.query = this.value.trim(); refreshDexResults(); });
+    $("d-cancel").addEventListener("click", closeDexSheet);
+
+    $("dex-sheet").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var formKey = Array.from(dexState.picked)[0];
+      if (!formKey) { toast("Pick a Pokémon to grant."); return; }
+      $("d-save").disabled = true;
+      api("/dex/" + encodeURIComponent(dexUser) + "/grant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formKey: formKey })
+      })
+        .then(function () { closeDexSheet(); return loadDexEntries(dexUser); })
+        .catch(function (err) { toast(err.message); })
+        .then(function () { $("d-save").disabled = false; });
+    });
+
     if (location.hash === "#photos") show("photos");
     else if (location.hash === "#rewards") show("rewards");
     else if (location.hash === "#approvals") show("approvals");
     else if (location.hash === "#activity") show("activity");
     else if (location.hash === "#packs") show("packs");
+    else if (location.hash === "#dex") show("dex");
     loadChores();
   })();
 </script>
