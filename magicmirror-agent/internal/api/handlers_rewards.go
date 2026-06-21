@@ -25,7 +25,65 @@ func (s *Server) listRewards(c *gin.Context) {
 		rewardError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"rewards": list, "users": users})
+	// Names with the token economy switched off (MMM-Chores rewardsDisabledUsers)
+	// carry no balance and can't redeem, so drop them from the balances list and
+	// hand the set to the portal so they're hidden from the redeemer picker too.
+	disabled := s.disabledRewardUsers()
+	users = filterDisabledUsers(users, disabled)
+	c.JSON(http.StatusOK, gin.H{"rewards": list, "users": users, "disabledUsers": disabled})
+}
+
+// disabledRewardUsers reads the MMM-Chores module's rewardsDisabledUsers config
+// from config.js — the names for whom the token economy is switched off. The
+// module is the source of truth (set via Terraform); the portal mirrors it so
+// disabled users don't appear as redeemers or carry balances. Best-effort: any
+// read/parse failure returns nil (no one disabled) rather than failing the view.
+func (s *Server) disabledRewardUsers() []string {
+	if s.mmManager == nil {
+		return nil
+	}
+	mods, err := s.mmManager.ListModules()
+	if err != nil {
+		log.Printf("portal rewards: reading module config for disabled users: %v", err)
+		return nil
+	}
+	for _, mod := range mods {
+		if mod.Module != "MMM-Chores" {
+			continue
+		}
+		list, ok := mod.Config["rewardsDisabledUsers"].([]any)
+		if !ok {
+			return nil
+		}
+		out := make([]string, 0, len(list))
+		for _, v := range list {
+			if name, ok := v.(string); ok && name != "" {
+				out = append(out, name)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+// filterDisabledUsers drops users whose name is in the disabled set, preserving
+// order. Returns the input unchanged when nothing is disabled.
+func filterDisabledUsers(users []map[string]any, disabled []string) []map[string]any {
+	if len(disabled) == 0 {
+		return users
+	}
+	set := make(map[string]bool, len(disabled))
+	for _, n := range disabled {
+		set[n] = true
+	}
+	out := make([]map[string]any, 0, len(users))
+	for _, u := range users {
+		if name, _ := u["name"].(string); set[name] {
+			continue
+		}
+		out = append(out, u)
+	}
+	return out
 }
 
 func (s *Server) createReward(c *gin.Context) {
