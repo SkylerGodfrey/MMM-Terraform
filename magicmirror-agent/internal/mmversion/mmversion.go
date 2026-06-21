@@ -161,9 +161,52 @@ func (m *Manager) Converge(name, repository, version string) (*InstalledModule, 
 		if _, err := m.run(dir, m.npmTimeout, "npm", "install", "--omit=dev"); err != nil {
 			return nil, fmt.Errorf("npm install failed: %w", err)
 		}
+		// HOM-142: MagicMirror loads node_helpers inside Electron, so a module's
+		// native addon (e.g. MMM-Chores' better-sqlite3) installed with plain
+		// `npm install` is built for the system-Node ABI and fails to load —
+		// silently degrading the module. Rebuild against Electron's ABI.
+		if err := m.rebuildForElectron(dir); err != nil {
+			return nil, err
+		}
 	}
 
 	return m.GetInstalled(name)
+}
+
+// electronVersion reads the Electron version MagicMirror runs under, or ""
+// when MagicMirror isn't an Electron install (e.g. serveronly) — in which case
+// the system-Node ABI is already correct and no rebuild is needed.
+func (m *Manager) electronVersion() string {
+	data, err := os.ReadFile(filepath.Join(m.mmPath, "node_modules", "electron", "package.json"))
+	if err != nil {
+		return ""
+	}
+	var pkg struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return ""
+	}
+	return pkg.Version
+}
+
+// rebuildForElectron rebuilds the module's native addons against Electron's
+// ABI. A no-op (trivially successful) for modules with no native dependencies,
+// and skipped entirely when MagicMirror isn't an Electron install.
+func (m *Manager) rebuildForElectron(dir string) error {
+	ev := m.electronVersion()
+	if ev == "" {
+		return nil
+	}
+	env := []string{
+		"npm_config_runtime=electron",
+		"npm_config_target=" + ev,
+		"npm_config_disturl=https://electronjs.org/headers",
+	}
+	if _, err := m.runEnv(dir, m.npmTimeout, env, "npm", "rebuild"); err != nil {
+		return fmt.Errorf("npm rebuild for electron %s failed: %w", ev, err)
+	}
+	return nil
 }
 
 // matchesVersion mirrors the provider's drift rule: the declared version
@@ -233,11 +276,20 @@ func (m *Manager) inspect(name string) InstalledModule {
 // run executes a command with a timeout, returning trimmed stdout and
 // surfacing stderr in the error message.
 func (m *Manager) run(dir string, timeout time.Duration, name string, args ...string) (string, error) {
+	return m.runEnv(dir, timeout, nil, name, args...)
+}
+
+// runEnv is run() with extra environment variables appended to the inherited
+// environment (used to drive npm's native-build target — see rebuildForElectron).
+func (m *Manager) runEnv(dir string, timeout time.Duration, env []string, name string, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Dir = dir
+	if len(env) > 0 {
+		cmd.Env = append(os.Environ(), env...)
+	}
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

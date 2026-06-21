@@ -49,6 +49,27 @@ func TestCoreVersionMissingFile(t *testing.T) {
 	}
 }
 
+func TestElectronVersion(t *testing.T) {
+	mmPath := t.TempDir()
+	electronDir := filepath.Join(mmPath, "node_modules", "electron")
+	if err := os.MkdirAll(electronDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(electronDir, "package.json"), []byte(`{"version": "36.6.0"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := NewManager(mmPath).electronVersion(); got != "36.6.0" {
+		t.Errorf("electronVersion() = %q, want %q", got, "36.6.0")
+	}
+}
+
+func TestElectronVersionAbsentIsEmpty(t *testing.T) {
+	// No node_modules/electron (e.g. a serveronly install) -> "" -> rebuild skipped.
+	if got := NewManager(t.TempDir()).electronVersion(); got != "" {
+		t.Errorf("electronVersion() = %q, want empty", got)
+	}
+}
+
 func TestListInstalledSkipsDefaultAndHandlesNonGit(t *testing.T) {
 	mmPath := t.TempDir()
 	for _, dir := range []string{"default", "MMM-Chores"} {
