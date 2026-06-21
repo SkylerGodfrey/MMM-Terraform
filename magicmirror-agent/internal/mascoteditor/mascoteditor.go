@@ -17,11 +17,14 @@ package mascoteditor
 
 import (
 	_ "embed"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/mascot"
 	"github.com/gin-gonic/gin"
@@ -47,6 +50,17 @@ func Register(router *gin.Engine, store *mascot.Store, spritesDir, mascotsTfPath
 	router.GET("/mascot/api/state", h.getState)
 	router.POST("/mascot/api/save", h.postSave)
 	router.GET("/mascot/api/sprites", h.getCatalog)
+
+	// Serve the sprite assets so the editor can render a live animated
+	// preview of each tag (HOM-117). Same files MagicMirror serves on
+	// :8080, but the editor lives on :8484 — exposing them here keeps the
+	// preview same-origin (no canvas-taint, no CORS dance).
+	if spritesDir != "" {
+		router.Static("/mascot/sprites", spritesDir)
+		// Phase 2 (HOM-117): upload/slice/export endpoints only make sense
+		// when there's a sprites dir to write into.
+		h.registerImport(router)
+	}
 }
 
 type handlers struct {
@@ -65,10 +79,19 @@ type stateResponse struct {
 
 // catalogEntry is one sprite available on disk. States lists the per-
 // state assets present (default, halloween, …) so the editor can show
-// users which holiday skins exist.
+// users which holiday skins exist; each carries the animation tags found
+// in its Aseprite JSON so the rotation UI can offer them (HOM-117).
 type catalogEntry struct {
-	ID     string   `json:"id"`
-	States []string `json:"states"`
+	ID     string       `json:"id"`
+	States []stateEntry `json:"states"`
+}
+
+// stateEntry is one skin (default, halloween, …) and the animation tags
+// declared in its JSON's meta.frameTags. Tags drive the per-sprite
+// rotation picker.
+type stateEntry struct {
+	Name string   `json:"name"`
+	Tags []string `json:"tags"`
 }
 
 type tfFileState struct {
@@ -145,6 +168,16 @@ func (h *handlers) postSave(c *gin.Context) {
 		req.Holidays = []mascot.Holiday{}
 	}
 
+	// Validate that every rotation only names animation tags that exist on
+	// disk. The store can't do this (it has no filesystem access by
+	// design), so we check it here against a fresh catalog scan before
+	// persisting. A typo'd tag would otherwise save fine and silently fall
+	// back to idle on the mirror.
+	if err := h.validateRotationTags(req.Sprites); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	doc := mascot.Document{
 		Canvas:   req.Canvas,
 		Sprites:  req.Sprites,
@@ -171,10 +204,39 @@ func (h *handlers) postSave(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
+// validateRotationTags rejects a save whose rotation names a tag absent
+// from the sprite's on-disk animations. It is lenient when the sprite's
+// assets aren't in the catalog yet (mid-rsync): it can't prove the tag
+// missing, so it allows the save and lets the runtime fall back to idle.
+func (h *handlers) validateRotationTags(sprites []mascot.Sprite) error {
+	catalog, err := scanCatalog(h.spritesDir)
+	if err != nil {
+		return fmt.Errorf("scan sprites dir: %w", err)
+	}
+	tags := catalogTags(catalog)
+	for _, s := range sprites {
+		if s.Rotation == nil {
+			continue
+		}
+		known, ok := tags[s.Sprite]
+		if !ok {
+			continue // assets not deployed yet — defer to runtime fallback
+		}
+		for _, a := range s.Rotation.Animations {
+			if _, found := known[a]; !found {
+				return fmt.Errorf("%w: sprite %q has no animation %q (available: %s)",
+					mascot.ErrInvalidRotation, s.Sprite, a, strings.Join(sortedKeys(known), ", "))
+			}
+		}
+	}
+	return nil
+}
+
 func (h *handlers) mascotError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, mascot.ErrInvalidSprite),
 		errors.Is(err, mascot.ErrInvalidHoliday),
+		errors.Is(err, mascot.ErrInvalidRotation),
 		errors.Is(err, mascot.ErrDuplicateSpriteID):
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	default:
@@ -216,7 +278,12 @@ func scanCatalog(dir string) ([]catalogEntry, error) {
 	return out, nil
 }
 
-func collectStates(dir string) ([]string, error) {
+// collectStates lists each skin in a sprite directory and the animation
+// tags declared in its JSON. A state is "present" when it has at least a
+// .png or .json; tags come from the JSON's meta.frameTags (best-effort —
+// a missing or unparseable JSON yields no tags rather than an error, so
+// one broken file doesn't blank the whole catalog).
+func collectStates(dir string) ([]stateEntry, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -231,15 +298,71 @@ func collectStates(dir string) ([]string, error) {
 		if ext != ".png" && ext != ".json" {
 			continue
 		}
-		base := name[:len(name)-len(ext)]
-		seen[base] = struct{}{}
+		seen[name[:len(name)-len(ext)]] = struct{}{}
 	}
-	out := make([]string, 0, len(seen))
-	for k := range seen {
+	out := make([]stateEntry, 0, len(seen))
+	for state := range seen {
+		out = append(out, stateEntry{
+			Name: state,
+			Tags: readFrameTags(filepath.Join(dir, state+".json")),
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, nil
+}
+
+// readFrameTags pulls the animation tag names out of an Aseprite "Array"
+// JSON (meta.frameTags[].name). Returns nil on any read/parse failure —
+// the rotation picker simply shows no tags for that skin.
+func readFrameTags(jsonPath string) []string {
+	data, err := os.ReadFile(jsonPath)
+	if err != nil {
+		return nil
+	}
+	var parsed struct {
+		Meta struct {
+			FrameTags []struct {
+				Name string `json:"name"`
+			} `json:"frameTags"`
+		} `json:"meta"`
+	}
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		return nil
+	}
+	tags := make([]string, 0, len(parsed.Meta.FrameTags))
+	for _, t := range parsed.Meta.FrameTags {
+		if t.Name != "" {
+			tags = append(tags, t.Name)
+		}
+	}
+	return tags
+}
+
+// sortedKeys returns a set's keys in sorted order, for stable error text.
+func sortedKeys(set map[string]struct{}) []string {
+	out := make([]string, 0, len(set))
+	for k := range set {
 		out = append(out, k)
 	}
 	sort.Strings(out)
-	return out, nil
+	return out
+}
+
+// catalogTags flattens a catalog into a sprite-id → set-of-tags map (the
+// union of tags across all the sprite's skins). Used to validate that a
+// rotation only names animations that actually exist on disk.
+func catalogTags(catalog []catalogEntry) map[string]map[string]struct{} {
+	out := make(map[string]map[string]struct{}, len(catalog))
+	for _, e := range catalog {
+		set := map[string]struct{}{}
+		for _, st := range e.States {
+			for _, t := range st.Tags {
+				set[t] = struct{}{}
+			}
+		}
+		out[e.ID] = set
+	}
+	return out
 }
 
 // writeAtomic mirrors the canvaseditor helper. Duplicated rather than

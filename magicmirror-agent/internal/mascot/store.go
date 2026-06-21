@@ -119,6 +119,35 @@ func validateSprite(s Sprite, c Canvas) error {
 		return fmt.Errorf("%w: sprite %d,%d %dx%d exceeds canvas %dx%d",
 			ErrInvalidSprite, s.X, s.Y, s.W, s.H, c.Width, c.Height)
 	}
+	if err := validateRotation(s.Rotation); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateRotation enforces the structural invariants of a rotation
+// config. Tag *existence* is checked one layer up in the editor handler,
+// where the sprite catalog is available — keeping this function free of
+// filesystem access so the terraform provider can validate locally.
+func validateRotation(r *Rotation) error {
+	if r == nil {
+		return nil
+	}
+	if len(r.Animations) == 0 {
+		return fmt.Errorf("%w: animations list must not be empty", ErrInvalidRotation)
+	}
+	for i, a := range r.Animations {
+		if a == "" {
+			return fmt.Errorf("%w: animation %d is empty", ErrInvalidRotation, i)
+		}
+	}
+	if r.MinMs <= 0 || r.MaxMs <= 0 {
+		return fmt.Errorf("%w: intervals must be positive, got min=%d max=%d",
+			ErrInvalidRotation, r.MinMs, r.MaxMs)
+	}
+	if r.MaxMs < r.MinMs {
+		return fmt.Errorf("%w: maxMs %d precedes minMs %d", ErrInvalidRotation, r.MaxMs, r.MinMs)
+	}
 	return nil
 }
 
