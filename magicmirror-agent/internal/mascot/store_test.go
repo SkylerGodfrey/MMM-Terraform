@@ -51,6 +51,53 @@ func TestSaveDocumentRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSaveRoundTripsRotation(t *testing.T) {
+	dir := t.TempDir()
+	s := NewStore(filepath.Join(dir, "mascot-layout.json"))
+	in := Document{
+		Canvas: Canvas{Width: 1080, Height: 1780},
+		Sprites: []Sprite{{
+			ID: "dog1", Sprite: "dog-brown", X: 100, Y: 1500, W: 96, H: 96,
+			Rotation: &Rotation{Animations: []string{"idle", "barking-run"}, MinMs: 3000, MaxMs: 10000},
+		}},
+	}
+	if _, err := s.SaveDocument(in); err != nil {
+		t.Fatalf("SaveDocument: %v", err)
+	}
+	out, err := s.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	r := out.Sprites[0].Rotation
+	if r == nil {
+		t.Fatal("rotation dropped on round-trip")
+	}
+	if len(r.Animations) != 2 || r.Animations[0] != "idle" || r.MinMs != 3000 || r.MaxMs != 10000 {
+		t.Fatalf("rotation mismatch: %+v", r)
+	}
+}
+
+func TestSaveRejectsBadRotation(t *testing.T) {
+	cases := []*Rotation{
+		{Animations: nil, MinMs: 1000, MaxMs: 2000},                 // empty list
+		{Animations: []string{""}, MinMs: 1000, MaxMs: 2000},        // empty tag
+		{Animations: []string{"idle"}, MinMs: 0, MaxMs: 2000},       // non-positive min
+		{Animations: []string{"idle"}, MinMs: 1000, MaxMs: 0},       // non-positive max
+		{Animations: []string{"idle"}, MinMs: 5000, MaxMs: 2000},    // max < min
+	}
+	for i, r := range cases {
+		dir := t.TempDir()
+		s := NewStore(filepath.Join(dir, "mascot-layout.json"))
+		doc := Document{
+			Canvas:  Canvas{Width: 1080, Height: 1780},
+			Sprites: []Sprite{{ID: "d", Sprite: "dog-brown", X: 0, Y: 0, W: 96, H: 96, Rotation: r}},
+		}
+		if _, err := s.SaveDocument(doc); !errors.Is(err, ErrInvalidRotation) {
+			t.Errorf("case %d: want ErrInvalidRotation, got %v", i, err)
+		}
+	}
+}
+
 func TestSaveRejectsOutOfBoundsSprite(t *testing.T) {
 	dir := t.TempDir()
 	s := NewStore(filepath.Join(dir, "mascot-layout.json"))

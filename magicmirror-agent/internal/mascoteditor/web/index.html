@@ -87,6 +87,76 @@
     .holiday-row.head { color: var(--ink-dim); font-size: 11px; }
     .holiday-row.head input, .holiday-row.head button { display: none; }
 
+    /* ---- animation rotation (HOM-117) ---- */
+    .rot { grid-column: 1 / -1; margin-top: 12px; padding-top: 14px; border-top: 1px solid #2a3344; display: flex; flex-direction: column; gap: 12px; }
+    .rot-head { display: flex; align-items: center; justify-content: space-between; }
+    .rot-head h3 { margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
+    .rot-hint { font-size: 11px; color: var(--ink-dim); line-height: 1.5; }
+    .rot-warn { font-size: 11px; color: var(--accent-2); line-height: 1.5; }
+
+    /* toggle switch */
+    .switch { position: relative; width: 38px; height: 22px; flex: 0 0 auto; cursor: pointer; }
+    .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .switch .track { position: absolute; inset: 0; background: var(--panel-2); border: 1px solid #2a3344; border-radius: 999px; transition: background 0.15s, border-color 0.15s; }
+    .switch .thumb { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--ink-dim); transition: transform 0.16s cubic-bezier(.34,1.56,.64,1), background 0.15s; }
+    .switch input:checked + .track { background: rgba(125,211,252,0.22); border-color: var(--accent); }
+    .switch input:checked + .track .thumb { transform: translateX(16px); background: var(--accent); }
+
+    /* selectable pose chips with live preview */
+    .tag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 8px; }
+    .tag-chip {
+      position: relative; background: var(--panel-2); border: 1px solid #2a3344; border-radius: 8px;
+      padding: 9px 6px 7px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+      cursor: pointer; opacity: 0.5; transition: opacity 0.15s, border-color 0.15s, transform 0.1s, box-shadow 0.15s;
+    }
+    .tag-chip:hover { transform: translateY(-1px); opacity: 0.8; }
+    .tag-chip.on { opacity: 1; border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    .tag-chip canvas { width: 52px; height: 52px; image-rendering: pixelated; background: #0d1320; border-radius: 4px; }
+    .tag-chip .tag-name { font-size: 11px; color: var(--ink); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tag-chip .pip { position: absolute; top: 6px; right: 6px; width: 11px; height: 11px; border-radius: 50%; border: 1px solid #3a455a; background: transparent; transition: background 0.15s, border-color 0.15s; }
+    .tag-chip.on .pip { background: var(--accent); border-color: var(--accent); }
+
+    .interval { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--ink-dim); }
+    .interval input { width: 54px; background: var(--panel-2); color: var(--ink); border: 1px solid #2a3344; border-radius: 4px; padding: 5px 6px; font: inherit; }
+
+    /* ---- sprite import (HOM-117 Phase 2) ---- */
+    .sidebar-btn { width: 100%; margin-top: 12px; background: var(--accent-2); color: #0b1220; border: 0; padding: 9px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    .props .ghost { grid-column: 1 / -1; background: transparent; color: var(--accent); border: 1px solid #2a3344; padding: 7px; border-radius: 4px; cursor: pointer; font-weight: 600; }
+    .props .ghost:hover { border-color: var(--accent); }
+
+    .modal { position: fixed; inset: 0; background: rgba(6,9,14,0.72); display: flex; align-items: center; justify-content: center; z-index: 50; backdrop-filter: blur(3px); }
+    .modal[hidden] { display: none; }
+    .modal-card { background: var(--panel); border: 1px solid #2a3344; border-radius: 12px; width: min(880px, 94vw); max-height: 92vh; overflow: auto; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #2a3344; position: sticky; top: 0; background: var(--panel); }
+    .modal-head h2 { margin: 0; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); }
+    .modal-x { background: transparent; border: 0; color: var(--ink-dim); font-size: 22px; line-height: 1; cursor: pointer; }
+    .modal-x:hover { color: var(--ink); }
+    .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .primary { background: var(--accent); color: #0b1220; border: 0; padding: 9px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+    .primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .dropzone { display: flex; align-items: center; justify-content: center; min-height: 96px; border: 1.5px dashed #2a3344; border-radius: 8px; color: var(--ink-dim); cursor: pointer; transition: border-color 0.15s, color 0.15s; text-align: center; padding: 12px; }
+    .dropzone:hover, .dropzone.drag { border-color: var(--accent); color: var(--ink); }
+
+    .import-grid { display: grid; grid-template-columns: minmax(0, 360px) 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 720px) { .import-grid { grid-template-columns: 1fr; } }
+    .sheet-wrap { position: relative; line-height: 0; border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 1px #2a3344; background:
+      repeating-conic-gradient(#0e131c 0% 25%, #0a0e15 0% 50%) 0 / 16px 16px; }
+    .sheet-wrap img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+    .grid-overlay { position: absolute; inset: 0; pointer-events: none; }
+    .grid-overlay .lines { position: absolute; inset: 0; }
+    .grid-overlay .row-hi { position: absolute; left: 0; right: 0; background: rgba(125,211,252,0.18); outline: 1px solid var(--accent); pointer-events: none; }
+    .sheet-click { position: absolute; inset: 0; cursor: crosshair; }
+
+    .ctrl-pane h3 { margin: 4px 0 4px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
+    .anim-row { display: grid; grid-template-columns: 46px 1fr auto; gap: 8px; align-items: center; background: var(--panel-2); border: 1px solid #2a3344; border-radius: 8px; padding: 8px; margin-bottom: 8px; }
+    .anim-row canvas { width: 40px; height: 40px; image-rendering: pixelated; background: #0d1320; border-radius: 4px; }
+    .anim-fields { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; font-size: 11px; color: var(--ink-dim); }
+    .anim-fields input { background: var(--bg); color: var(--ink); border: 1px solid #2a3344; border-radius: 4px; padding: 4px 6px; font: inherit; }
+    .anim-fields .tag { width: 92px; }
+    .anim-fields .num { width: 46px; }
+    .anim-del { background: transparent; color: var(--danger); border: 0; cursor: pointer; font-size: 18px; align-self: start; }
+
     .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--panel-2); color: var(--ink); padding: 10px 14px; border-radius: 6px; font-size: 13px; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
     .toast.show { opacity: 1; }
     .toast.error { color: var(--danger); }
@@ -106,7 +176,8 @@
     <h2>Sprite catalog</h2>
     <p>Drag onto the canvas.</p>
     <div class="catalog" id="catalog"></div>
-    <p class="muted" id="catalog-empty" style="display:none;">No sprites found in <code id="catalog-dir"></code>. Add directories with <code>default.png</code> + <code>default.json</code> there, then reload.</p>
+    <p class="muted" id="catalog-empty" style="display:none;">No sprites found in <code id="catalog-dir"></code>. Import a spritesheet to get started.</p>
+    <button class="sidebar-btn" id="import-btn">+ Import spritesheet</button>
   </aside>
 
   <main>
@@ -129,7 +200,9 @@
       <label>Y <input id="prop-y" type="number" step="1"></label>
       <label>W <input id="prop-w" type="number" step="1" min="1"></label>
       <label>H <input id="prop-h" type="number" step="1" min="1"></label>
-      <button class="danger full" id="prop-delete">Delete sprite</button>
+      <div class="rot full" id="rot-panel"></div>
+      <button class="ghost" id="prop-export">⬇ Download sprite (.zip)</button>
+      <button class="danger full" id="prop-delete" style="margin-top: 4px;">Delete sprite</button>
     </div>
 
     <h2 style="margin-top: 24px;">Canvas</h2>
@@ -146,6 +219,57 @@
       <button id="holiday-add" style="background: var(--accent-2); color: #0b1220; border: 0; padding: 6px; border-radius: 4px; cursor: pointer; font-weight: 600; margin-top: 6px;">+ Add holiday</button>
     </div>
   </aside>
+
+  <div class="modal" id="import-modal" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="import-title">Import spritesheet</h2>
+        <button class="modal-x" id="import-close" title="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="import-step1">
+          <div class="props" style="margin-bottom: 14px;">
+            <label class="full">Sprite name <input id="imp-id" type="text" autocomplete="off" placeholder="e.g. dog-brown"></label>
+            <label class="full">Skin / state <input id="imp-state" type="text" autocomplete="off" value="default"></label>
+          </div>
+          <label class="dropzone" id="imp-drop">
+            <input type="file" id="imp-file" accept="image/png" hidden>
+            <span id="imp-drop-label">Drop a PNG sheet here, or click to choose</span>
+          </label>
+          <p class="muted" style="margin: 10px 0 0;">Lowercase letters, digits, <code>-</code> or <code>_</code>. The skin “default” is the everyday look; holiday skins (halloween, christmas…) are optional.</p>
+          <div style="margin-top: 14px;"><button class="primary" id="imp-upload" disabled>Upload &amp; detect grid</button></div>
+        </div>
+
+        <div id="import-step2" hidden>
+          <div class="import-grid">
+            <div class="sheet-pane">
+              <div class="sheet-wrap" id="imp-sheet-wrap">
+                <img id="imp-sheet-img" alt="uploaded sheet">
+                <div class="grid-overlay" id="imp-grid-overlay"><div class="lines"></div></div>
+                <div class="sheet-click" id="imp-sheet-click" title="Click a row to add an animation"></div>
+              </div>
+              <p class="muted" id="imp-detect-note" style="margin: 8px 0 0;"></p>
+            </div>
+            <div class="ctrl-pane">
+              <div class="props">
+                <label>Columns <input id="imp-cols" type="number" min="1" step="1"></label>
+                <label>Rows <input id="imp-rows" type="number" min="1" step="1"></label>
+              </div>
+              <div class="muted" id="imp-cell-readout" style="margin: 6px 0 2px;"></div>
+              <h3>Animations</h3>
+              <p class="muted">Click a row on the sheet, or add one below. Include one named <code>idle</code>.</p>
+              <div id="imp-anim-list"></div>
+              <button class="props ghost" id="imp-add-anim" style="display:block; width:100%;">+ Add animation</button>
+              <div style="margin-top: 14px; display:flex; gap:8px; justify-content:flex-end;">
+                <button class="modal-x" id="imp-back" style="font-size:13px; color:var(--ink-dim);">← Back</button>
+                <button class="primary" id="imp-save">Save sprite</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="toast" id="toast"></div>
 
@@ -274,7 +398,7 @@ function renderCatalog() {
     name.textContent = c.id;
     const states = document.createElement("div");
     states.className = "states";
-    states.textContent = c.states.join(", ");
+    states.textContent = c.states.map((s) => s.name).join(", ");
     card.appendChild(thumb);
     card.appendChild(name);
     card.appendChild(states);
@@ -289,7 +413,7 @@ function renderProps() {
   const panel = $("props-panel");
   const empty = $("props-empty");
   const sp = state.doc.sprites.find((s) => s.id === state.selectedId);
-  if (!sp) { panel.style.display = "none"; empty.style.display = "block"; return; }
+  if (!sp) { panel.style.display = "none"; empty.style.display = "block"; renderRotation(null); return; }
   panel.style.display = "grid"; empty.style.display = "none";
 
   $("prop-id").value = sp.id;
@@ -313,6 +437,198 @@ function renderProps() {
     sel.appendChild(opt);
   }
   sel.value = sp.sprite;
+
+  renderRotation(sp);
+}
+
+// ----- animation rotation panel (HOM-117) -----
+const DEFAULT_MIN_MS = 3000, DEFAULT_MAX_MS = 10000;
+const assetCache = new Map();   // "id/state" -> Promise<{ json, img }>
+let previewPlayers = [];        // live tag-preview players, torn down on re-render
+
+function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
+function loadImage(url) {
+  return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error("img " + url)); im.src = url; });
+}
+function loadSpriteAsset(id, st) {
+  const key = id + "/" + st;
+  if (assetCache.has(key)) return assetCache.get(key);
+  const p = (async () => {
+    const base = spriteAssetBase(id, st);
+    const [json, img] = await Promise.all([
+      fetch(base + ".json").then((r) => { if (!r.ok) throw new Error("json " + r.status); return r.json(); }),
+      loadImage(base + ".png"),
+    ]);
+    return { json, img };
+  })();
+  assetCache.set(key, p);
+  return p;
+}
+function destroyPreviews() { for (const p of previewPlayers) p.stop(); previewPlayers = []; }
+
+function spriteCatalog(id) { return state.catalog.find((c) => c.id === id); }
+function spriteTags(id) {
+  const c = spriteCatalog(id);
+  if (!c) return [];
+  const set = new Set();
+  for (const st of c.states) for (const t of (st.tags || [])) set.add(t);
+  return [...set];
+}
+// Preview against the default skin when present, else the first available.
+function spriteDefaultState(id) {
+  const c = spriteCatalog(id);
+  if (!c || c.states.length === 0) return "default";
+  return c.states.some((s) => s.name === "default") ? "default" : c.states[0].name;
+}
+
+function renderRotation(sp) {
+  destroyPreviews();
+  const host = $("rot-panel");
+  host.innerHTML = "";
+  if (!sp) return;
+
+  const tags = spriteTags(sp.sprite);
+
+  const head = el("div", "rot-head");
+  const h3 = el("h3"); h3.textContent = "Animation";
+  head.appendChild(h3);
+  head.appendChild(buildSwitch(!!sp.rotation, (on) => {
+    if (on) {
+      sp.rotation = { animations: tags.slice(), minMs: DEFAULT_MIN_MS, maxMs: DEFAULT_MAX_MS };
+    } else {
+      delete sp.rotation;
+    }
+    markDirty();
+    renderRotation(sp);
+  }));
+  host.appendChild(head);
+
+  if (tags.length === 0) {
+    const w = el("div", "rot-warn");
+    w.textContent = "No animations found on this sprite's sheet yet. Add a multi-tag sheet, then reload.";
+    host.appendChild(w);
+    return;
+  }
+  if (!sp.rotation) {
+    const m = el("div", "rot-hint");
+    m.textContent = "Plays the “idle” pose. Turn on to cycle between poses at random intervals.";
+    host.appendChild(m);
+    return;
+  }
+
+  // Drop any selected tags that no longer exist on disk (e.g. sprite swapped).
+  sp.rotation.animations = (sp.rotation.animations || []).filter((t) => tags.includes(t));
+
+  const cap = el("div", "rot-hint");
+  cap.textContent = "Tap a pose to include it in the rotation:";
+  host.appendChild(cap);
+
+  const grid = el("div", "tag-grid");
+  const skin = spriteDefaultState(sp.sprite);
+  tags.forEach((tag) => {
+    const on = sp.rotation.animations.includes(tag);
+    const chip = el("div", "tag-chip" + (on ? " on" : ""));
+    const pip = el("div", "pip");
+    const cv = document.createElement("canvas"); cv.width = 64; cv.height = 48;
+    const nm = el("span", "tag-name"); nm.textContent = tag; nm.title = tag;
+    chip.appendChild(pip); chip.appendChild(cv); chip.appendChild(nm);
+    chip.addEventListener("click", () => {
+      const arr = sp.rotation.animations;
+      const i = arr.indexOf(tag);
+      if (i >= 0) {
+        if (arr.length <= 1) { showToast("Keep at least one pose, or switch rotation off.", true); return; }
+        arr.splice(i, 1);
+      } else {
+        arr.push(tag);
+      }
+      markDirty();
+      chip.classList.toggle("on");
+    });
+    grid.appendChild(chip);
+
+    loadSpriteAsset(sp.sprite, skin).then(({ json, img }) => {
+      const f = (json.frames[0] && json.frames[0].frame) || { w: 64, h: 48 };
+      cv.width = f.w; cv.height = f.h;
+      // Preserve the sprite's aspect in the chip rather than squishing to a square.
+      const longSide = 52;
+      if (f.w >= f.h) { cv.style.width = longSide + "px"; cv.style.height = Math.round(longSide * f.h / f.w) + "px"; }
+      else { cv.style.height = longSide + "px"; cv.style.width = Math.round(longSide * f.w / f.h) + "px"; }
+      const player = new EditorAsePlayer(cv, img, json);
+      player.play(tag);
+      previewPlayers.push(player);
+    }).catch(() => { /* leave the chip's canvas blank if assets fail to load */ });
+  });
+  host.appendChild(grid);
+
+  const iv = el("div", "interval");
+  iv.appendChild(document.createTextNode("Switch every"));
+  const minI = numInput(round1(sp.rotation.minMs / 1000));
+  const maxI = numInput(round1(sp.rotation.maxMs / 1000));
+  iv.appendChild(minI);
+  iv.appendChild(document.createTextNode("to"));
+  iv.appendChild(maxI);
+  iv.appendChild(document.createTextNode("seconds"));
+  const commit = () => {
+    let mn = Math.max(0.1, parseFloat(minI.value || "0") || 0.1);
+    let mx = Math.max(mn, parseFloat(maxI.value || "0") || mn);
+    minI.value = round1(mn); maxI.value = round1(mx);
+    sp.rotation.minMs = Math.round(mn * 1000);
+    sp.rotation.maxMs = Math.round(mx * 1000);
+    markDirty();
+  };
+  minI.addEventListener("change", commit);
+  maxI.addEventListener("change", commit);
+  host.appendChild(iv);
+
+  const hint = el("div", "rot-hint");
+  hint.textContent = "Random order · never the same pose twice in a row.";
+  host.appendChild(hint);
+}
+
+function numInput(val) {
+  const i = document.createElement("input");
+  i.type = "number"; i.min = "0.1"; i.step = "0.5"; i.value = val;
+  return i;
+}
+function round1(n) { return Math.round(n * 10) / 10; }
+function buildSwitch(checked, onChange) {
+  const label = el("label", "switch");
+  const input = document.createElement("input"); input.type = "checkbox"; input.checked = checked;
+  const track = el("span", "track");
+  track.appendChild(el("span", "thumb"));
+  label.appendChild(input); label.appendChild(track);
+  input.addEventListener("change", () => onChange(input.checked));
+  return label;
+}
+
+// Compact Aseprite "Array" player for the editor previews — mirrors the
+// module's vendor/ase-player.js (forward-only; previews never need
+// reverse/pingpong). Kept inline because the editor SPA is a single file
+// served by the agent and can't pull the module's vendored copy.
+class EditorAsePlayer {
+  constructor(canvas, image, json) {
+    this.canvas = canvas; this.ctx = canvas.getContext("2d"); this.ctx.imageSmoothingEnabled = false;
+    this.image = image; this.json = json; this.tag = null; this.i = 0; this.last = 0; this.raf = null;
+  }
+  play(name) {
+    const t = (this.json.meta.frameTags || []).find((x) => x.name === name);
+    this.tag = t || { from: 0, to: this.json.frames.length - 1 };
+    this.i = this.tag.from; this.last = performance.now();
+    this._draw(); this._loop();
+  }
+  stop() { if (this.raf != null) cancelAnimationFrame(this.raf); this.raf = null; }
+  _loop() {
+    this.raf = requestAnimationFrame((now) => {
+      const dur = this.json.frames[this.i].duration || 120;
+      if (now - this.last >= dur) { this.last = now; this.i = this.i + 1 > this.tag.to ? this.tag.from : this.i + 1; this._draw(); }
+      this._loop();
+    });
+  }
+  _draw() {
+    const f = this.json.frames[this.i].frame;
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.drawImage(this.image, f.x, f.y, f.w, f.h, 0, 0, this.canvas.width, this.canvas.height);
+  }
 }
 
 function renderHolidays() {
@@ -422,7 +738,11 @@ stage.addEventListener("drop", (e) => {
 });
 
 // ----- helpers -----
-function spriteThumbUrl(id, st) { return `/MMM-Mascot/sprites/${encodeURIComponent(id)}/${encodeURIComponent(st)}.png`; }
+function spriteThumbUrl(id, st) { return `${spriteAssetBase(id, st)}.png`; }
+// Sprite assets are served same-origin by the agent (8484) at /mascot/sprites
+// — see mascoteditor.Register. Keeping previews same-origin avoids canvas
+// taint so the live tag previews can drawImage freely.
+function spriteAssetBase(id, st) { return `/mascot/sprites/${encodeURIComponent(id)}/${encodeURIComponent(st)}`; }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function escapeAttr(s) { return String(s).replace(/[&"<>]/g, (c) => ({"&":"&amp;","\"":"&quot;","<":"&lt;",">":"&gt;"}[c])); }
 function nextId(baseSprite) {
@@ -463,7 +783,7 @@ $("prop-id").addEventListener("change", (e) => {
 $("prop-sprite").addEventListener("change", (e) => {
   const sp = state.doc.sprites.find((s) => s.id === state.selectedId);
   if (!sp) return;
-  sp.sprite = e.target.value; markDirty(); renderStage();
+  sp.sprite = e.target.value; markDirty(); renderStage(); renderRotation(sp);
 });
 $("prop-delete").addEventListener("click", () => {
   state.doc.sprites = state.doc.sprites.filter((s) => s.id !== state.selectedId);
@@ -477,6 +797,228 @@ $("holiday-add").addEventListener("click", () => {
   markDirty(); renderHolidays();
 });
 saveBtn.addEventListener("click", save);
+
+// ----- catalog refresh (after an import adds a sprite) -----
+async function refreshCatalog() {
+  const s = await api("/mascot/api/sprites");
+  state.catalog = s.catalog || [];
+  renderCatalog();
+  if (state.selectedId) renderProps(); // pick up new tags in the rotation panel
+}
+
+$("prop-export").addEventListener("click", () => {
+  const sp = state.doc.sprites.find((s) => s.id === state.selectedId);
+  if (!sp) return;
+  // Lets the browser download the zip bundle the agent streams.
+  window.location.href = `/mascot/api/sprites/${encodeURIComponent(sp.sprite)}/export`;
+});
+
+// ----- sprite import wizard (HOM-117 Phase 2) -----
+const importer = {
+  id: "", state: "default",
+  sheet: { w: 0, h: 0 }, cols: 1, rows: 1, cell: { w: 0, h: 0 },
+  img: null,      // loaded Image, for the live previews
+  anims: [],      // [{ tag, row, from, to, duration }]
+  players: [],    // EditorAsePlayer instances driving the per-animation previews
+};
+
+function destroyImportPreviews() { for (const p of importer.players) p.stop(); importer.players = []; }
+
+function openImport() {
+  Object.assign(importer, { id: "", state: "default", sheet: { w: 0, h: 0 }, cols: 1, rows: 1, cell: { w: 0, h: 0 }, img: null, anims: [] });
+  destroyImportPreviews();
+  $("imp-id").value = ""; $("imp-state").value = "default"; $("imp-file").value = "";
+  $("imp-drop-label").textContent = "Drop a PNG sheet here, or click to choose";
+  $("imp-upload").disabled = true;
+  $("import-step1").hidden = false; $("import-step2").hidden = true;
+  $("import-modal").hidden = false;
+}
+function closeImport() { destroyImportPreviews(); $("import-modal").hidden = true; }
+
+$("import-btn").addEventListener("click", openImport);
+$("import-close").addEventListener("click", closeImport);
+$("imp-back").addEventListener("click", () => { $("import-step2").hidden = true; $("import-step1").hidden = false; });
+$("import-modal").addEventListener("click", (e) => { if (e.target === $("import-modal")) closeImport(); });
+window.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("import-modal").hidden) closeImport(); });
+
+// step 1: file selection
+const impDrop = $("imp-drop"), impFile = $("imp-file");
+impDrop.addEventListener("click", () => impFile.click());
+impFile.addEventListener("change", () => { if (impFile.files[0]) { $("imp-drop-label").textContent = impFile.files[0].name; } impReadyCheck(); });
+impDrop.addEventListener("dragover", (e) => { e.preventDefault(); impDrop.classList.add("drag"); });
+impDrop.addEventListener("dragleave", () => impDrop.classList.remove("drag"));
+impDrop.addEventListener("drop", (e) => {
+  e.preventDefault(); impDrop.classList.remove("drag");
+  const f = e.dataTransfer.files[0];
+  if (f) { impFile.files = e.dataTransfer.files; $("imp-drop-label").textContent = f.name; impReadyCheck(); }
+});
+$("imp-id").addEventListener("input", impReadyCheck);
+function impReadyCheck() { $("imp-upload").disabled = !($("imp-id").value.trim() && impFile.files && impFile.files[0]); }
+
+// step 1 → 2: upload + auto-detect
+$("imp-upload").addEventListener("click", async () => {
+  const id = $("imp-id").value.trim(), st = ($("imp-state").value.trim() || "default");
+  const fd = new FormData();
+  fd.append("id", id); fd.append("state", st); fd.append("sheet", impFile.files[0]);
+  $("imp-upload").disabled = true;
+  try {
+    const r = await api("/mascot/api/sprites/upload", { method: "POST", body: fd });
+    importer.id = r.id; importer.state = r.state; importer.sheet = r.sheet;
+    importer.cols = r.detect.cols || 1; importer.rows = r.detect.rows || 1;
+    importer.img = await loadImage(spriteAssetBase(r.id, r.state) + ".png?ts=" + Date.now());
+    importer.anims = [{ tag: "idle", row: 0, from: 0, to: Math.max(0, importer.cols - 1), duration: 150 }];
+    $("imp-cols").value = importer.cols; $("imp-rows").value = importer.rows;
+    $("imp-detect-note").textContent = r.detect.confident
+      ? "Grid auto-detected — tweak columns/rows if it looks off."
+      : "Couldn't confidently detect the grid — set columns & rows to match the sheet.";
+    $("import-step1").hidden = true; $("import-step2").hidden = false;
+    impRecalc(); renderImpGrid(); renderAnims();
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    $("imp-upload").disabled = false;
+  }
+});
+
+$("imp-cols").addEventListener("input", () => { importer.cols = Math.max(1, parseInt($("imp-cols").value || "1", 10)); clampAnims(); impRecalc(); renderImpGrid(); renderAnims(); });
+$("imp-rows").addEventListener("input", () => { importer.rows = Math.max(1, parseInt($("imp-rows").value || "1", 10)); clampAnims(); impRecalc(); renderImpGrid(); renderAnims(); });
+$("imp-add-anim").addEventListener("click", () => addAnim(0));
+$("imp-sheet-click").addEventListener("click", (e) => {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const row = Math.floor(((e.clientY - rect.top) / rect.height) * importer.rows);
+  addAnim(Math.max(0, Math.min(importer.rows - 1, row)));
+});
+
+function clampAnims() {
+  for (const a of importer.anims) {
+    a.row = Math.min(a.row, importer.rows - 1);
+    a.to = Math.min(a.to, importer.cols - 1);
+    a.from = Math.min(a.from, a.to);
+  }
+}
+function addAnim(row) {
+  const tag = importer.anims.some((a) => a.tag === "idle") ? uniqueImpTag() : "idle";
+  importer.anims.push({ tag, row: row || 0, from: 0, to: Math.max(0, importer.cols - 1), duration: 150 });
+  renderAnims(); renderImpGrid();
+}
+function uniqueImpTag() { let n = 1; while (importer.anims.some((a) => a.tag === "anim" + n)) n++; return "anim" + n; }
+
+// impRecalc derives cell size and reports whether the grid tiles the sheet
+// exactly. Save is blocked (and the server would reject) when it doesn't.
+function impRecalc() {
+  const okW = importer.sheet.w % importer.cols === 0;
+  const okH = importer.sheet.h % importer.rows === 0;
+  importer.cell = { w: Math.floor(importer.sheet.w / importer.cols), h: Math.floor(importer.sheet.h / importer.rows) };
+  const readout = $("imp-cell-readout");
+  const ok = okW && okH;
+  if (ok) {
+    readout.style.color = "";
+    readout.textContent = `Cell ${importer.cell.w}×${importer.cell.h}px · ${importer.cols}×${importer.rows} = ${importer.cols * importer.rows} cells`;
+  } else {
+    readout.style.color = "var(--accent-2)";
+    readout.textContent = `⚠ ${importer.sheet.w}×${importer.sheet.h} doesn't divide evenly into ${importer.cols}×${importer.rows} — adjust columns/rows.`;
+  }
+  $("imp-save").disabled = !ok;
+  return ok;
+}
+
+function renderImpGrid() {
+  const img = $("imp-sheet-img");
+  if (importer.img) img.src = importer.img.src;
+  const overlay = $("imp-grid-overlay");
+  const lines = overlay.querySelector(".lines");
+  lines.style.backgroundImage = "linear-gradient(to right, rgba(125,211,252,0.5) 1px, transparent 1px), linear-gradient(to bottom, rgba(125,211,252,0.5) 1px, transparent 1px)";
+  lines.style.backgroundSize = `${100 / importer.cols}% 100%, 100% ${100 / importer.rows}%`;
+  overlay.querySelectorAll(".row-hi").forEach((n) => n.remove());
+  for (const r of new Set(importer.anims.map((a) => a.row))) {
+    const hi = el("div", "row-hi");
+    hi.style.top = `${r * 100 / importer.rows}%`;
+    hi.style.height = `${100 / importer.rows}%`;
+    overlay.appendChild(hi);
+  }
+}
+
+function renderAnims() {
+  destroyImportPreviews();
+  const list = $("imp-anim-list");
+  list.innerHTML = "";
+  importer.anims.forEach((an, idx) => {
+    const row = el("div", "anim-row");
+    const cv = document.createElement("canvas");
+    const fields = el("div", "anim-fields");
+
+    const tag = document.createElement("input");
+    tag.className = "tag"; tag.value = an.tag; tag.placeholder = "name";
+    tag.addEventListener("input", () => { an.tag = tag.value.trim(); });
+
+    const rowI = impNum(an.row, 0, importer.rows - 1, (v) => { an.row = v; renderImpGrid(); startPreview(cv, an); });
+    const fromI = impNum(an.from, 0, importer.cols - 1, (v) => { an.from = Math.min(v, an.to); fromI.value = an.from; startPreview(cv, an); });
+    const toI = impNum(an.to, 0, importer.cols - 1, (v) => { an.to = Math.max(v, an.from); toI.value = an.to; startPreview(cv, an); });
+    const durI = impNum(an.duration, 10, 5000, (v) => { an.duration = v; startPreview(cv, an); });
+
+    fields.append(tag, impLbl("row"), rowI, impLbl("cols"), fromI, impLbl("–"), toI, durI, impLbl("ms"));
+
+    const del = el("button", "anim-del"); del.textContent = "×"; del.title = "Remove";
+    del.addEventListener("click", () => { importer.anims.splice(idx, 1); renderAnims(); renderImpGrid(); });
+
+    row.append(cv, fields, del);
+    list.appendChild(row);
+    startPreview(cv, an);
+  });
+}
+
+// Build a one-tag transient Aseprite doc for an animation and (re)start its
+// preview player, so the chip animates exactly what will be saved.
+function startPreview(cv, an) {
+  if (cv._player) { cv._player.stop(); const i = importer.players.indexOf(cv._player); if (i >= 0) importer.players.splice(i, 1); cv._player = null; }
+  if (!importer.cell.w || !importer.img) return;
+  cv.width = importer.cell.w; cv.height = importer.cell.h;
+  const long = 40;
+  if (importer.cell.w >= importer.cell.h) { cv.style.width = long + "px"; cv.style.height = Math.round(long * importer.cell.h / importer.cell.w) + "px"; }
+  else { cv.style.height = long + "px"; cv.style.width = Math.round(long * importer.cell.w / importer.cell.h) + "px"; }
+  const frames = [];
+  for (let c = an.from; c <= an.to; c++) {
+    frames.push({ frame: { x: c * importer.cell.w, y: an.row * importer.cell.h, w: importer.cell.w, h: importer.cell.h }, duration: an.duration || 150 });
+  }
+  const json = { frames, meta: { frameTags: [{ name: "a", from: 0, to: frames.length - 1, direction: "forward" }] } };
+  const p = new EditorAsePlayer(cv, importer.img, json);
+  p.play("a"); cv._player = p; importer.players.push(p);
+}
+
+function impNum(val, min, max, onCommit) {
+  const i = document.createElement("input");
+  i.type = "number"; i.className = "num"; i.min = min; i.max = max; i.value = val;
+  i.addEventListener("change", () => {
+    let v = parseInt(i.value || "0", 10);
+    if (isNaN(v)) v = min;
+    v = Math.max(min, Math.min(max, v));
+    i.value = v; onCommit(v);
+  });
+  return i;
+}
+function impLbl(t) { const s = document.createElement("span"); s.textContent = t; return s; }
+
+$("imp-save").addEventListener("click", async () => {
+  if (!impRecalc()) { showToast("Fix the grid before saving.", true); return; }
+  if (!importer.anims.some((a) => a.tag === "idle")) { showToast("Add an animation named “idle”.", true); return; }
+  if (importer.anims.some((a) => !a.tag)) { showToast("Every animation needs a name.", true); return; }
+  const payload = {
+    id: importer.id, state: importer.state, sheet: importer.sheet, cell: importer.cell,
+    cols: importer.cols, rows: importer.rows,
+    animations: importer.anims.map((a) => ({ tag: a.tag, row: a.row, from: a.from, to: a.to, duration: a.duration })),
+  };
+  $("imp-save").disabled = true;
+  try {
+    const r = await api("/mascot/api/sprites/slice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    showToast(`Saved “${r.id}” · ${r.tags} animations, ${r.frames} frames.`);
+    closeImport();
+    await refreshCatalog();
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    $("imp-save").disabled = false;
+  }
+});
 
 window.addEventListener("DOMContentLoaded", () => {
   hydrate().catch((err) => showToast(err.message, true));

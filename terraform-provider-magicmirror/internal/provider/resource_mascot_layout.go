@@ -38,12 +38,21 @@ type MascotLayoutResourceModel struct {
 }
 
 type MascotSpriteModel struct {
-	ID     types.String `tfsdk:"id"`
-	Sprite types.String `tfsdk:"sprite"`
-	X      types.Int64  `tfsdk:"x"`
-	Y      types.Int64  `tfsdk:"y"`
-	W      types.Int64  `tfsdk:"w"`
-	H      types.Int64  `tfsdk:"h"`
+	ID       types.String         `tfsdk:"id"`
+	Sprite   types.String         `tfsdk:"sprite"`
+	X        types.Int64          `tfsdk:"x"`
+	Y        types.Int64          `tfsdk:"y"`
+	W        types.Int64          `tfsdk:"w"`
+	H        types.Int64          `tfsdk:"h"`
+	Rotation *MascotRotationModel `tfsdk:"rotation"`
+}
+
+// MascotRotationModel is the optional per-sprite animation rotation
+// (HOM-117). Absent (nil) means the sprite plays "idle".
+type MascotRotationModel struct {
+	Animations []types.String `tfsdk:"animations"`
+	MinMs      types.Int64    `tfsdk:"min_ms"`
+	MaxMs      types.Int64    `tfsdk:"max_ms"`
 }
 
 type MascotHolidayModel struct {
@@ -93,6 +102,20 @@ func (r *MascotLayoutResource) Schema(ctx context.Context, req resource.SchemaRe
 						"y":      schema.Int64Attribute{Required: true, Description: "Y offset in canvas pixels (0..canvas_height)."},
 						"w":      schema.Int64Attribute{Required: true, Description: "Width in canvas pixels."},
 						"h":      schema.Int64Attribute{Required: true, Description: "Height in canvas pixels."},
+					},
+					Blocks: map[string]schema.Block{
+						"rotation": schema.SingleNestedBlock{
+							Description: "Optional animation rotation (HOM-117). When set, the sprite cycles the listed animation tags at random intervals instead of just playing 'idle'.",
+							Attributes: map[string]schema.Attribute{
+								"animations": schema.ListAttribute{
+									ElementType: types.StringType,
+									Optional:    true,
+									Description: "Animation tag names to cycle through (must exist in the sprite's Aseprite JSON), e.g. [\"idle\", \"barking-run\"].",
+								},
+								"min_ms": schema.Int64Attribute{Optional: true, Description: "Shortest dwell on one animation before switching, in milliseconds."},
+								"max_ms": schema.Int64Attribute{Optional: true, Description: "Longest dwell on one animation before switching, in milliseconds. Must be >= min_ms."},
+							},
+						},
 					},
 				},
 			},
@@ -181,14 +204,26 @@ func (r *MascotLayoutResource) Delete(ctx context.Context, req resource.DeleteRe
 func (r *MascotLayoutResource) modelToLayout(data *MascotLayoutResourceModel) *MascotLayout {
 	sprites := make([]MascotSprite, 0, len(data.Sprites))
 	for _, s := range data.Sprites {
-		sprites = append(sprites, MascotSprite{
+		sprite := MascotSprite{
 			ID:     s.ID.ValueString(),
 			Sprite: s.Sprite.ValueString(),
 			X:      int(s.X.ValueInt64()),
 			Y:      int(s.Y.ValueInt64()),
 			W:      int(s.W.ValueInt64()),
 			H:      int(s.H.ValueInt64()),
-		})
+		}
+		if r := s.Rotation; r != nil {
+			animations := make([]string, 0, len(r.Animations))
+			for _, a := range r.Animations {
+				animations = append(animations, a.ValueString())
+			}
+			sprite.Rotation = &MascotRotation{
+				Animations: animations,
+				MinMs:      int(r.MinMs.ValueInt64()),
+				MaxMs:      int(r.MaxMs.ValueInt64()),
+			}
+		}
+		sprites = append(sprites, sprite)
 	}
 	holidays := make([]MascotHoliday, 0, len(data.Holidays))
 	for _, h := range data.Holidays {
@@ -213,14 +248,26 @@ func (r *MascotLayoutResource) layoutToModel(doc *MascotLayout, data *MascotLayo
 	data.CanvasHeight = types.Int64Value(int64(doc.Canvas.Height))
 	sprites := make([]MascotSpriteModel, 0, len(doc.Sprites))
 	for _, s := range doc.Sprites {
-		sprites = append(sprites, MascotSpriteModel{
+		model := MascotSpriteModel{
 			ID:     types.StringValue(s.ID),
 			Sprite: types.StringValue(s.Sprite),
 			X:      types.Int64Value(int64(s.X)),
 			Y:      types.Int64Value(int64(s.Y)),
 			W:      types.Int64Value(int64(s.W)),
 			H:      types.Int64Value(int64(s.H)),
-		})
+		}
+		if r := s.Rotation; r != nil {
+			animations := make([]types.String, 0, len(r.Animations))
+			for _, a := range r.Animations {
+				animations = append(animations, types.StringValue(a))
+			}
+			model.Rotation = &MascotRotationModel{
+				Animations: animations,
+				MinMs:      types.Int64Value(int64(r.MinMs)),
+				MaxMs:      types.Int64Value(int64(r.MaxMs)),
+			}
+		}
+		sprites = append(sprites, model)
 	}
 	data.Sprites = sprites
 	holidays := make([]MascotHolidayModel, 0, len(doc.Holidays))

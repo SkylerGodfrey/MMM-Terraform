@@ -35,6 +35,13 @@ func emitMascotsTf(c mascot.Canvas, sprites []mascot.Sprite, holidays []mascot.H
 		fmt.Fprintf(&b, "    y      = %d\n", s.Y)
 		fmt.Fprintf(&b, "    w      = %d\n", s.W)
 		fmt.Fprintf(&b, "    h      = %d\n", s.H)
+		if r := s.Rotation; r != nil {
+			b.WriteString("\n    rotation {\n")
+			fmt.Fprintf(&b, "      animations = [%s]\n", quoteList(r.Animations))
+			fmt.Fprintf(&b, "      min_ms     = %d\n", r.MinMs)
+			fmt.Fprintf(&b, "      max_ms     = %d\n", r.MaxMs)
+			b.WriteString("    }\n")
+		}
 		b.WriteString("  }\n")
 	}
 	for _, h := range holidays {
@@ -59,4 +66,15 @@ func positiveOrDefault(v, dflt int) int {
 		return dflt
 	}
 	return v
+}
+
+// quoteList renders a string slice as a comma-separated list of quoted
+// HCL strings: ["idle", "barking-run"]. Empty slice renders as nothing
+// (the caller's brackets make it []).
+func quoteList(items []string) string {
+	parts := make([]string, len(items))
+	for i, s := range items {
+		parts[i] = fmt.Sprintf("%q", s)
+	}
+	return strings.Join(parts, ", ")
 }

@@ -97,13 +97,24 @@ type MascotCanvas struct {
 }
 
 // MascotSprite places one sprite-catalog id at a position on the overlay.
+// Rotation is optional (HOM-117): when set the module cycles the sprite
+// through the named animation tags; when nil it plays "idle".
 type MascotSprite struct {
-	ID     string `json:"id"`
-	Sprite string `json:"sprite"`
-	X      int    `json:"x"`
-	Y      int    `json:"y"`
-	W      int    `json:"w"`
-	H      int    `json:"h"`
+	ID       string          `json:"id"`
+	Sprite   string          `json:"sprite"`
+	X        int             `json:"x"`
+	Y        int             `json:"y"`
+	W        int             `json:"w"`
+	H        int             `json:"h"`
+	Rotation *MascotRotation `json:"rotation,omitempty"`
+}
+
+// MascotRotation mirrors mascot.Rotation: the animation tags to cycle and
+// the random dwell bounds (ms) between switches.
+type MascotRotation struct {
+	Animations []string `json:"animations"`
+	MinMs      int      `json:"minMs"`
+	MaxMs      int      `json:"maxMs"`
 }
 
 // MascotHoliday is one [Start, End] MM-DD window where the named state is

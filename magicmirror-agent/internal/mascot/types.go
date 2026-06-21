@@ -49,13 +49,33 @@ type Canvas struct {
 // Sprite places one sprite asset on the overlay. Sprite is the catalog
 // id (matches a directory under MMM-Mascot/sprites/). The asset that
 // renders depends on the active state from the holiday calendar.
+//
+// Rotation is optional (HOM-117 behavioral states). When present the
+// module cycles the sprite through the named animation tags instead of
+// always playing "idle"; when nil the sprite plays "idle" forever, the
+// pre-rotation behavior. Holidays still pick the *skin* (which PNG);
+// rotation picks the *animation* (which tag inside it) — two independent
+// axes.
 type Sprite struct {
-	ID     string `json:"id"`
-	Sprite string `json:"sprite"`
-	X      int    `json:"x"`
-	Y      int    `json:"y"`
-	W      int    `json:"w"`
-	H      int    `json:"h"`
+	ID       string    `json:"id"`
+	Sprite   string    `json:"sprite"`
+	X        int       `json:"x"`
+	Y        int       `json:"y"`
+	W        int       `json:"w"`
+	H        int       `json:"h"`
+	Rotation *Rotation `json:"rotation,omitempty"`
+}
+
+// Rotation cycles a sprite through a set of animation tags at random
+// intervals. Animations are frame-tag names that must exist in the
+// active skin's Aseprite JSON (idle, barking-run, …). Each dwell is a
+// random duration in [MinMs, MaxMs]; the module never plays the same tag
+// twice in a row (HOM-117). A single-element list is legal and renders
+// as a static animation.
+type Rotation struct {
+	Animations []string `json:"animations"`
+	MinMs      int      `json:"minMs"`
+	MaxMs      int      `json:"maxMs"`
 }
 
 // Holiday is a date window during which a non-default state name is
@@ -84,6 +104,11 @@ var (
 	// ErrDuplicateSpriteID is returned when two sprites share the same id.
 	// Sprites are identified by id throughout the editor and on the wire.
 	ErrDuplicateSpriteID = errors.New("duplicate sprite id")
+
+	// ErrInvalidRotation is returned when a sprite's rotation config fails
+	// validation (empty animation list, non-positive interval, or
+	// max < min).
+	ErrInvalidRotation = errors.New("invalid rotation")
 )
 
 // DefaultDocument returns the empty layout used when the on-disk file
