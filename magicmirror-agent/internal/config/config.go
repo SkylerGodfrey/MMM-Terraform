@@ -22,6 +22,7 @@ type PortalConfig struct {
 	PhotosDir        string `mapstructure:"photos_dir"`
 	RewardsFile      string `mapstructure:"rewards_file"`
 	RewardsImagesDir string `mapstructure:"rewards_images_dir"`
+	PokedexPath      string `mapstructure:"pokedex_path"`
 }
 
 // ServerConfig holds HTTP server settings
@@ -69,6 +70,18 @@ func (c *Config) ChoresDBPath() string {
 		return c.Portal.ChoresDBPath
 	}
 	return filepath.Join(c.MagicMirror.InstallPath(), "modules", "MMM-Chores", "data", "chores.db")
+}
+
+// PokedexPath returns the Pokémon Theme v2 dataset the family portal reads to
+// power the pack member picker and the caught-dex admin tool (HOM-150 / HOM-153).
+// The dataset is owned by MMM-Chores (themes/pokemon/data/pokedex.json, HOM-147);
+// the agent only reads it. Defaults under the MMM-Chores module dir so existing
+// agent configs need no edit; override via portal.pokedex_path if relocated.
+func (c *Config) PokedexPath() string {
+	if c.Portal.PokedexPath != "" {
+		return c.Portal.PokedexPath
+	}
+	return filepath.Join(c.MagicMirror.InstallPath(), "modules", "MMM-Chores", "themes", "pokemon", "data", "pokedex.json")
 }
 
 // PhotosDir returns the slideshow album directory edited by the family

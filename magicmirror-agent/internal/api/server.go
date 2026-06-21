@@ -27,6 +27,7 @@ type Server struct {
 	mmVersions   *mmversion.Manager
 	choreStore   *chores.Store
 	choresDBPath string // runtime-state SQLite; opened per-request (module owns it)
+	pokedexPath  string // Pokémon Theme v2 dataset (read-only; MMM-Chores owns it)
 	photoStore   *photos.Store
 	rewardStore  *rewards.Store
 	canvasStore  *canvas.Store
@@ -69,6 +70,7 @@ func NewServer(cfg *config.Config) *Server {
 		mmVersions:   mmversion.NewManager(cfg.MagicMirror.InstallPath()),
 		choreStore:   chores.NewStore(cfg.ChoresFile()),
 		choresDBPath: cfg.ChoresDBPath(),
+		pokedexPath:  cfg.PokedexPath(),
 		photoStore:   photos.NewStore(cfg.PhotosDir()),
 		rewardStore:  rewards.NewStore(cfg.RewardsFile(), cfg.RewardsImagesDir()),
 	}
@@ -143,6 +145,17 @@ func (s *Server) setupRoutes() {
 	portalAPI.POST("/pending/:id/deny", s.denyPending)
 	portalAPI.GET("/events", s.listEvents)
 	portalAPI.POST("/events/:id/revert", s.revertEvent)
+
+	// Pokémon Theme v2 packs (HOM-150). CRUD over the household-global,
+	// date-ranged encounter pools in the MMM-Chores SQLite `packs` table,
+	// applying the same sequential/non-overlapping rule as store/packs.js.
+	// The dataset endpoint feeds the member picker (read-only; the module
+	// owns themes/pokemon/data/pokedex.json).
+	portalAPI.GET("/packs", s.listPacks)
+	portalAPI.POST("/packs", s.createPack)
+	portalAPI.PUT("/packs/:id", s.updatePack)
+	portalAPI.DELETE("/packs/:id", s.deletePack)
+	portalAPI.GET("/pokedex", s.getPokedex)
 
 	portalAPI.GET("/photos", s.listPhotos)
 	portalAPI.POST("/photos", s.uploadPhoto)
