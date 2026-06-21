@@ -199,6 +199,57 @@
     margin: 4px 0 0; font-size: 12px; color: var(--ink-dim); max-width: 44ch;
   }
   .modules-view .view-header .primary { padding: 9px 18px; }
+  .modules-view .view-header-actions {
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  }
+
+  /* HOM: Fetch-from-Pi diff panel */
+  .fetch-diff {
+    margin-bottom: 18px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--panel-elev);
+    overflow: hidden;
+  }
+  .fetch-diff > h3 {
+    margin: 0; padding: 14px 18px;
+    font-size: 14px; letter-spacing: 0.01em;
+    border-bottom: 1px solid var(--line);
+    background: var(--accent-dim);
+  }
+  .fetch-diff .diff-list { padding: 6px 0; margin: 0; }
+  .fetch-diff .diff-row {
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .fetch-diff .diff-row:last-child { border-bottom: none; }
+  .fetch-diff .diff-row .mod {
+    font-weight: 600; font-size: 13px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .fetch-diff .tag {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 2px 7px; border-radius: 999px; font-weight: 700;
+  }
+  .fetch-diff .tag.changed { background: var(--accent-dim); color: var(--accent); }
+  .fetch-diff .tag.added { background: rgba(95,184,120,0.18); color: var(--success); }
+  .fetch-diff .tag.removed { background: rgba(224,98,92,0.18); color: var(--danger); }
+  .fetch-diff .fields {
+    margin: 8px 0 0; padding: 0; list-style: none;
+    font-size: 12px; color: var(--ink-dim);
+  }
+  .fetch-diff .fields li { margin: 3px 0; }
+  .fetch-diff .fields code {
+    color: var(--ink); background: var(--panel);
+    padding: 1px 5px; border-radius: 4px;
+    font-size: 11px; white-space: pre-wrap; word-break: break-word;
+  }
+  .fetch-diff .fields .arrow { color: var(--ink-dim); margin: 0 4px; }
+  .fetch-diff .diff-actions {
+    display: flex; gap: 10px; justify-content: flex-end;
+    padding: 14px 18px; border-top: 1px solid var(--line);
+    background: var(--panel);
+  }
 
   .modules-scroll {
     flex: 1; min-height: 0;
@@ -298,6 +349,11 @@
     outline: none; border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-dim);
   }
+  .module-edit-pane .scene-hint {
+    margin-top: 6px; font-size: 12px; line-height: 1.4;
+  }
+  .module-edit-pane .scene-hint.ok { color: var(--success); }
+  .module-edit-pane .scene-hint.warn { color: var(--accent); }
   /* Sticky action bar inside the pane so Save/Cancel are always one
      click away even when the JSON textarea grows. */
   .module-edit-pane .actions {
@@ -421,9 +477,13 @@
       <h1>Modules <span class="count" id="modules-count"></span></h1>
       <p class="hint">Anything you place on a page must be registered here first.</p>
     </div>
-    <button class="primary" id="add-module-btn">+ Add module</button>
+    <div class="view-header-actions">
+      <button class="subtle" id="fetch-modules-btn" title="Re-read module configs from the Pi's live config.js and compare with what's loaded here">Fetch from Pi</button>
+      <button class="primary" id="add-module-btn">+ Add module</button>
+    </div>
   </header>
   <div class="modules-scroll">
+    <div id="module-fetch-diff"></div>
     <div id="modules-list"></div>
     <div id="module-edit"></div>
   </div>
@@ -1346,6 +1406,31 @@ function renderModuleEditPane() {
   posField.appendChild(posInput);
   box.appendChild(posField);
 
+  // Scene membership. A module's `classes` field is what binds it to an
+  // MMM-Scenes2 scene (Scenes2 shows/hides via withClass), and each scene
+  // maps to a canvas page via MMM-Canvas's sceneToPage. The hint resolves
+  // the typed classes live so an unscened module — which renders on EVERY
+  // page — is obvious instead of silently leaking across scenes.
+  const clsField = document.createElement("div");
+  clsField.className = "field";
+  clsField.innerHTML = '<label>Classes (scene membership)</label>';
+  const clsInput = document.createElement("input");
+  clsInput.type = "text";
+  clsInput.placeholder = "e.g. mascots";
+  clsInput.value = m.classes || "";
+  clsField.appendChild(clsInput);
+  const clsHint = document.createElement("div");
+  clsHint.className = "scene-hint";
+  clsField.appendChild(clsHint);
+  box.appendChild(clsField);
+  const refreshSceneHint = () => {
+    const d = describeScenes(clsInput.value);
+    clsHint.textContent = d.text;
+    clsHint.className = "scene-hint " + (d.warn ? "warn" : "ok");
+  };
+  clsInput.addEventListener("input", refreshSceneHint);
+  refreshSceneHint();
+
   const cfgField = document.createElement("div");
   cfgField.className = "field";
   cfgField.innerHTML = '<label>Config (JSON)</label>';
@@ -1373,10 +1458,11 @@ function renderModuleEditPane() {
     catch (e) { toast("err", "config JSON: " + e.message); return; }
     if (!nameInput.value.trim()) { toast("err", "module name is required"); return; }
     const position = posInput.value;
+    const classes = clsInput.value.trim();
     if (m.id) {
-      await updateRegisteredModule(m.id, { module: nameInput.value.trim(), config: cfg, position, classes: m.classes });
+      await updateRegisteredModule(m.id, { module: nameInput.value.trim(), config: cfg, position, classes });
     } else {
-      await createRegisteredModule({ module: nameInput.value.trim(), config: cfg, position });
+      await createRegisteredModule({ module: nameInput.value.trim(), config: cfg, position, classes });
     }
   };
   actions.appendChild(save);
@@ -1396,6 +1482,212 @@ function renderModuleEditPane() {
 function openModuleEditor(id) {
   state.editingModuleId = id;
   renderModulesView();
+}
+
+// ---------- scene membership (derived from live module configs) ----------
+// sceneInfo reads MMM-Scenes2's scenario (the classes each scene shows/
+// hides) and MMM-Canvas's scenes2Adapter.sceneToPage (which canvas page a
+// scene drives) straight out of state.modules — both already arrive in
+// /canvas/api/state, so no backend call is needed.
+function sceneInfo() {
+  const sceneClasses = new Set();
+  const classToPage = new Map();
+  const scenes2 = state.modules.find((m) => m.module === "MMM-Scenes2");
+  const scenario = scenes2 && scenes2.config && scenes2.config.scenario;
+  if (Array.isArray(scenario)) {
+    for (const sc of scenario) {
+      for (const c of (sc.enter || [])) sceneClasses.add(c);
+      for (const c of (sc.exit || [])) sceneClasses.add(c);
+    }
+  }
+  const canvas = state.modules.find((m) => m.module === "MMM-Canvas");
+  const map = canvas && canvas.config && canvas.config.scenes2Adapter
+    ? (canvas.config.scenes2Adapter.sceneToPage || {}) : {};
+  for (const [cls, page] of Object.entries(map)) {
+    classToPage.set(cls, page);
+    sceneClasses.add(cls);
+  }
+  return { sceneClasses, classToPage };
+}
+
+// describeScenes resolves a whitespace-separated classes string into a
+// human hint. warn=true is the "no scene class" case — Scenes2 can't
+// target the module, so it shows on every page (the MMM-Mascot bug).
+function describeScenes(classesStr) {
+  const info = sceneInfo();
+  const classes = (classesStr || "").trim().split(/\s+/).filter(Boolean);
+  const hits = classes.filter((c) => info.sceneClasses.has(c));
+  if (hits.length === 0) {
+    return { warn: true, text: "⚠ Not tied to any scene — shows on every page." };
+  }
+  const parts = hits.map((c) => {
+    const page = info.classToPage.get(c);
+    return page ? `${c} → ${page} page` : `${c} (no canvas page mapped)`;
+  });
+  return { warn: false, text: "✓ Scene: " + parts.join(", ") };
+}
+
+// ---------- Fetch module configs from the Pi ----------
+// The editor caches module configs from the initial /canvas/api/state
+// load. If the Pi's config.js changes underneath us (a terraform apply, a
+// hand edit, or a Save from another browser tab), the Edit pane keeps
+// showing the stale values. Fetch re-reads the live config and, on any
+// difference, shows a per-module diff with Override (adopt the Pi's
+// values) / Cancel (keep the editor's — e.g. to copy unsaved work
+// elsewhere first). Module configs only; the canvas layout is untouched.
+
+// canonical returns a stable, key-sorted JSON string so config objects
+// compare equal regardless of key insertion order.
+function canonical(v) { return JSON.stringify(sortKeys(v)); }
+function sortKeys(v) {
+  if (Array.isArray(v)) return v.map(sortKeys);
+  if (v && typeof v === "object") {
+    return Object.keys(v).sort().reduce((acc, k) => { acc[k] = sortKeys(v[k]); return acc; }, {});
+  }
+  return v;
+}
+
+// diffModules compares the editor's cached list against a freshly fetched
+// one, keyed by module id. Returns [] when name/position/classes/config
+// all match for every module.
+function diffModules(current, fetched) {
+  const curById = new Map(current.map((m) => [m.id, m]));
+  const fetById = new Map(fetched.map((m) => [m.id, m]));
+  const out = [];
+  for (const f of fetched) {
+    const c = curById.get(f.id);
+    if (!c) { out.push({ kind: "added", id: f.id, module: f.module }); continue; }
+    const fields = [];
+    for (const key of ["module", "position", "classes"]) {
+      if ((c[key] || "") !== (f[key] || "")) {
+        fields.push({ key, from: c[key] || "", to: f[key] || "" });
+      }
+    }
+    if (canonical(c.config || {}) !== canonical(f.config || {})) {
+      fields.push({ key: "config",
+        from: JSON.stringify(c.config || {}),
+        to: JSON.stringify(f.config || {}) });
+    }
+    if (fields.length) out.push({ kind: "changed", id: f.id, module: f.module, fields });
+  }
+  for (const c of current) {
+    if (!fetById.has(c.id)) out.push({ kind: "removed", id: c.id, module: c.module });
+  }
+  return out;
+}
+
+async function fetchFromPi() {
+  const btn = $("fetch-modules-btn");
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Fetching…";
+  try {
+    const res = await fetch("/canvas/api/state");
+    if (!res.ok) { toast("err", "fetch failed: " + res.status); return; }
+    const data = await res.json();
+    const fetched = data.modules || [];
+    const diffs = diffModules(state.modules, fetched);
+    if (diffs.length === 0) {
+      clearFetchDiff();
+      toast("ok", "Module configs match the Pi — nothing to update.");
+      return;
+    }
+    renderFetchDiff(diffs, fetched);
+  } catch (e) {
+    toast("err", "fetch failed: " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+}
+
+function clearFetchDiff() {
+  const host = $("module-fetch-diff");
+  if (host) host.innerHTML = "";
+}
+
+function truncate(s, max = 140) {
+  s = String(s);
+  return s.length > max ? s.slice(0, max - 1) + "…" : s;
+}
+
+function renderFetchDiff(diffs, fetched) {
+  const host = $("module-fetch-diff");
+  host.innerHTML = "";
+  const box = document.createElement("div");
+  box.className = "fetch-diff";
+
+  const h = document.createElement("h3");
+  const n = diffs.length;
+  h.textContent = `Pi config differs — ${n} module${n === 1 ? "" : "s"} out of sync`;
+  box.appendChild(h);
+
+  const listEl = document.createElement("div");
+  listEl.className = "diff-list";
+  for (const d of diffs.slice().sort((a, b) => a.module.localeCompare(b.module))) {
+    const row = document.createElement("div");
+    row.className = "diff-row";
+    const mod = document.createElement("div");
+    mod.className = "mod";
+    mod.appendChild(document.createTextNode(d.module + " "));
+    const tag = document.createElement("span");
+    tag.className = "tag " + d.kind;
+    tag.textContent = d.kind === "added" ? "only on Pi"
+      : d.kind === "removed" ? "only here" : "changed";
+    mod.appendChild(tag);
+    row.appendChild(mod);
+
+    const ul = document.createElement("ul");
+    ul.className = "fields";
+    if (d.kind === "changed") {
+      for (const f of d.fields) {
+        const li = document.createElement("li");
+        li.appendChild(document.createTextNode(f.key + ": "));
+        const from = document.createElement("code");
+        from.textContent = truncate(f.from === "" ? "(empty)" : f.from);
+        li.appendChild(from);
+        const arrow = document.createElement("span");
+        arrow.className = "arrow"; arrow.textContent = "→";
+        li.appendChild(arrow);
+        const to = document.createElement("code");
+        to.textContent = truncate(f.to === "" ? "(empty)" : f.to);
+        li.appendChild(to);
+        ul.appendChild(li);
+      }
+    } else {
+      const li = document.createElement("li");
+      li.textContent = d.kind === "added"
+        ? "Registered on the Pi but not loaded here. Override adds it to the editor."
+        : "Present in the editor but not on the Pi. Override removes it from this view.";
+      ul.appendChild(li);
+    }
+    row.appendChild(ul);
+    listEl.appendChild(row);
+  }
+  box.appendChild(listEl);
+
+  const actions = document.createElement("div");
+  actions.className = "diff-actions";
+  const cancel = document.createElement("button");
+  cancel.className = "subtle";
+  cancel.textContent = "Cancel";
+  cancel.onclick = () => { clearFetchDiff(); toast("", "Kept the editor's module configs."); };
+  actions.appendChild(cancel);
+  const override = document.createElement("button");
+  override.className = "primary";
+  override.textContent = "Override with Pi config";
+  override.onclick = () => {
+    state.modules = fetched.map((m) => ({ ...m }));
+    state.editingModuleId = null;
+    clearFetchDiff();
+    renderModulesView();
+    toast("ok", "Loaded the Pi's module configs into the editor.");
+  };
+  actions.appendChild(override);
+  box.appendChild(actions);
+
+  host.appendChild(box);
+  requestAnimationFrame(() => box.scrollIntoView({ behavior: "smooth", block: "start" }));
 }
 
 // HOM-126: built-in MagicMirror regions + the canvas-friendly default.
@@ -1433,7 +1725,7 @@ async function createRegisteredModule(data) {
     const created = await res.json();
     state.modules.push({
       id: created.id, module: created.module,
-      position: created.position, config: created.config,
+      position: created.position, classes: created.classes, config: created.config,
     });
     state.editingModuleId = null;
     // HOM-126: surface any server-applied position default so the user
@@ -1465,7 +1757,7 @@ async function updateRegisteredModule(id, data) {
     const idx = state.modules.findIndex((m) => m.id === id);
     if (idx !== -1) state.modules[idx] = {
       id: updated.id, module: updated.module,
-      position: updated.position, config: updated.config,
+      position: updated.position, classes: updated.classes, config: updated.config,
     };
     state.editingModuleId = null;
     toast("ok", "saved");
@@ -1864,6 +2156,7 @@ wireCanvasSizeInput($("canvas-h"), "height");
 $("view-layout").onclick = () => {
   state.view = "layout";
   state.selectedSlot = null;
+  clearFetchDiff();
   renderAll();
 };
 $("view-sections").onclick = () => {
@@ -1875,6 +2168,7 @@ $("view-sections").onclick = () => {
     const names = Object.keys(state.doc.sections || {}).sort();
     state.activeSection = names[0] || null;
   }
+  clearFetchDiff();
   renderAll();
 };
 $("view-modules").onclick = () => {
@@ -1885,6 +2179,7 @@ $("view-modules").onclick = () => {
 $("debug-toggle").onclick = toggleDebug;
 $("overlap-resolve").onclick = autoResolveOverlaps;
 $("add-module-btn").onclick = () => { state.editingModuleId = ""; renderModulesView(); };
+$("fetch-modules-btn").onclick = fetchFromPi;
 window.addEventListener("keydown", (e) => {
   if ((e.key === "Delete" || e.key === "Backspace")
       && state.selectedSlot
