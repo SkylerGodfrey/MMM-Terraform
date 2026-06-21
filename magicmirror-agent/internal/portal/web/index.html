@@ -338,6 +338,67 @@
   .sheet-open #sheet { transform: none; }
   .reward-sheet-open .backdrop { opacity: 1; pointer-events: auto; }
   .reward-sheet-open #reward-sheet { transform: none; }
+  .pack-sheet-open .backdrop { opacity: 1; pointer-events: auto; }
+  .pack-sheet-open #pack-sheet { transform: none; }
+  .dex-sheet-open .backdrop { opacity: 1; pointer-events: auto; }
+  .dex-sheet-open #dex-sheet { transform: none; }
+
+  /* ---------- packs (HOM-150) ---------- */
+  .pack-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 18px; border: 1px solid var(--line); border-radius: 18px;
+    background: var(--bg-raised); cursor: pointer; width: 100%; text-align: left;
+    color: var(--ink); font-family: inherit; margin-bottom: 10px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .pack-row:active { transform: scale(0.99); }
+  .pack-row.is-active { border-color: rgba(240, 180, 84, 0.55); background: linear-gradient(180deg, rgba(240,180,84,0.12), rgba(240,180,84,0.03)); }
+  .pack-row .pr-body { flex: 1; min-width: 0; }
+  .pack-row .pr-name { font-size: 16.5px; font-weight: 700; }
+  .pack-row .pr-dates { font-size: 13px; color: var(--ink-dim); margin-top: 3px; }
+  .pack-row .pr-count { font-size: 12.5px; color: var(--ink-dim); margin-top: 2px; }
+  .pack-row .pr-now {
+    flex: none; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--gold); border: 1px solid rgba(240,180,84,0.45); border-radius: 999px; padding: 4px 9px;
+  }
+
+  /* member picker — shared by packs + dex grant */
+  .picker-search { width: 100%; margin-bottom: 10px; }
+  .picker-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .picker-results {
+    max-height: 38dvh; overflow-y: auto; border: 1px solid var(--line);
+    border-radius: 14px; background: var(--bg-raised);
+  }
+  .form-row {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    border-bottom: 1px solid var(--line); cursor: pointer; color: var(--ink);
+    font-family: inherit; width: 100%; text-align: left; background: none; border-left: none; border-right: none; border-top: none;
+  }
+  .form-row:last-child { border-bottom: none; }
+  .form-row.is-picked { background: linear-gradient(180deg, rgba(240,180,84,0.16), rgba(240,180,84,0.05)); }
+  .form-row .fr-body { flex: 1; min-width: 0; }
+  .form-row .fr-label { font-size: 14.5px; font-weight: 600; }
+  .form-row .fr-meta { font-size: 12px; color: var(--ink-dim); margin-top: 2px; }
+  .form-row .fr-check { flex: none; color: var(--gold); font-weight: 700; opacity: 0; }
+  .form-row.is-picked .fr-check { opacity: 1; }
+  .picked-count { font-size: 13px; color: var(--ink-dim); margin-bottom: 8px; }
+  .picker-note { font-size: 13px; color: var(--ink-dim); padding: 14px; text-align: center; }
+
+  /* ---------- dex admin (HOM-153) ---------- */
+  .dex-user-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .dex-entry {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 16px; border: 1px solid var(--line); border-radius: 16px;
+    background: var(--bg-raised); margin-bottom: 9px;
+  }
+  .dex-entry .de-body { flex: 1; min-width: 0; }
+  .dex-entry .de-name { font-size: 15.5px; font-weight: 700; }
+  .dex-entry .de-meta { font-size: 12.5px; color: var(--ink-dim); margin-top: 2px; }
+  .dex-entry .de-shiny { color: var(--gold); }
+  .dex-entry .de-remove {
+    flex: none; padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(217, 124, 108, 0.4);
+    background: none; color: var(--bad); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;
+  }
   .sheet h2 { font-family: "Fraunces", Georgia, serif; font-size: 24px; font-weight: 600; margin-bottom: 18px; }
 
   .field { margin-bottom: 16px; }
@@ -614,6 +675,17 @@
       <p class="photo-note">Tap a photo to view or remove it. The mirror refreshes itself shortly after changes.</p>
     </section>
 
+    <section id="panel-packs" role="tabpanel" aria-labelledby="tab-packs" hidden>
+      <div id="packs-root"><p class="empty-note">Loading the schedule…</p></div>
+      <p class="photo-note">Packs are the Pokémon pool the mirror draws from. They run back-to-back without overlapping; when none covers today, the mirror falls back to the Unown set.</p>
+    </section>
+
+    <section id="panel-dex" role="tabpanel" aria-labelledby="tab-dex" hidden>
+      <div class="dex-user-tabs" id="dex-user-tabs"></div>
+      <div id="dex-root"><p class="empty-note">Pick a person to manage their catches.</p></div>
+      <p class="photo-note">Grant or remove caught Pokémon for one person. Every change is logged in Activity and can be reverted there.</p>
+    </section>
+
     <footer>The mirror is listening &middot; magicmirror&#8209;agent
   </main>
 </div>
@@ -767,6 +839,54 @@
 </form>
 <input type="file" id="reward-image-input" accept="image/*" hidden>
 
+<form class="sheet" id="pack-sheet" autocomplete="off">
+  <h2 id="pack-sheet-title">New pack</h2>
+
+  <div class="field">
+    <label for="p-name">Pack name</label>
+    <input type="text" id="p-name" placeholder="e.g. Kanto Week" maxlength="60" required>
+  </div>
+
+  <div class="row2">
+    <div class="field">
+      <label for="p-start">Starts</label>
+      <input type="date" id="p-start" required>
+    </div>
+    <div class="field">
+      <label for="p-end">Ends</label>
+      <input type="date" id="p-end" required>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Members <span id="p-picked-count" class="picked-count" style="text-transform:none;letter-spacing:0;display:inline"></span></label>
+    <input type="text" class="picker-search" id="p-search" placeholder="Search by name or number…">
+    <div class="picker-tabs" id="p-filter"></div>
+    <div class="picker-results" id="p-results"><p class="picker-note">Loading the dataset…</p></div>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="btn danger" id="p-delete" aria-label="Delete pack" hidden>
+      <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+    </button>
+    <button type="button" class="btn" id="p-cancel">Cancel</button>
+    <button type="submit" class="btn primary" id="p-save">Save</button>
+  </div>
+</form>
+
+<form class="sheet" id="dex-sheet" autocomplete="off">
+  <h2 id="dex-sheet-title">Grant a Pokémon</h2>
+  <div class="field">
+    <input type="text" class="picker-search" id="d-search" placeholder="Search by name or number…">
+    <div class="picker-tabs" id="d-filter"></div>
+    <div class="picker-results" id="d-results"><p class="picker-note">Loading the dataset…</p></div>
+  </div>
+  <div class="actions">
+    <button type="button" class="btn" id="d-cancel">Cancel</button>
+    <button type="submit" class="btn primary" id="d-save">Grant</button>
+  </div>
+</form>
+
 <div class="toast" id="toast" role="alert"></div>
 
 <nav aria-label="Portal sections">
@@ -810,6 +930,21 @@
       </svg>
       Photos
     </button>
+    <button class="tab" id="tab-packs" role="tab" aria-selected="false" aria-controls="panel-packs" data-panel="packs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 2 3 7v10l9 5 9-5V7z"/>
+        <path d="M3 7l9 5 9-5M12 12v10"/>
+      </svg>
+      Packs
+    </button>
+    <button class="tab" id="tab-dex" role="tab" aria-selected="false" aria-controls="panel-dex" data-panel="dex">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M3 12h18"/>
+        <circle cx="12" cy="12" r="2.4"/>
+      </svg>
+      Dex
+    </button>
   </div>
 </nav>
 
@@ -823,8 +958,9 @@
     var activeTab = "chores";
     var photosLoaded = false;
     var rewardsLoaded = false;
-    var fabLabels = { chores: "Add chore", rewards: "Add reward", photos: "Add photos" };
-    var fabTabs = { chores: true, rewards: true, photos: true };
+    var packsLoaded = false;
+    var fabLabels = { chores: "Add chore", rewards: "Add reward", photos: "Add photos", packs: "Add pack" };
+    var fabTabs = { chores: true, rewards: true, photos: true, packs: true };
     function show(name) {
       activeTab = name;
       tabs.forEach(function (tab) {
@@ -842,10 +978,16 @@
         rewardsLoaded = true;
         loadRewards();
       }
+      if (name === "packs" && !packsLoaded) {
+        packsLoaded = true;
+        loadPacks();
+      }
       // Approvals and Activity always refresh on entry — they're time-sensitive
       // parent surfaces and small enough that a re-fetch is cheap.
       if (name === "approvals") loadPending();
       if (name === "activity") loadActivity();
+      // Dex always refreshes on entry — a parent may have just granted/removed.
+      if (name === "dex") loadDex();
     }
     tabs.forEach(function (tab) {
       tab.addEventListener("click", function () {
@@ -1256,6 +1398,8 @@
         $("file-input").click();
       } else if (activeTab === "rewards") {
         openRewardSheet(null);
+      } else if (activeTab === "packs") {
+        openPackSheet(null);
       } else {
         openSheet(null);
       }
@@ -1263,6 +1407,8 @@
     $("backdrop").addEventListener("click", function () {
       closeSheet();
       closeRewardSheet();
+      closePackSheet();
+      closeDexSheet();
     });
     $("btn-cancel").addEventListener("click", closeSheet);
     $("tok-minus").addEventListener("click", function () { setTokens(tokens - 1); });
@@ -1912,10 +2058,412 @@
       });
     }
 
+    /* ===================================================================== */
+    /* Pokémon Theme v2 — packs scheduling (HOM-150) + dex admin (HOM-153)    */
+    /* ===================================================================== */
+
+    // The dataset (themes/pokemon/data/pokedex.json) is owned by MMM-Chores and
+    // read once, lazily, the first time a picker needs it. forms[] are flattened
+    // into a searchable index keyed by formKey so both the pack member picker and
+    // the dex grant picker share one browse/search surface.
+    var dexData = null;        // { species:[...], available:bool } once loaded
+    var formIndex = null;      // { formKey -> { ...form, species, speciesName } }
+    var formList = [];         // flat, ordered list of form-entries for browsing
+
+    function loadDataset() {
+      if (dexData) return Promise.resolve(dexData);
+      return api("/pokedex").then(function (body) {
+        dexData = body || { species: [], available: false };
+        formIndex = {};
+        formList = [];
+        (dexData.species || []).forEach(function (sp) {
+          (sp.forms || []).forEach(function (f) {
+            var entry = {
+              formKey: f.key,
+              species: sp.id,
+              speciesName: sp.name,
+              name: f.label || sp.name,
+              category: f.category || "normal",
+              shiny: !!f.shiny
+            };
+            formIndex[f.key] = entry;
+            formList.push(entry);
+          });
+        });
+        return dexData;
+      });
+    }
+
+    // Shared filter tabs for both pickers. "all" plus the four form categories.
+    var PICKER_FILTERS = [
+      { id: "all", label: "All" },
+      { id: "normal", label: "Normal" },
+      { id: "mega", label: "Mega" },
+      { id: "regional", label: "Regional" },
+      { id: "alt", label: "Alt" }
+    ];
+
+    function matchForm(entry, query, filter) {
+      if (filter !== "all" && entry.category !== filter) return false;
+      if (!query) return true;
+      var q = query.toLowerCase();
+      return entry.name.toLowerCase().indexOf(q) !== -1 ||
+        entry.speciesName.toLowerCase().indexOf(q) !== -1 ||
+        String(entry.species) === q ||
+        entry.formKey.toLowerCase().indexOf(q) !== -1;
+    }
+
+    function renderFilterTabs(root, state, onChange) {
+      root.innerHTML = "";
+      PICKER_FILTERS.forEach(function (f) {
+        var chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chip";
+        chip.textContent = f.label;
+        chip.setAttribute("aria-pressed", String(state.filter === f.id));
+        chip.addEventListener("click", function () { state.filter = f.id; onChange(); });
+        root.appendChild(chip);
+      });
+    }
+
+    // renderResults paints up to a cap of matching form-rows. `picked` is a Set
+    // of formKeys (multi-select for packs); `single` makes it a radio (dex grant).
+    function renderResults(root, state, onToggle) {
+      root.innerHTML = "";
+      if (!dexData || !dexData.available) {
+        var note = document.createElement("p");
+        note.className = "picker-note";
+        note.textContent = "The Pokémon dataset isn't on the mirror yet — once it ships you can pick members here.";
+        root.appendChild(note);
+        return;
+      }
+      var matches = formList.filter(function (e) { return matchForm(e, state.query, state.filter); });
+      if (!matches.length) {
+        var n = document.createElement("p");
+        n.className = "picker-note";
+        n.textContent = "No Pokémon match that search.";
+        root.appendChild(n);
+        return;
+      }
+      var CAP = 200;
+      matches.slice(0, CAP).forEach(function (entry) {
+        var row = document.createElement("button");
+        row.type = "button";
+        row.className = "form-row" + (state.picked.has(entry.formKey) ? " is-picked" : "");
+        var body = document.createElement("div");
+        body.className = "fr-body";
+        var label = document.createElement("div");
+        label.className = "fr-label";
+        label.textContent = entry.name;
+        var meta = document.createElement("div");
+        meta.className = "fr-meta";
+        meta.textContent = "#" + entry.species + " · " + entry.category + (entry.shiny ? " · shiny" : "");
+        body.appendChild(label); body.appendChild(meta);
+        var check = document.createElement("div");
+        check.className = "fr-check";
+        check.textContent = "✓";
+        row.appendChild(body); row.appendChild(check);
+        row.addEventListener("click", function () { onToggle(entry); });
+        root.appendChild(row);
+      });
+      if (matches.length > CAP) {
+        var more = document.createElement("p");
+        more.className = "picker-note";
+        more.textContent = "Showing the first " + CAP + " of " + matches.length + " — keep typing to narrow it down.";
+        root.appendChild(more);
+      }
+    }
+
+    /* ---------- packs ---------- */
+    var packs = [];
+    var packsToday = "";
+    var editingPackId = null;
+    var packState = { query: "", filter: "all", picked: new Set() };
+
+    function loadPacks() {
+      return api("/packs").then(function (body) {
+        packs = body.packs || [];
+        packsToday = body.today || "";
+        renderPacks(body.available !== false);
+      }).catch(function (err) {
+        $("packs-root").innerHTML = "";
+        var p = document.createElement("p");
+        p.className = "empty-note";
+        p.textContent = err.message;
+        $("packs-root").appendChild(p);
+      });
+    }
+
+    function fmtDate(iso) {
+      // iso is 'yyyy-mm-dd'; render compactly without timezone surprises.
+      var parts = String(iso).split("-");
+      if (parts.length !== 3) return iso;
+      var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      return months[(+parts[1]) - 1] + " " + (+parts[2]) + ", " + parts[0];
+    }
+
+    function renderPacks(available) {
+      var root = $("packs-root");
+      root.innerHTML = "";
+      if (!available) {
+        var off = document.createElement("p");
+        off.className = "empty-note";
+        off.textContent = "The mirror's chore database isn't ready yet — packs will appear once it is.";
+        root.appendChild(off);
+        return;
+      }
+      if (!packs.length) {
+        var note = document.createElement("p");
+        note.className = "empty-note";
+        note.textContent = "No packs scheduled — tap “Add pack” to create the first one. Until then the mirror uses the Unown fallback set.";
+        root.appendChild(note);
+        return;
+      }
+      packs.forEach(function (p) {
+        var row = document.createElement("button");
+        row.type = "button";
+        row.className = "pack-row" + (p.active ? " is-active" : "");
+        var body = document.createElement("div");
+        body.className = "pr-body";
+        var name = document.createElement("div");
+        name.className = "pr-name";
+        name.textContent = p.name;
+        var dates = document.createElement("div");
+        dates.className = "pr-dates";
+        dates.textContent = fmtDate(p.startDate) + " → " + fmtDate(p.endDate);
+        var count = document.createElement("div");
+        count.className = "pr-count";
+        count.textContent = (p.members ? p.members.length : 0) + " Pokémon in this pool";
+        body.appendChild(name); body.appendChild(dates); body.appendChild(count);
+        row.appendChild(body);
+        if (p.active) {
+          var now = document.createElement("span");
+          now.className = "pr-now";
+          now.textContent = "Today";
+          row.appendChild(now);
+        }
+        row.addEventListener("click", function () { openPackSheet(p); });
+        root.appendChild(row);
+      });
+    }
+
+    function openPackSheet(pack) {
+      editingPackId = pack ? pack.id : null;
+      $("pack-sheet-title").textContent = pack ? "Edit pack" : "New pack";
+      $("p-name").value = pack ? pack.name : "";
+      $("p-start").value = pack ? pack.startDate : (packsToday || "");
+      $("p-end").value = pack ? pack.endDate : (packsToday || "");
+      $("p-delete").hidden = !pack;
+      packState = { query: "", filter: "all", picked: new Set(pack && pack.members ? pack.members : []) };
+      $("p-search").value = "";
+      document.body.classList.add("pack-sheet-open");
+      renderFilterTabs($("p-filter"), packState, refreshPackResults);
+      loadDataset().then(refreshPackResults).catch(function () { refreshPackResults(); });
+      refreshPackResults();
+    }
+
+    function refreshPackResults() {
+      renderFilterTabs($("p-filter"), packState, refreshPackResults);
+      renderResults($("p-results"), packState, function (entry) {
+        if (packState.picked.has(entry.formKey)) packState.picked.delete(entry.formKey);
+        else packState.picked.add(entry.formKey);
+        refreshPackResults();
+      });
+      $("p-picked-count").textContent = packState.picked.size ? "(" + packState.picked.size + " chosen)" : "";
+    }
+
+    function closePackSheet() { document.body.classList.remove("pack-sheet-open"); }
+
+    $("p-search").addEventListener("input", function () { packState.query = this.value.trim(); refreshPackResults(); });
+    $("p-cancel").addEventListener("click", closePackSheet);
+
+    $("pack-sheet").addEventListener("submit", function (e) {
+      e.preventDefault();
+      // Client-side overlap pre-check for a fast, clear message; the server
+      // re-validates with the same rule (internal/packs) as the source of truth.
+      var start = $("p-start").value, end = $("p-end").value;
+      var name = $("p-name").value.trim();
+      if (!name) { toast("Give the pack a name."); return; }
+      if (!start || !end) { toast("Pick a start and end date."); return; }
+      if (start > end) { toast("The start date must be on or before the end date."); return; }
+      var clash = packs.filter(function (p) {
+        if (editingPackId && p.id === editingPackId) return false;
+        return start <= p.endDate && p.startDate <= end;
+      })[0];
+      if (clash) {
+        toast("Those dates overlap “" + clash.name + "” (" + clash.startDate + "–" + clash.endDate + ").");
+        return;
+      }
+      var body = { name: name, startDate: start, endDate: end, members: Array.from(packState.picked) };
+      var path = editingPackId ? "/packs/" + encodeURIComponent(editingPackId) : "/packs";
+      var method = editingPackId ? "PUT" : "POST";
+      $("p-save").disabled = true;
+      api(path, { method: method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+        .then(function () { closePackSheet(); return loadPacks(); })
+        .catch(function (err) { toast(err.message); })
+        .then(function () { $("p-save").disabled = false; });
+    });
+
+    $("p-delete").addEventListener("click", function () {
+      if (!editingPackId) return;
+      if (!window.confirm("Delete this pack? The mirror falls back to Unown on those days unless another pack covers them.")) return;
+      api("/packs/" + encodeURIComponent(editingPackId), { method: "DELETE" })
+        .then(function () { closePackSheet(); return loadPacks(); })
+        .catch(function (err) { toast(err.message); });
+    });
+
+    /* ---------- dex admin (HOM-153) ---------- */
+    var dexUser = null;
+    var dexEntries = [];        // current user's caught form-entries
+    var dexState = { query: "", filter: "all", picked: new Set() };
+
+    function loadDex() {
+      // Reuse the same family-name list the rest of the portal uses.
+      return api("/assignees").then(function (body) {
+        var names = body.assignees || [];
+        renderDexUsers(names);
+        if (dexUser && names.indexOf(dexUser) !== -1) loadDexEntries(dexUser);
+        else renderDexEntries();
+      }).catch(function (err) { toast(err.message); });
+    }
+
+    function renderDexUsers(names) {
+      var root = $("dex-user-tabs");
+      root.innerHTML = "";
+      names.forEach(function (name) {
+        var chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chip";
+        chip.textContent = name;
+        chip.setAttribute("aria-pressed", String(dexUser === name));
+        chip.addEventListener("click", function () { dexUser = name; renderDexUsers(names); loadDexEntries(name); });
+        root.appendChild(chip);
+      });
+    }
+
+    function loadDexEntries(user) {
+      $("dex-root").innerHTML = "<p class=\"empty-note\">Loading " + escapeHTML(user) + "’s catches…</p>";
+      return api("/dex/" + encodeURIComponent(user)).then(function (body) {
+        dexEntries = body.caught || [];
+        renderDexEntries();
+      }).catch(function (err) {
+        $("dex-root").innerHTML = "";
+        var p = document.createElement("p");
+        p.className = "empty-note";
+        p.textContent = err.message;
+        $("dex-root").appendChild(p);
+      });
+    }
+
+    function renderDexEntries() {
+      var root = $("dex-root");
+      root.innerHTML = "";
+      if (!dexUser) {
+        var pick = document.createElement("p");
+        pick.className = "empty-note";
+        pick.textContent = "Pick a person above to manage their catches.";
+        root.appendChild(pick);
+        return;
+      }
+      var grant = document.createElement("button");
+      grant.type = "button";
+      grant.className = "btn primary";
+      grant.style.marginBottom = "14px";
+      grant.textContent = "Grant a Pokémon to " + dexUser;
+      grant.addEventListener("click", function () { openDexSheet(); });
+      root.appendChild(grant);
+
+      if (!dexEntries.length) {
+        var note = document.createElement("p");
+        note.className = "empty-note";
+        note.textContent = dexUser + " hasn’t caught anything yet.";
+        root.appendChild(note);
+        return;
+      }
+      dexEntries.forEach(function (e) {
+        var row = document.createElement("div");
+        row.className = "dex-entry";
+        var body = document.createElement("div");
+        body.className = "de-body";
+        var name = document.createElement("div");
+        name.className = "de-name";
+        name.textContent = e.name || e.formKey;
+        if (e.shiny) { var s = document.createElement("span"); s.className = "de-shiny"; s.textContent = " ✦"; name.appendChild(s); }
+        var meta = document.createElement("div");
+        meta.className = "de-meta";
+        var bits = ["#" + e.species, e.category || "normal"];
+        if (e.count > 1) bits.push("×" + e.count);
+        if (e.master) bits.push("master");
+        meta.textContent = bits.join(" · ");
+        body.appendChild(name); body.appendChild(meta);
+        var rm = document.createElement("button");
+        rm.type = "button";
+        rm.className = "de-remove";
+        rm.textContent = "Remove";
+        rm.addEventListener("click", function () { removeDexEntry(e, rm); });
+        row.appendChild(body); row.appendChild(rm);
+        root.appendChild(row);
+      });
+    }
+
+    function removeDexEntry(entry, btn) {
+      var label = entry.name || entry.formKey;
+      if (!window.confirm("Remove " + label + " from " + dexUser + "’s dex? This is logged and can be reverted from Activity.")) return;
+      btn.disabled = true;
+      api("/dex/" + encodeURIComponent(dexUser) + "/remove", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formKey: entry.formKey })
+      })
+        .then(function () { return loadDexEntries(dexUser); })
+        .catch(function (err) { toast(err.message); btn.disabled = false; });
+    }
+
+    function openDexSheet() {
+      dexState = { query: "", filter: "all", picked: new Set() };
+      $("d-search").value = "";
+      $("dex-sheet-title").textContent = "Grant to " + dexUser;
+      document.body.classList.add("dex-sheet-open");
+      renderFilterTabs($("d-filter"), dexState, refreshDexResults);
+      loadDataset().then(refreshDexResults).catch(function () { refreshDexResults(); });
+      refreshDexResults();
+    }
+
+    function refreshDexResults() {
+      renderFilterTabs($("d-filter"), dexState, refreshDexResults);
+      // Single-select: picking a row replaces the selection.
+      renderResults($("d-results"), dexState, function (entry) {
+        dexState.picked = new Set([entry.formKey]);
+        refreshDexResults();
+      });
+    }
+
+    function closeDexSheet() { document.body.classList.remove("dex-sheet-open"); }
+
+    $("d-search").addEventListener("input", function () { dexState.query = this.value.trim(); refreshDexResults(); });
+    $("d-cancel").addEventListener("click", closeDexSheet);
+
+    $("dex-sheet").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var formKey = Array.from(dexState.picked)[0];
+      if (!formKey) { toast("Pick a Pokémon to grant."); return; }
+      $("d-save").disabled = true;
+      api("/dex/" + encodeURIComponent(dexUser) + "/grant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formKey: formKey })
+      })
+        .then(function () { closeDexSheet(); return loadDexEntries(dexUser); })
+        .catch(function (err) { toast(err.message); })
+        .then(function () { $("d-save").disabled = false; });
+    });
+
     if (location.hash === "#photos") show("photos");
     else if (location.hash === "#rewards") show("rewards");
     else if (location.hash === "#approvals") show("approvals");
     else if (location.hash === "#activity") show("activity");
+    else if (location.hash === "#packs") show("packs");
+    else if (location.hash === "#dex") show("dex");
     loadChores();
   })();
 </script>
