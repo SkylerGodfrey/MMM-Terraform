@@ -400,6 +400,38 @@
   .btn[disabled] { opacity: 0.55; }
 
   /* ---------- rewards ---------- */
+  /* ---------- token balances (portal-only adjust) ---------- */
+  .balances {
+    background: var(--bg-raised); border: 1px solid var(--line);
+    border-radius: 18px; padding: 14px 16px; margin-bottom: 16px;
+    animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .balances-head {
+    font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--gold); margin-bottom: 6px;
+  }
+  .balance-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 9px 0; border-top: 1px solid var(--line);
+  }
+  .balance-row .b-name { flex: 1; min-width: 0; font-weight: 600; font-size: 15.5px; }
+  .balance-row .b-amt { flex: none; color: var(--gold); font-weight: 700; font-size: 14px; min-width: 46px; text-align: right; }
+  .balance-row .b-ctrls { flex: none; display: flex; align-items: center; gap: 8px; }
+  .balance-row .b-step {
+    width: 40px; height: 40px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--bg-raised); color: var(--gold);
+    font-size: 20px; font-weight: 700; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; transition: transform 0.1s;
+  }
+  .balance-row .b-step:active { transform: scale(0.94); }
+  .balance-row .b-reset {
+    padding: 0 12px; height: 40px; border-radius: 12px;
+    border: 1px solid rgba(217, 124, 108, 0.4); background: var(--bg-raised); color: var(--bad);
+    font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; transition: transform 0.1s;
+  }
+  .balance-row .b-reset:active { transform: scale(0.96); }
+
   .reward-grid {
     display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
     animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -572,6 +604,7 @@
     </section>
 
     <section id="panel-rewards" role="tabpanel" aria-labelledby="tab-rewards" hidden>
+      <div id="balances-root"></div>
       <div id="rewards-root"><p class="empty-note">Fetching the rewards…</p></div>
     </section>
 
@@ -1288,6 +1321,7 @@
           if (u && u.name && assigneeNames.indexOf(u.name) === -1) assigneeNames.push(u.name);
         });
         assignees = assigneeNames; // shared with chore sheet's picker
+        renderBalances();
         renderRewards();
       }).catch(function (err) {
         $("rewards-root").innerHTML = "";
@@ -1307,6 +1341,82 @@
         + "<path d='M12 8s-1.5-4-4-4a3 3 0 0 0 0 6h4M12 8s1.5-4 4-4a3 3 0 0 1 0 6h-4'/>"
         + "<rect x='3' y='10' width='18' height='4' rx='1'/>"
         + "<path d='M5 14v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6M12 10v11'/></svg>";
+    }
+
+    /* ---------- token balances (portal-only adjust) ---------- */
+    var balanceBusy = false;
+
+    function renderBalances() {
+      var root = $("balances-root");
+      root.innerHTML = "";
+      if (!rewardUsers.length) return;
+
+      var card = document.createElement("div");
+      card.className = "balances";
+      var head = document.createElement("div");
+      head.className = "balances-head";
+      head.textContent = "Token balances";
+      card.appendChild(head);
+
+      rewardUsers.forEach(function (u) {
+        if (!u || !u.name) return;
+        var name = u.name;
+        var bal = typeof u.tokens === "number" ? u.tokens : 0;
+
+        var row = document.createElement("div");
+        row.className = "balance-row";
+
+        var who = document.createElement("span");
+        who.className = "b-name";
+        who.textContent = name;
+        row.appendChild(who);
+
+        var amt = document.createElement("span");
+        amt.className = "b-amt";
+        amt.textContent = "✦ " + bal;
+        row.appendChild(amt);
+
+        var ctrls = document.createElement("div");
+        ctrls.className = "b-ctrls";
+        ctrls.appendChild(mkBalanceBtn("−", "b-step", "Remove a token from " + name, function () {
+          adjustBalance(name, { delta: -1 });
+        }));
+        ctrls.appendChild(mkBalanceBtn("+", "b-step", "Add a token to " + name, function () {
+          adjustBalance(name, { delta: 1 });
+        }));
+        ctrls.appendChild(mkBalanceBtn("Reset", "b-reset", "Reset " + name + "'s balance to zero", function () {
+          if (!window.confirm("Reset " + name + "'s balance to 0?")) return;
+          adjustBalance(name, { reset: true });
+        }));
+        row.appendChild(ctrls);
+
+        card.appendChild(row);
+      });
+      root.appendChild(card);
+    }
+
+    function mkBalanceBtn(label, cls, aria, fn) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = cls;
+      b.textContent = label;
+      b.setAttribute("aria-label", aria);
+      b.addEventListener("click", fn);
+      return b;
+    }
+
+    function adjustBalance(name, opts) {
+      if (balanceBusy) return;
+      balanceBusy = true;
+      var body = { user: name, delta: opts.delta || 0, reset: !!opts.reset };
+      api("/rewards/adjust", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      })
+        .then(function () { return loadRewards(); })
+        .catch(function (err) { toast(err.message); })
+        .then(function () { balanceBusy = false; });
     }
 
     function renderRewards() {
@@ -1645,7 +1755,8 @@
       { key: "chore_completed", label: "Chores", icon: "✓" },
       { key: "tokens_earned", label: "Bonuses", icon: "✦" },
       { key: "reward_redeemed", label: "Rewards", icon: "🎁" },
-      { key: "pokemon_catch", label: "Catches", icon: "◓" }
+      { key: "pokemon_catch", label: "Catches", icon: "◓" },
+      { key: "tokens_adjusted", label: "Adjustments", icon: "±" }
     ];
 
     function renderLogFilters() {
@@ -1699,6 +1810,11 @@
         case "tokens_earned": return who + " earned " + (p.amount || 0) + " bonus token" + ((p.amount === 1) ? "" : "s");
         case "reward_redeemed": return who + " redeemed " + (p.reward || "a reward");
         case "pokemon_catch": return who + " caught " + (p.pokemon || "a Pokémon");
+        case "tokens_adjusted": {
+          if (p.reset) return who + "'s balance was reset to 0";
+          var d = p.delta || 0;
+          return who + " — " + (d > 0 ? "+" + d : "" + d) + " token" + (Math.abs(d) === 1 ? "" : "s") + " by a parent";
+        }
         default: return who + " — " + ev.type;
       }
     }
@@ -1708,6 +1824,7 @@
       var parts = [];
       if (ev.type === "chore_completed" && typeof p.tokens === "number") parts.push("✦ " + p.tokens);
       if (ev.type === "reward_redeemed" && typeof p.cost === "number") parts.push("✦ " + p.cost);
+      if (ev.type === "tokens_adjusted" && typeof p.balance === "number") parts.push("✦ " + p.balance);
       parts.push(timeAgo(ev.createdAt));
       return parts.join(" · ");
     }
@@ -1756,8 +1873,9 @@
           tag.className = "e-reverted-tag";
           tag.textContent = "Reverted";
           row.appendChild(tag);
-        } else if (ev.type !== "pokemon_catch") {
-          // pokemon_catch reverts are theme-side (HOM-137), not from the portal.
+        } else if (ev.type !== "pokemon_catch" && ev.type !== "tokens_adjusted") {
+          // pokemon_catch reverts are theme-side (HOM-137); tokens_adjusted is a
+          // manual correction and isn't itself revertible — neither shows the button.
           var btn = document.createElement("button");
           btn.type = "button";
           btn.className = "e-revert";

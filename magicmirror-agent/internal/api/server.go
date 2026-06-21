@@ -154,6 +154,9 @@ func (s *Server) setupRoutes() {
 	portalAPI.PUT("/rewards/:id", s.updateReward)
 	portalAPI.DELETE("/rewards/:id", s.deleteReward)
 	portalAPI.POST("/rewards/image", s.uploadRewardImage)
+	// Manual token adjustment (reset / ±1) — a parent control the mirror
+	// itself doesn't expose; balances live in rewards.yaml.
+	portalAPI.POST("/rewards/adjust", s.adjustUserBalance)
 	s.router.GET("/portal/rewards-images/:name", s.serveRewardImage)
 
 	// Canvas v2 editor (HOM-108) — drag/resize/page-tabs/save editor for

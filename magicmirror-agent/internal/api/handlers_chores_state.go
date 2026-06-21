@@ -368,6 +368,100 @@ func (s *Server) revertEvent(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"eventId": event.ID, "type": event.Type})
 }
 
+// ---- manual token adjustment (portal-only) ----------------------------------
+
+// adjustBalanceInput is the body for a manual token adjustment: step a user's
+// balance by Delta, or Reset it to zero.
+type adjustBalanceInput struct {
+	User  string `json:"user"`
+	Delta int    `json:"delta"`
+	Reset bool   `json:"reset"`
+}
+
+// adjustUserBalance lets a parent reset or step a user's token balance from the
+// portal — a control the mirror deliberately doesn't expose. Token balances
+// live in rewards.yaml (via rewardStore.AdjustTokens, clamped at zero, matching
+// node_helper.adjustTokens); the change is also recorded in the activity log as
+// a best-effort tokens_adjusted event so it shows in the family log. Like
+// approve/deny/revert, this is a parent action on the LAN portal and is not
+// PIN-gated.
+func (s *Server) adjustUserBalance(c *gin.Context) {
+	var in adjustBalanceInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if strings.TrimSpace(in.User) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Pick a person first."})
+		return
+	}
+
+	delta := in.Delta
+	if in.Reset {
+		cur, err := s.userBalance(in.User)
+		if err != nil {
+			rewardError(c, err)
+			return
+		}
+		delta = -cur // bring the balance to zero
+	}
+
+	// Nothing to change (e.g. −1 at a zero balance, or reset when already empty).
+	if delta == 0 {
+		bal, err := s.userBalance(in.User)
+		if err != nil {
+			rewardError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"user": in.User, "tokens": bal, "delta": 0})
+		return
+	}
+
+	balance, err := s.rewardStore.AdjustTokens(in.User, delta)
+	if err != nil {
+		rewardError(c, err)
+		return
+	}
+
+	// Best-effort activity-log entry. Balances live in rewards.yaml, so the
+	// adjustment stands even if the chore DB isn't up; logging just no-ops then.
+	if db, derr := s.openChoresDB(); derr == nil && db != nil {
+		defer db.Close()
+		payload, _ := json.Marshal(gin.H{"delta": delta, "reset": in.Reset, "balance": balance})
+		if _, err := db.InsertEvent(choresdb.EventInput{
+			Type:    "tokens_adjusted",
+			User:    in.User,
+			Payload: payload,
+		}); err != nil {
+			log.Printf("portal adjust tokens %s: logging event: %v", in.User, err)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"user": in.User, "tokens": balance, "delta": delta})
+}
+
+// userBalance reads a single user's current token balance from rewards.yaml.
+// An unknown user reads as zero (consistent with adjustUserTokens creating on
+// first credit).
+func (s *Server) userBalance(name string) (int, error) {
+	users, err := s.rewardStore.Users()
+	if err != nil {
+		return 0, err
+	}
+	for _, u := range users {
+		if n, _ := u["name"].(string); n == name {
+			switch t := u["tokens"].(type) {
+			case int:
+				return t, nil
+			case float64:
+				return int(t), nil
+			}
+			return 0, nil
+		}
+	}
+	return 0, nil
+}
+
 // reopenTarget is the (chore,user) completion a revert reopens, or nil.
 type reopenTarget struct {
 	choreID string

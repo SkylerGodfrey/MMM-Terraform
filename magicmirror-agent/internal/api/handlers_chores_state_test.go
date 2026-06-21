@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/SkylerGodfrey/magicmirror-agent/internal/chores"
@@ -111,12 +112,22 @@ func testServer(t *testing.T) (*Server, *sql.DB) {
 	portalAPI.POST("/pending/:id/deny", s.denyPending)
 	portalAPI.GET("/events", s.listEvents)
 	portalAPI.POST("/events/:id/revert", s.revertEvent)
+	portalAPI.POST("/rewards/adjust", s.adjustUserBalance)
 	return s, db
 }
 
 func do(t *testing.T, s *Server, method, path string) *httptest.ResponseRecorder {
 	t.Helper()
 	req := httptest.NewRequest(method, path, nil)
+	w := httptest.NewRecorder()
+	s.router.ServeHTTP(w, req)
+	return w
+}
+
+func doJSON(t *testing.T, s *Server, method, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(method, path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	s.router.ServeHTTP(w, req)
 	return w
@@ -368,5 +379,63 @@ func TestRevertActionsPortMatchesSpec(t *testing.T) {
 	}
 	if _, ok := revertActions(&choresdb.Event{Type: "mystery"}); ok {
 		t.Error("unknown type must not be revertible")
+	}
+}
+
+// ---- manual token adjustment (portal-only) ----------------------------------
+
+func TestAdjustTokensStepAndLog(t *testing.T) {
+	s, db := testServer(t)
+
+	// +1 to Gavin (4 -> 5).
+	w := doJSON(t, s, "POST", "/portal/api/rewards/adjust", `{"user":"Gavin","delta":1}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("adjust +1: %d %s", w.Code, w.Body.String())
+	}
+	if got := tokensFor(t, s, "Gavin"); got != 5 {
+		t.Errorf("Gavin tokens after +1: want 5, got %d", got)
+	}
+
+	// −1 to Gavin (5 -> 4).
+	if w := doJSON(t, s, "POST", "/portal/api/rewards/adjust", `{"user":"Gavin","delta":-1}`); w.Code != http.StatusOK {
+		t.Fatalf("adjust -1: %d %s", w.Code, w.Body.String())
+	}
+	if got := tokensFor(t, s, "Gavin"); got != 4 {
+		t.Errorf("Gavin tokens after -1: want 4, got %d", got)
+	}
+
+	// Each non-zero adjustment logs a tokens_adjusted event.
+	var n int
+	db.QueryRow("SELECT COUNT(*) FROM events WHERE type='tokens_adjusted' AND user='Gavin'").Scan(&n)
+	if n != 2 {
+		t.Errorf("want 2 tokens_adjusted events, got %d", n)
+	}
+}
+
+func TestAdjustTokensClampsAtZero(t *testing.T) {
+	s, _ := testServer(t)
+	// Savannah has 1; two −1s should floor at zero, not go negative.
+	doJSON(t, s, "POST", "/portal/api/rewards/adjust", `{"user":"Savannah","delta":-1}`)
+	doJSON(t, s, "POST", "/portal/api/rewards/adjust", `{"user":"Savannah","delta":-1}`)
+	if got := tokensFor(t, s, "Savannah"); got != 0 {
+		t.Errorf("Savannah tokens want 0 (clamped), got %d", got)
+	}
+}
+
+func TestAdjustTokensReset(t *testing.T) {
+	s, _ := testServer(t)
+	w := doJSON(t, s, "POST", "/portal/api/rewards/adjust", `{"user":"Gavin","reset":true}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("reset: %d %s", w.Code, w.Body.String())
+	}
+	if got := tokensFor(t, s, "Gavin"); got != 0 {
+		t.Errorf("Gavin tokens after reset: want 0, got %d", got)
+	}
+}
+
+func TestAdjustTokensRequiresUser(t *testing.T) {
+	s, _ := testServer(t)
+	if w := doJSON(t, s, "POST", "/portal/api/rewards/adjust", `{"delta":1}`); w.Code != http.StatusBadRequest {
+		t.Errorf("missing user: want 400, got %d %s", w.Code, w.Body.String())
 	}
 }
