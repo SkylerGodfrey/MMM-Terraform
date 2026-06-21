@@ -48,6 +48,16 @@
     .catalog .card .states { font-size: 10px; color: var(--ink-dim); }
 
     main { position: relative; overflow: auto; padding: 24px; }
+    .stage-toolbar {
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      margin: 0 auto 18px; max-width: 100%; justify-content: center;
+      color: var(--ink-dim); font-size: 12px;
+    }
+    .stage-toolbar label { display: flex; align-items: center; gap: 7px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .stage-toolbar select {
+      background: var(--panel-2); color: var(--ink); border: 1px solid #2a3344;
+      border-radius: 6px; padding: 6px 10px; font: inherit; text-transform: none; letter-spacing: 0;
+    }
     .stage-wrap { display: flex; align-items: flex-start; justify-content: center; }
     .stage {
       position: relative; background: #0d1320 var(--grid-img); background-size: 32px 32px;
@@ -62,8 +72,11 @@
     }
     .placed {
       position: absolute; outline: 1px dashed transparent;
-      background-size: contain; background-repeat: no-repeat; background-position: center;
-      image-rendering: pixelated; cursor: move; user-select: none;
+      cursor: move; user-select: none;
+    }
+    .placed canvas {
+      width: 100%; height: 100%; display: block;
+      image-rendering: pixelated; image-rendering: -moz-crisp-edges; pointer-events: none;
     }
     .placed.selected { outline: 2px solid var(--accent); z-index: 2; }
     .placed .handle {
@@ -181,6 +194,14 @@
   </aside>
 
   <main>
+    <div class="stage-toolbar">
+      <label>Preview pose
+        <select id="preview-pose" title="Which animation the placed sprites play in this editor"></select>
+      </label>
+      <label id="preview-skin-wrap" style="display:none;">Skin
+        <select id="preview-skin" title="Which holiday skin to preview"></select>
+      </label>
+    </div>
     <div class="stage-wrap">
       <div class="stage" id="stage"></div>
     </div>
@@ -284,6 +305,10 @@ const state = {
   mascotsTf: { path: "", exists: false },
   selectedId: null,
   dirty: false,
+  // Which pose/skin the stage previews so the placed sprites read like the
+  // real mirror instead of a raw spritesheet. Editor-only; never persisted.
+  previewPose: "idle",
+  previewSkin: "default",
 };
 
 // Editor renders the stage at ~30% of design size so the whole 1080x1780
@@ -352,10 +377,20 @@ function render() {
   renderProps();
   renderHolidays();
   renderCanvasFields();
+  renderPreviewControls();
   updateTfStatus(state.mascotsTf.exists);
 }
 
+// Live preview players driving the placed sprites on the stage. Bumped on
+// every renderStage so async asset loads from a superseded render don't draw
+// onto canvases that have already been torn down.
+let stagePlayers = [];
+let stageGen = 0;
+function destroyStagePlayers() { for (const p of stagePlayers) p.stop(); stagePlayers = []; }
+
 function renderStage() {
+  destroyStagePlayers();
+  const gen = ++stageGen;
   const { width, height } = state.doc.canvas;
   stage.style.width = (width * STAGE_SCALE) + "px";
   stage.style.height = (height * STAGE_SCALE) + "px";
@@ -368,13 +403,72 @@ function renderStage() {
     div.style.top = (sp.y * STAGE_SCALE) + "px";
     div.style.width = (sp.w * STAGE_SCALE) + "px";
     div.style.height = (sp.h * STAGE_SCALE) + "px";
-    div.style.backgroundImage = `url(${spriteThumbUrl(sp.sprite, "default")})`;
+    mountStagePreview(div, sp, gen);
     const handle = document.createElement("div");
     handle.className = "handle";
     div.appendChild(handle);
     stage.appendChild(div);
     wireDrag(div, sp, handle);
   }
+}
+
+// Render one placed sprite as a live animation matching the preview pose/skin,
+// so the stage shows what the mirror shows instead of the raw spritesheet.
+// Falls back per-sprite: the chosen skin → its own default skin, and the
+// chosen pose → "idle"/first tag if it lacks that pose.
+function mountStagePreview(div, sp, gen) {
+  const skin = spriteHasState(sp.sprite, state.previewSkin) ? state.previewSkin : spriteDefaultState(sp.sprite);
+  const cv = document.createElement("canvas");
+  div.appendChild(cv);
+  loadSpriteAsset(sp.sprite, skin).then(({ json, img }) => {
+    if (gen !== stageGen) return;            // stage re-rendered while loading
+    if (!cv.isConnected) return;
+    const f = (json.frames[0] && json.frames[0].frame) || { w: 16, h: 16 };
+    cv.width = f.w; cv.height = f.h;
+    const player = new EditorAsePlayer(cv, img, json);
+    player.play(resolvePreviewTag(json, state.previewPose));
+    stagePlayers.push(player);
+  }).catch(() => { /* leave the box empty if the sprite's assets fail to load */ });
+}
+
+// Pick the tag to preview: the requested pose if the sheet has it, else
+// "idle", else the first declared tag (EditorAsePlayer falls back to the full
+// frame range when no tags exist at all).
+function resolvePreviewTag(json, pose) {
+  const names = (json.meta.frameTags || []).map((t) => t.name);
+  if (names.includes(pose)) return pose;
+  if (names.includes("idle")) return "idle";
+  return names[0] || "idle";
+}
+
+// Populate the pose/skin selectors from the union of everything in the
+// catalog. The skin selector hides itself unless a holiday skin exists.
+function renderPreviewControls() {
+  const poses = new Set(["idle"]);
+  const skins = new Set(["default"]);
+  for (const c of state.catalog) {
+    for (const st of c.states) {
+      skins.add(st.name);
+      for (const t of (st.tags || [])) poses.add(t);
+    }
+  }
+  if (!poses.has(state.previewPose)) state.previewPose = "idle";
+  if (!skins.has(state.previewSkin)) state.previewSkin = "default";
+
+  fillSelect($("preview-pose"), [...poses], state.previewPose);
+  const skinList = [...skins];
+  fillSelect($("preview-skin"), skinList, state.previewSkin);
+  $("preview-skin-wrap").style.display = skinList.length > 1 ? "flex" : "none";
+}
+
+function fillSelect(sel, values, current) {
+  sel.innerHTML = "";
+  for (const v of values) {
+    const opt = document.createElement("option");
+    opt.value = v; opt.textContent = v;
+    sel.appendChild(opt);
+  }
+  sel.value = current;
 }
 
 function renderCatalog() {
@@ -479,6 +573,10 @@ function spriteDefaultState(id) {
   const c = spriteCatalog(id);
   if (!c || c.states.length === 0) return "default";
   return c.states.some((s) => s.name === "default") ? "default" : c.states[0].name;
+}
+function spriteHasState(id, st) {
+  const c = spriteCatalog(id);
+  return !!c && c.states.some((s) => s.name === st);
 }
 
 function renderRotation(sp) {
@@ -797,12 +895,15 @@ $("holiday-add").addEventListener("click", () => {
   markDirty(); renderHolidays();
 });
 saveBtn.addEventListener("click", save);
+$("preview-pose").addEventListener("change", (e) => { state.previewPose = e.target.value; renderStage(); });
+$("preview-skin").addEventListener("change", (e) => { state.previewSkin = e.target.value; renderStage(); });
 
 // ----- catalog refresh (after an import adds a sprite) -----
 async function refreshCatalog() {
   const s = await api("/mascot/api/sprites");
   state.catalog = s.catalog || [];
   renderCatalog();
+  renderPreviewControls(); // pick up the new sprite's poses/skins in the toolbar
   if (state.selectedId) renderProps(); // pick up new tags in the rotation panel
 }
 
