@@ -30,7 +30,11 @@ import (
 // SchemaVersion is the user_version the Node module (store/db.js) stamps for the
 // schema this package understands. Writes are refused on a mismatch so the agent
 // never corrupts a DB it doesn't recognize.
-const SchemaVersion = 1
+//
+// v2 (HOM-150) adds the `packs` table for Pokémon Theme v2. The agent both reads
+// and create-if-missing's that table (internal/choresdb/packs.go), so it fully
+// understands v2 — keep this in lockstep with store/db.js SCHEMA_VERSION.
+const SchemaVersion = 2
 
 // ErrStorage marks read/write failures so handlers can hide filesystem/driver
 // detail from the family-facing UI while it still lands in the agent log.

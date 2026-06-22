@@ -94,7 +94,7 @@ func testServer(t *testing.T) (*Server, *sql.DB) {
 	if _, err := db.Exec(ddlV1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec("PRAGMA user_version = 1"); err != nil {
+	if _, err := db.Exec("PRAGMA user_version = 2"); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
