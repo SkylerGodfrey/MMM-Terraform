@@ -164,6 +164,9 @@ func (s *Server) setupRoutes() {
 	portalAPI.GET("/dex/:user", s.listDex)
 	portalAPI.POST("/dex/:user/grant", s.grantDex)
 	portalAPI.POST("/dex/:user/remove", s.removeDex)
+	// Showcase: trigger an (ephemeral) legendary-catch takeover on the mirror.
+	// Separate path so the static segment doesn't collide with /dex/:user.
+	portalAPI.POST("/pokemon/demo-legendary", s.demoLegendaryDex)
 
 	portalAPI.GET("/photos", s.listPhotos)
 	portalAPI.POST("/photos", s.uploadPhoto)

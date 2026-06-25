@@ -32,6 +32,7 @@ func nowISOAgent() string {
 const (
 	pokemonThemeID  = "pokemon"
 	pokemonStateKey = "state"
+	pokemonDemoKey  = "demo" // theme_kv trigger the mirror polls for the showcase
 
 	eventDexGrant  = "pokemon_admin_grant"
 	eventDexRemove = "pokemon_admin_remove"
@@ -346,6 +347,34 @@ func (s *Server) removeDex(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"user": user, "formKey": formKey})
+}
+
+// ---- showcase ---------------------------------------------------------------
+
+// demoLegendaryDex triggers an ephemeral legendary-catch takeover on the mirror
+// so a parent can show the family what a shiny "Master Ball" catch looks like.
+// The agent can't push to the mirror's browser, so it stamps a trigger into
+// theme_kv (pokemon/demo = { at: <iso> }); the MMM-Chores node_helper polls that
+// key and plays the takeover, recording NOTHING in any dex. Each call advances
+// the timestamp, so every tap fires exactly once on the mirror.
+func (s *Server) demoLegendaryDex(c *gin.Context) {
+	db, err := s.openChoresDB()
+	if err != nil {
+		choresDBError(c, err)
+		return
+	}
+	if db == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "The mirror's chore database isn't ready yet."})
+		return
+	}
+	defer db.Close()
+
+	payload, _ := json.Marshal(gin.H{"at": nowISOAgent()})
+	if err := db.ThemeSet(pokemonThemeID, pokemonDemoKey, payload); err != nil {
+		choresDBError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 // ---- revert -----------------------------------------------------------------

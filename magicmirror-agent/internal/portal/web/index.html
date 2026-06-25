@@ -681,6 +681,9 @@
     </section>
 
     <section id="panel-dex" role="tabpanel" aria-labelledby="tab-dex" hidden>
+      <div style="margin-bottom:14px">
+        <button type="button" class="btn" id="dex-showcase">✨ Showcase legendary catch on the mirror</button>
+      </div>
       <div class="dex-user-tabs" id="dex-user-tabs"></div>
       <div id="dex-root"><p class="empty-note">Pick a person to manage their catches.</p></div>
       <p class="photo-note">Grant or remove caught Pokémon for one person. Every change is logged in Activity and can be reverted there.</p>
@@ -2316,6 +2319,16 @@
     var dexUser = null;
     var dexEntries = [];        // current user's caught form-entries
     var dexState = { query: "", filter: "all", picked: new Set() };
+
+    // Showcase: trigger an ephemeral legendary-catch takeover on the mirror.
+    $("dex-showcase").addEventListener("click", function () {
+      var btn = this;
+      btn.disabled = true;
+      api("/pokemon/demo-legendary", { method: "POST" })
+        .then(function () { toast("Playing the legendary catch on the mirror…"); })
+        .catch(function (err) { toast(err.message || "Couldn’t trigger the showcase."); })
+        .then(function () { setTimeout(function () { btn.disabled = false; }, 4000); });
+    });
 
     function loadDex() {
       // Reuse the same family-name list the rest of the portal uses.

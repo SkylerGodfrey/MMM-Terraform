@@ -55,6 +55,7 @@ func dexTestServer(t *testing.T) (*Server, *sql.DB) {
 	api.GET("/dex/:user", s.listDex)
 	api.POST("/dex/:user/grant", s.grantDex)
 	api.POST("/dex/:user/remove", s.removeDex)
+	api.POST("/pokemon/demo-legendary", s.demoLegendaryDex)
 	api.GET("/events", s.listEvents)
 	api.POST("/events/:id/revert", s.revertEvent)
 	return s, db
@@ -260,5 +261,30 @@ func TestDexGrantBumpThenRevertDecrements(t *testing.T) {
 	caught := doc.Users["Gavin"].Caught
 	if len(caught) != 1 || caught[0].Count != 1 {
 		t.Fatalf("reverting a bump should decrement to count 1, got %+v", caught)
+	}
+}
+
+func TestDemoLegendaryStampsTrigger(t *testing.T) {
+	s, db := dexTestServer(t)
+
+	w := do(t, s, http.MethodPost, "/portal/api/pokemon/demo-legendary")
+	if w.Code != http.StatusOK {
+		t.Fatalf("demo-legendary: code %d body %s", w.Code, w.Body.String())
+	}
+
+	// The trigger lands in theme_kv pokemon/demo with an 'at' timestamp, which
+	// the mirror's node_helper polls and plays once.
+	var value string
+	if err := db.QueryRow("SELECT value FROM theme_kv WHERE theme_id='pokemon' AND key='demo'").Scan(&value); err != nil {
+		t.Fatalf("reading demo trigger: %v", err)
+	}
+	var demo struct {
+		At string `json:"at"`
+	}
+	if err := json.Unmarshal([]byte(value), &demo); err != nil {
+		t.Fatalf("decoding demo trigger: %v", err)
+	}
+	if demo.At == "" {
+		t.Fatal("demo trigger missing 'at' timestamp")
 	}
 }
