@@ -357,3 +357,70 @@ func TestMissingFileIsCleanError(t *testing.T) {
 		t.Error("want error for missing file")
 	}
 }
+
+func TestCalendarDaysAndWeeksRoundTrip(t *testing.T) {
+	s := newTestStore(t)
+	created, err := s.Create(Input{
+		Name:      "Clean the garage",
+		Assignees: []string{"Dad", "Gavin"},
+		Days:      []int{6, 6},
+		Weeks:     []int{-1, 1},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(s.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(raw)
+	if !strings.Contains(text, "days:\n      - 6\n    weeks:\n      - 1\n      - -1\n") {
+		t.Errorf("days/weeks not written sorted+deduped in key order:\n%s", text)
+	}
+
+	// Clearing days on update drops both fields.
+	id := created["id"].(string)
+	updated, err := s.Update(id, Input{Name: "Clean the garage", Assignees: []string{"Dad"}, Repeat: "monthly"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, has := updated["days"]; has {
+		t.Errorf("days should be removed: %v", updated)
+	}
+	if _, has := updated["weeks"]; has {
+		t.Errorf("weeks should be removed: %v", updated)
+	}
+}
+
+func TestSwitchToBountyClearsCalendar(t *testing.T) {
+	s := newTestStore(t)
+	created, err := s.Create(Input{Name: "Trash", Assignees: []string{"Dad"}, Days: []int{2, 5}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := s.Update(created["id"].(string), Input{Name: "Trash", Anyone: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, has := updated["days"]; has {
+		t.Errorf("bounty chore must not keep days: %v", updated)
+	}
+}
+
+func TestValidationCalendar(t *testing.T) {
+	s := newTestStore(t)
+	cases := []Input{
+		{Name: "x", Assignee: "Dad", Days: []int{7}},
+		{Name: "x", Assignee: "Dad", Days: []int{-1}},
+		{Name: "x", Assignee: "Dad", Days: []int{6}, Weeks: []int{0}},
+		{Name: "x", Assignee: "Dad", Days: []int{6}, Weeks: []int{6}},
+		{Name: "x", Assignee: "Dad", Weeks: []int{1}},
+		{Name: "x", Anyone: true, Days: []int{6}},
+		{Name: "x", Assignee: "Dad", Days: []int{6}, Repeat: "weekly"},
+	}
+	for i, in := range cases {
+		if _, err := s.Create(in); err == nil {
+			t.Errorf("case %d: want validation error for %+v", i, in)
+		}
+	}
+}
