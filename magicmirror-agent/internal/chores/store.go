@@ -41,6 +41,9 @@ var ErrStorage = errors.New("chores storage error")
 //     optionally narrows to the nth of them in a month (1-5, -1 = last), e.g.
 //     Days [6] + Weeks [1] = first Saturday. Mutually exclusive with Repeat
 //     (which counts from completion) and not allowed on bounty chores.
+//   - MonthDays: calendar schedule by date (1-31, -1 = last day). Dates past
+//     a short month's end fall on its last day (the module clamps). An
+//     alternative to Days/Weeks, with the same restrictions.
 //
 // Assignee (singular) is still accepted on input for back-compat: it is folded
 // into Assignees on apply. Anyone (bounty) takes precedence over both.
@@ -57,6 +60,7 @@ type Input struct {
 	Tokens      *int     `json:"tokens"`
 	Days        []int    `json:"days"`
 	Weeks       []int    `json:"weeks"`
+	MonthDays   []int    `json:"monthDays"`
 }
 
 // cleanInts sorts and de-duplicates a small int list (validation has already
@@ -239,7 +243,7 @@ func (s *Store) load() (map[string]any, error) {
 // Key order for serialized chores, matching the hand-written file and
 // js-yaml's output so portal writes produce minimal diffs. Unknown keys
 // land at the end, alphabetically.
-var keyOrder = []string{"name", "assignee", "assignees", "mode", "anyone", "timeOfDay", "autoApprove", "due", "repeat", "days", "weeks", "priority", "completed", "completedAt", "claimedBy", "tokens", "id"}
+var keyOrder = []string{"name", "assignee", "assignees", "mode", "anyone", "timeOfDay", "autoApprove", "due", "repeat", "days", "weeks", "monthDays", "priority", "completed", "completedAt", "claimedBy", "tokens", "id"}
 
 func docNode(doc map[string]any) (*yaml.Node, error) {
 	root := &yaml.Node{Kind: yaml.MappingNode}
@@ -400,6 +404,7 @@ func applyInput(chore map[string]any, in Input) {
 		delete(chore, "autoApprove")
 		delete(chore, "days")
 		delete(chore, "weeks")
+		delete(chore, "monthDays")
 	} else {
 		delete(chore, "anyone")
 
@@ -443,6 +448,11 @@ func applyInput(chore map[string]any, in Input) {
 			} else {
 				chore["weeks"] = cleanInts(in.Weeks)
 			}
+		}
+		if len(in.MonthDays) == 0 {
+			delete(chore, "monthDays")
+		} else {
+			chore["monthDays"] = cleanInts(in.MonthDays)
 		}
 	}
 
@@ -533,6 +543,20 @@ func validate(in Input) error {
 		if w != -1 && (w < 1 || w > 5) {
 			return errors.New("weeks must be 1-5, or -1 for the last one in the month")
 		}
+	}
+	for _, d := range in.MonthDays {
+		if d != -1 && (d < 1 || d > 31) {
+			return errors.New("month days must be 1-31, or -1 for the last day of the month")
+		}
+	}
+	if len(in.MonthDays) > 0 && len(in.Days) > 0 {
+		return errors.New("a monthly chore uses either dates or weekdays, not both")
+	}
+	if len(in.MonthDays) > 0 && in.Anyone {
+		return errors.New("chores open to anyone can't use a date schedule yet — assign people instead")
+	}
+	if len(in.MonthDays) > 0 && in.Repeat != nil {
+		return errors.New("a chore repeats either on set dates or every N days after it's done, not both")
 	}
 	if len(in.Weeks) > 0 && len(in.Days) == 0 {
 		return errors.New("pick which day of the week for a monthly chore")

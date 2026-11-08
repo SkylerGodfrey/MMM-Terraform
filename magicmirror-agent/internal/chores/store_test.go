@@ -424,3 +424,45 @@ func TestValidationCalendar(t *testing.T) {
 		}
 	}
 }
+
+func TestMonthDaysRoundTripAndClear(t *testing.T) {
+	s := newTestStore(t)
+	created, err := s.Create(Input{Name: "Pay allowance", Assignees: []string{"Dad"}, MonthDays: []int{-1, 15, 1, 15}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(s.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "monthDays:\n      - 1\n      - 15\n      - -1\n") {
+		t.Errorf("monthDays not written sorted+deduped:\n%s", raw)
+	}
+	updated, err := s.Update(created["id"].(string), Input{Name: "Pay allowance", Anyone: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, has := updated["monthDays"]; has {
+		t.Errorf("bounty chore must not keep monthDays: %v", updated)
+	}
+}
+
+func TestValidationMonthDays(t *testing.T) {
+	s := newTestStore(t)
+	cases := []Input{
+		{Name: "x", Assignee: "Dad", MonthDays: []int{0}},
+		{Name: "x", Assignee: "Dad", MonthDays: []int{32}},
+		{Name: "x", Assignee: "Dad", MonthDays: []int{-2}},
+		{Name: "x", Assignee: "Dad", MonthDays: []int{1}, Days: []int{6}},
+		{Name: "x", Anyone: true, MonthDays: []int{1}},
+		{Name: "x", Assignee: "Dad", MonthDays: []int{1}, Repeat: "monthly"},
+	}
+	for i, in := range cases {
+		if _, err := s.Create(in); err == nil {
+			t.Errorf("case %d: want validation error for %+v", i, in)
+		}
+	}
+	if _, err := s.Create(Input{Name: "ok", Assignee: "Dad", MonthDays: []int{31, -1}}); err != nil {
+		t.Errorf("31 and last day should be valid: %v", err)
+	}
+}
