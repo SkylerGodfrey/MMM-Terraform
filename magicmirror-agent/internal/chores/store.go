@@ -37,6 +37,10 @@ var ErrStorage = errors.New("chores storage error")
 //     same either way; the module defaults shared.
 //   - TimeOfDay: "anytime" | "morning" | "nightly" (HOM-134 scheduling gate).
 //   - AutoApprove: skip the parent verification queue (HOM-135).
+//   - Days / Weeks: calendar schedule. Days are weekdays (0=Sun..6=Sat); Weeks
+//     optionally narrows to the nth of them in a month (1-5, -1 = last), e.g.
+//     Days [6] + Weeks [1] = first Saturday. Mutually exclusive with Repeat
+//     (which counts from completion) and not allowed on bounty chores.
 //
 // Assignee (singular) is still accepted on input for back-compat: it is folded
 // into Assignees on apply. Anyone (bounty) takes precedence over both.
@@ -51,6 +55,36 @@ type Input struct {
 	Repeat      any      `json:"repeat"`   // "daily" | "weekly" | "monthly" | positive int | nil
 	Priority    string   `json:"priority"` // "high" | "low" | "" (normal)
 	Tokens      *int     `json:"tokens"`
+	Days        []int    `json:"days"`
+	Weeks       []int    `json:"weeks"`
+}
+
+// cleanInts sorts and de-duplicates a small int list (validation has already
+// rejected out-of-range values). Last-of-month (-1) sorts after the numbered weeks.
+func cleanInts(in []int) []any {
+	seen := map[int]bool{}
+	vals := make([]int, 0, len(in))
+	for _, v := range in {
+		if !seen[v] {
+			seen[v] = true
+			vals = append(vals, v)
+		}
+	}
+	sort.Slice(vals, func(i, j int) bool {
+		a, b := vals[i], vals[j]
+		if a == -1 {
+			a = 99
+		}
+		if b == -1 {
+			b = 99
+		}
+		return a < b
+	})
+	out := make([]any, len(vals))
+	for i, v := range vals {
+		out[i] = v
+	}
+	return out
 }
 
 // inputAssignees returns the effective assignee list, folding a legacy single
@@ -205,7 +239,7 @@ func (s *Store) load() (map[string]any, error) {
 // Key order for serialized chores, matching the hand-written file and
 // js-yaml's output so portal writes produce minimal diffs. Unknown keys
 // land at the end, alphabetically.
-var keyOrder = []string{"name", "assignee", "assignees", "mode", "anyone", "timeOfDay", "autoApprove", "due", "repeat", "priority", "completed", "completedAt", "claimedBy", "tokens", "id"}
+var keyOrder = []string{"name", "assignee", "assignees", "mode", "anyone", "timeOfDay", "autoApprove", "due", "repeat", "days", "weeks", "priority", "completed", "completedAt", "claimedBy", "tokens", "id"}
 
 func docNode(doc map[string]any) (*yaml.Node, error) {
 	root := &yaml.Node{Kind: yaml.MappingNode}
@@ -364,6 +398,8 @@ func applyInput(chore map[string]any, in Input) {
 		delete(chore, "mode")
 		delete(chore, "timeOfDay")
 		delete(chore, "autoApprove")
+		delete(chore, "days")
+		delete(chore, "weeks")
 	} else {
 		delete(chore, "anyone")
 
@@ -394,6 +430,19 @@ func applyInput(chore map[string]any, in Input) {
 			chore["autoApprove"] = true
 		} else {
 			delete(chore, "autoApprove")
+		}
+
+		// Calendar schedule: omit when empty (weeks only means anything with days).
+		if len(in.Days) == 0 {
+			delete(chore, "days")
+			delete(chore, "weeks")
+		} else {
+			chore["days"] = cleanInts(in.Days)
+			if len(in.Weeks) == 0 {
+				delete(chore, "weeks")
+			} else {
+				chore["weeks"] = cleanInts(in.Weeks)
+			}
 		}
 	}
 
@@ -474,6 +523,25 @@ func validate(in Input) error {
 		}
 	default:
 		return errors.New("repeat must be daily, weekly, monthly, or a number of days")
+	}
+	for _, d := range in.Days {
+		if d < 0 || d > 6 {
+			return errors.New("days must be weekdays 0 (Sunday) to 6 (Saturday)")
+		}
+	}
+	for _, w := range in.Weeks {
+		if w != -1 && (w < 1 || w > 5) {
+			return errors.New("weeks must be 1-5, or -1 for the last one in the month")
+		}
+	}
+	if len(in.Weeks) > 0 && len(in.Days) == 0 {
+		return errors.New("pick which day of the week for a monthly chore")
+	}
+	if len(in.Days) > 0 && in.Anyone {
+		return errors.New("chores open to anyone can't use a day-of-week schedule yet — assign people instead")
+	}
+	if len(in.Days) > 0 && in.Repeat != nil {
+		return errors.New("a chore repeats either on set days or every N days after it's done, not both")
 	}
 	if in.Priority != "" && in.Priority != "high" && in.Priority != "low" {
 		return errors.New("priority must be high, low, or empty")

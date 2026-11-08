@@ -233,7 +233,7 @@
   .task .task-name { font-weight: 600; font-size: 16.5px; flex: 1; min-width: 0; }
   .task .task-tokens { flex: none; font-size: 13px; font-weight: 700; color: var(--gold); white-space: nowrap; }
   .task .who { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-  .task .who span {
+  .task .who span:not(.pchip) {
     padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
     background: rgba(240, 180, 84, 0.1); border: 1px solid rgba(240, 180, 84, 0.22); color: var(--gold);
   }
@@ -249,6 +249,178 @@
   }
   .task .task-meta .tag.auto { color: var(--ok); }
   .task .task-meta .tag.high { color: var(--gold); }
+  /* ---------- chores views: people / chores / week / month ---------- */
+  .view-switch {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+    padding: 4px; margin-bottom: 14px;
+    border: 1px solid var(--line); border-radius: 16px; background: var(--bg-raised);
+  }
+  .view-switch button {
+    padding: 9px 0; border: 1px solid transparent; border-radius: 12px; background: none;
+    color: var(--ink-dim); font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .view-switch button[aria-pressed="true"] {
+    color: var(--gold); border-color: rgba(240, 180, 84, 0.3);
+    background: linear-gradient(180deg, rgba(240,180,84,0.16), rgba(240,180,84,0.05));
+  }
+  .live-note { margin: -4px 4px 12px; font-size: 12.5px; color: var(--ink-dim); text-align: center; }
+
+  .pchip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px 3px 8px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 700; color: var(--pc, var(--gold));
+    background: color-mix(in srgb, var(--pc, var(--gold)) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--pc, var(--gold)) 35%, transparent);
+  }
+  .pchip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--pc, var(--gold)); }
+
+  .person { margin-bottom: 24px; animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .person-head { display: flex; align-items: center; gap: 11px; margin: 0 4px 8px; }
+  .person-head .avatar {
+    flex: none; width: 36px; height: 36px; border-radius: 50%;
+    display: grid; place-items: center; font-weight: 700; font-size: 16px; color: #0c0e11;
+    background: var(--pc); box-shadow: 0 0 14px color-mix(in srgb, var(--pc) 45%, transparent);
+  }
+  .person-head .ph-text { flex: 1; min-width: 0; }
+  .person-head h3 { font-family: "Fraunces", Georgia, serif; font-size: 20px; font-weight: 600; line-height: 1.1; }
+  .person-head .sum { font-size: 12.5px; color: var(--ink-dim); margin-top: 2px; }
+  .person-head .sum b { color: var(--ink); font-weight: 700; }
+  .bucket-label {
+    margin: 12px 4px 6px; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim);
+  }
+  .prow {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--bg-raised); border: 1px solid var(--line);
+    border-left: 3px solid var(--pc, var(--line));
+    border-radius: 14px; padding: 11px 14px; margin-bottom: 7px;
+    cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 0.1s;
+  }
+  .prow:active { transform: scale(0.99); }
+  .prow .pr-main { flex: 1; min-width: 0; }
+  .prow .pr-title { font-weight: 600; font-size: 15.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .prow .pr-sub { font-size: 12.5px; color: var(--ink-dim); margin-top: 2px; line-height: 1.4; }
+  .prow .pr-right { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; max-width: 42%; }
+  .prow .pr-tokens { font-size: 13px; font-weight: 700; color: var(--gold); white-space: nowrap; }
+
+  .state { font-size: 12px; font-weight: 700; text-align: right; line-height: 1.3; }
+  .state.now { color: var(--gold); }
+  .state.done { color: var(--ok); }
+  .state.pending { color: #e6c06a; }
+  .state.late { color: var(--bad); }
+  .state.upcoming, .state.none { color: var(--ink-dim); font-weight: 600; }
+
+  .task { border-left: 3px solid var(--pc, var(--line)); }
+  .task .who span.with-mode { padding: 3px 2px; background: none; border: none; color: var(--ink-dim); font-weight: 600; }
+  .task .when { display: flex; align-items: flex-start; gap: 7px; margin-top: 10px; font-size: 13.5px; line-height: 1.4; }
+  .task .when svg { flex: none; margin-top: 2px; color: var(--ink-dim); }
+  .task .live { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; }
+  .task .live .state { text-align: left; }
+  .task .task-meta .tag.low { color: var(--ink-dim); }
+  .task .task-meta .tag.warn { color: var(--bad); }
+
+  /* week + month */
+  .range-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .range-nav .nav-btn {
+    flex: none; width: 40px; height: 40px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--bg-raised); color: var(--ink);
+    font-family: inherit; font-size: 18px; cursor: pointer;
+  }
+  .range-nav .range-label { flex: 1; text-align: center; font-family: "Fraunces", Georgia, serif; font-size: 19px; font-weight: 600; }
+  .range-nav .today-btn {
+    flex: none; padding: 9px 12px; border-radius: 12px; border: 1px solid rgba(240,180,84,0.4);
+    background: none; color: var(--gold); font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .filter-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .filter-row .chip { padding: 7px 12px; font-size: 13.5px; }
+  .filter-row .chip.pfilter[aria-pressed="true"] {
+    color: var(--pc); border-color: color-mix(in srgb, var(--pc) 55%, transparent);
+    background: color-mix(in srgb, var(--pc) 14%, transparent);
+  }
+  .filter-row .chip.pfilter::before {
+    content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--pc); margin-right: 6px; vertical-align: 1px;
+  }
+  .daily-note { margin: -4px 4px 14px; font-size: 12.5px; color: var(--ink-dim); line-height: 1.45; }
+  .day { margin-bottom: 14px; }
+  .day.is-past { opacity: 0.55; }
+  .day-head { display: flex; align-items: baseline; gap: 8px; margin: 0 4px 6px; font-weight: 700; font-size: 14.5px; }
+  .day-head .today-pill {
+    font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold);
+    border: 1px solid rgba(240,180,84,0.45); border-radius: 999px; padding: 2px 8px;
+  }
+  .day-empty { margin: 0 4px 4px; font-size: 13px; color: var(--ink-dim); }
+  .dayrow {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; margin-bottom: 6px;
+    border: 1px solid var(--line); border-radius: 12px; background: var(--bg-raised);
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .dayrow.is-projected { border-style: dashed; background: none; }
+  .dayrow .dr-time { flex: none; width: 52px; font-size: 12px; font-weight: 700; color: var(--ink-dim); }
+  .dayrow .dr-main { flex: 1; min-width: 0; }
+  .dayrow .dr-name { font-size: 14.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dayrow .dr-sub { font-size: 12px; color: var(--ink-dim); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dots { flex: none; display: flex; gap: 4px; }
+  .dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--pc); }
+
+  .month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-bottom: 16px; }
+  .month .dow { text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--ink-dim); padding-bottom: 2px; }
+  .mcell {
+    min-width: 0; min-height: 52px; padding: 5px 2px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--bg-raised);
+    color: var(--ink); font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .mcell.is-other { opacity: 0.35; }
+  .mcell.is-today { border-color: rgba(240,180,84,0.6); }
+  .mcell.is-today .num { color: var(--gold); }
+  .mcell[aria-pressed="true"] { background: linear-gradient(180deg, rgba(240,180,84,0.2), rgba(240,180,84,0.06)); border-color: rgba(240,180,84,0.7); }
+  .mcell .num { font-size: 13px; font-weight: 700; }
+  .mcell .mdots { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; }
+  .mcell .mdots i { width: 7px; height: 7px; border-radius: 50%; background: var(--pc); }
+  .mcell .more { font-size: 9.5px; color: var(--ink-dim); line-height: 1; }
+  .sel-day-head { font-family: "Fraunces", Georgia, serif; font-size: 19px; font-weight: 600; margin: 0 4px 8px; }
+
+  /* chore sheet: schedule + sharing */
+  .mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mode-card {
+    text-align: left; padding: 12px; border-radius: 14px;
+    border: 1px solid var(--line); background: var(--bg-raised); color: var(--ink);
+    font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .mode-card strong { display: block; font-size: 14.5px; }
+  .mode-card small { display: block; margin-top: 3px; font-size: 12px; line-height: 1.35; color: var(--ink-dim); }
+  .mode-card[aria-pressed="true"] {
+    border-color: rgba(240, 180, 84, 0.55); color: var(--gold);
+    background: linear-gradient(180deg, rgba(240,180,84,0.18), rgba(240,180,84,0.06));
+  }
+  .sched-box {
+    border: 1px solid var(--line); border-radius: 18px; padding: 14px 14px 2px;
+    margin-bottom: 16px; background: rgba(255, 255, 255, 0.02);
+  }
+  .sched-box .box-title { font-family: "Fraunces", Georgia, serif; font-size: 17px; font-weight: 600; margin-bottom: 12px; }
+  .dow-picker { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+  .dow-picker .chip { padding: 10px 0; text-align: center; }
+  .chip:disabled, .mode-card:disabled { opacity: 0.35; cursor: not-allowed; }
+  .field-hint { margin-top: 8px; font-size: 12.5px; line-height: 1.4; color: var(--ink-dim); }
+  .field-hint:empty { display: none; }
+  .field-hint.warn { color: #f0c4ba; }
+  #sheet .pchip-btn[aria-pressed="true"] {
+    color: var(--pc); border-color: color-mix(in srgb, var(--pc) 60%, transparent);
+    background: color-mix(in srgb, var(--pc) 15%, transparent);
+  }
+  .summary {
+    padding: 12px 14px; margin-top: 4px; border-radius: 14px;
+    border: 1px solid rgba(240,180,84,0.3); background: rgba(240,180,84,0.07);
+    font-size: 14px; line-height: 1.5;
+  }
+  .summary b { color: var(--gold); }
+  .summary .s-next { color: var(--ink-dim); font-size: 13px; }
+
+  .event.has-person { border-left: 3px solid var(--pc); }
+
 
   /* ---------- approval queue (HOM-139) ---------- */
   .approve-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
@@ -725,18 +897,83 @@
 
   <div class="field" id="f-mode-field">
     <label>How is it shared?</label>
-    <div class="chips" id="f-mode">
-      <button type="button" class="chip" data-mode="shared">Shared &mdash; first to finish</button>
-      <button type="button" class="chip" data-mode="independent">Each person their own</button>
+    <div class="mode-cards" id="f-mode">
+      <button type="button" class="mode-card" data-mode="shared"><strong>First to finish</strong><small>One person does it and it&rsquo;s done for everyone</small></button>
+      <button type="button" class="mode-card" data-mode="independent"><strong>Each their own</strong><small>Everyone does it and earns their own tokens</small></button>
     </div>
   </div>
 
-  <div class="field">
-    <label>When?</label>
-    <div class="chips" id="f-time">
-      <button type="button" class="chip" data-time="anytime">Anytime</button>
-      <button type="button" class="chip" data-time="morning">Morning</button>
-      <button type="button" class="chip" data-time="nightly">Nightly</button>
+  <div class="sched-box">
+    <div class="box-title">Schedule</div>
+    <div class="field">
+      <label>How often?</label>
+      <div class="chips" id="f-kind">
+        <button type="button" class="chip" data-kind="once">Once</button>
+        <button type="button" class="chip" data-kind="daily">Every day</button>
+        <button type="button" class="chip" data-kind="weekly">Weekly</button>
+        <button type="button" class="chip" data-kind="monthly">Monthly</button>
+        <button type="button" class="chip" data-kind="interval">Every few days</button>
+      </div>
+      <p class="field-hint" id="f-kind-hint"></p>
+    </div>
+
+    <div class="field" id="f-weeks-field">
+      <label>Which week of the month?</label>
+      <div class="chips" id="f-weeks">
+        <button type="button" class="chip" data-week="1">1st</button>
+        <button type="button" class="chip" data-week="2">2nd</button>
+        <button type="button" class="chip" data-week="3">3rd</button>
+        <button type="button" class="chip" data-week="4">4th</button>
+        <button type="button" class="chip" data-week="-1">Last</button>
+      </div>
+    </div>
+
+    <div class="field" id="f-days-field">
+      <label id="f-days-label">On which days?</label>
+      <div class="dow-picker" id="f-days"></div>
+    </div>
+
+    <div class="field" id="f-interval-field">
+      <label for="f-interval">Comes back</label>
+      <select id="f-interval">
+        <option value="2">2 days after it&rsquo;s done</option>
+        <option value="3">3 days after it&rsquo;s done</option>
+        <option value="4">4 days after it&rsquo;s done</option>
+        <option value="5">5 days after it&rsquo;s done</option>
+        <option value="7">1 week after it&rsquo;s done</option>
+        <option value="14">2 weeks after it&rsquo;s done</option>
+        <option value="monthly">1 month after it&rsquo;s done</option>
+      </select>
+      <p class="field-hint">Counts from when it&rsquo;s finished, so a late finish pushes the next one later too. For a fixed day, use Weekly or Monthly.</p>
+    </div>
+
+    <div class="field">
+      <label>Time of day</label>
+      <div class="chips" id="f-time">
+        <button type="button" class="chip" data-time="anytime">Anytime</button>
+        <button type="button" class="chip" data-time="morning">Morning</button>
+        <button type="button" class="chip" data-time="nightly">Nightly</button>
+      </div>
+      <p class="field-hint" id="f-time-hint"></p>
+    </div>
+  </div>
+
+  <div class="row2">
+    <div class="field">
+      <label for="f-priority">Priority</label>
+      <select id="f-priority">
+        <option value="">Normal</option>
+        <option value="high">High</option>
+        <option value="low">Low</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Tokens earned</label>
+      <div class="stepper">
+        <button type="button" id="tok-minus" aria-label="Fewer tokens">&minus;</button>
+        <output id="f-tokens">1</output>
+        <button type="button" id="tok-plus" aria-label="More tokens">+</button>
+      </div>
     </div>
   </div>
 
@@ -748,36 +985,7 @@
     <button type="button" class="switch" id="f-autoapprove" role="switch" aria-checked="false"><span></span></button>
   </div>
 
-  <div class="row2">
-    <div class="field">
-      <label for="f-repeat">Repeats</label>
-      <select id="f-repeat">
-        <option value="">Just once</option>
-        <option value="daily">Every day</option>
-        <option value="2">Every 2 days</option>
-        <option value="3">Every 3 days</option>
-        <option value="weekly">Every week</option>
-        <option value="monthly">Every month</option>
-      </select>
-    </div>
-    <div class="field">
-      <label for="f-priority">Priority</label>
-      <select id="f-priority">
-        <option value="">Normal</option>
-        <option value="high">High</option>
-        <option value="low">Low</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="field">
-    <label>Tokens earned</label>
-    <div class="stepper">
-      <button type="button" id="tok-minus" aria-label="Fewer tokens">&minus;</button>
-      <output id="f-tokens">1</output>
-      <button type="button" id="tok-plus" aria-label="More tokens">+</button>
-    </div>
-  </div>
+  <div class="summary" id="f-summary" aria-live="polite"></div>
 
   <div class="actions">
     <button type="button" class="btn danger" id="btn-delete" aria-label="Delete chore" hidden>
@@ -1022,6 +1230,19 @@
     var API = "/portal/api";
     var chores = [];
     var assignees = [];
+    var choreStatus = defaultChoreStatus();
+    var compIndex = {}; // "<choreId>|<user>" -> completion row
+
+    function defaultChoreStatus() {
+      return {
+        available: false,
+        completions: [],
+        activations: {},
+        schedule: { defaults: { morning: "06:00", nightly: "17:00" }, perUser: {} },
+        calendarSchedules: true,
+        personColors: {}
+      };
+    }
 
     function api(path, opts) {
       return fetch(API + path, opts).then(function (res) {
@@ -1034,9 +1255,21 @@
     }
 
     function loadChores() {
-      return Promise.all([api("/chores"), api("/assignees")]).then(function (results) {
+      return Promise.all([
+        api("/chores"),
+        api("/assignees"),
+        // Live status is optional: an older agent or a DB hiccup still
+        // renders every schedule, just without open/done state.
+        api("/chores-status").catch(function () { return null; })
+      ]).then(function (results) {
         chores = results[0].chores || [];
         assignees = results[1].assignees || [];
+        var st = defaultChoreStatus();
+        var got = results[2];
+        if (got) Object.keys(st).forEach(function (k) { if (got[k] != null) st[k] = got[k]; });
+        choreStatus = st;
+        compIndex = {};
+        (st.completions || []).forEach(function (c) { compIndex[c.choreId + "|" + c.user] = c; });
         render();
       }).catch(function (err) {
         $("chores-root").innerHTML = "";
@@ -1047,108 +1280,716 @@
       });
     }
 
-    function repeatLabel(repeat) {
-      if (repeat === "daily") return "every day";
-      if (repeat === "weekly") return "every week";
-      if (repeat === "monthly") return "every month";
-      if (typeof repeat === "number") return "every " + repeat + " days";
-      return "";
-    }
-
     function choreAssignees(chore) {
       if (Array.isArray(chore.assignees)) return chore.assignees.filter(Boolean);
       if (chore.assignee) return [chore.assignee];
       return [];
     }
 
-    function timeLabel(t) {
-      if (t === "morning") return "Morning";
-      if (t === "nightly") return "Nightly";
-      return "";
+    function el(tag, cls, text) {
+      var node = document.createElement(tag);
+      if (cls) node.className = cls;
+      if (text != null) node.textContent = text;
+      return node;
     }
 
-    // HOM-138: one card PER TASK (not per user), so a parent manages the whole
-    // family from a single row — assignees, mode, schedule, tokens, auto-approve.
+    function tapToEdit(node, chore) {
+      node.setAttribute("role", "button");
+      node.setAttribute("tabindex", "0");
+      node.addEventListener("click", function () { openSheet(chore); });
+      node.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSheet(chore); }
+      });
+    }
+
+    /* ---------- people + colours ---------- */
+    // Same accents as the mirror (MMM-Chores.css --mc-accent-*), overridable by
+    // the module's personColors config, so a name looks the same on both.
+    var MIRROR_COLORS = { dad: "#2ee6ff", mom: "#ff4fa3", gavin: "#a8ff3e", savannah: "#b388ff" };
+    var EXTRA_COLORS = ["#ff9f43", "#4dd4ac", "#7aa2ff", "#ff6b81", "#c0e070", "#ffd166"];
+    var BOUNTY_COLOR = "#f0b454";
+
+    function personSlug(name) { return String(name).toLowerCase().replace(/[^a-z0-9]/g, ""); }
+    function safeColor(v) {
+      return typeof v === "string" && /^(#[0-9a-f]{3,8}|(rgb|hsl)a?\([0-9.,%\s]+\))$/i.test(v.trim()) ? v.trim() : null;
+    }
+    function allPeople() {
+      var names = assignees.slice();
+      chores.forEach(function (c) {
+        choreAssignees(c).forEach(function (n) { if (names.indexOf(n) === -1) names.push(n); });
+      });
+      return names;
+    }
+    function personColor(name) {
+      if (!name) return BOUNTY_COLOR;
+      var over = choreStatus.personColors || {};
+      var c = safeColor(over[name]);
+      if (c) return c;
+      if (MIRROR_COLORS[personSlug(name)]) return MIRROR_COLORS[personSlug(name)];
+      var others = allPeople().filter(function (n) { return !MIRROR_COLORS[personSlug(n)] && !safeColor(over[n]); });
+      var i = Math.max(0, others.indexOf(name));
+      return EXTRA_COLORS[i % EXTRA_COLORS.length];
+    }
+    function paint(node, name) { node.style.setProperty("--pc", personColor(name)); return node; }
+    function personChip(name) { return paint(el("span", "pchip", name), name); }
+
+    /* ---------- dates ---------- */
+    var DOW_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    var DOW_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    var DOW_LETTER = ["S", "M", "T", "W", "T", "F", "S"];
+    var MON_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    var MON_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    var NTH = { "1": "first", "2": "second", "3": "third", "4": "fourth", "5": "fifth", "-1": "last" };
+
+    function dayStart(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+    function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+    function sameDay(a, b) {
+      return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    }
+    function weekStart(d) { return addDays(dayStart(d), -d.getDay()); } // Sunday
+    function parseHHMM(hhmm) {
+      var m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || "").trim());
+      if (!m) return { h: 0, m: 0 };
+      return { h: Math.min(23, parseInt(m[1], 10)), m: Math.min(59, parseInt(m[2], 10)) };
+    }
+    function triggerOn(day, hhmm) {
+      var t = parseHHMM(hhmm);
+      return new Date(day.getFullYear(), day.getMonth(), day.getDate(), t.h, t.m, 0, 0);
+    }
+    function fmtClock(hhmm) {
+      var t = parseHHMM(hhmm);
+      var h = t.h % 12 || 12;
+      return h + (t.m ? ":" + (t.m < 10 ? "0" : "") + t.m : "") + (t.h < 12 ? " AM" : " PM");
+    }
+    function dayLabel(d) {
+      var today = dayStart(new Date());
+      if (sameDay(d, today)) return "today";
+      if (sameDay(d, addDays(today, 1))) return "tomorrow";
+      if (sameDay(d, addDays(today, -1))) return "yesterday";
+      return DOW_SHORT[d.getDay()] + ", " + MON_SHORT[d.getMonth()] + " " + d.getDate();
+    }
+    function fmtWhen(d) {
+      var midnight = d.getHours() === 0 && d.getMinutes() === 0;
+      return dayLabel(d) + (midnight ? "" : " at " + fmtClock(d.getHours() + ":" + (d.getMinutes() < 10 ? "0" : "") + d.getMinutes()));
+    }
+    function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+    function joinAnd(list) {
+      if (list.length <= 1) return list.join("");
+      return list.slice(0, -1).join(", ") + " & " + list[list.length - 1];
+    }
+
+    /* ---------- schedule model (mirrors MMM-Chores store/schedule.js) ---------- */
+    function cleanInts(list, min, max, allowLast) {
+      if (!Array.isArray(list)) return [];
+      var out = [];
+      list.forEach(function (raw) {
+        var n = typeof raw === "number" ? raw : parseInt(raw, 10);
+        var ok = n === Math.floor(n) && ((n >= min && n <= max) || (allowLast && n === -1));
+        if (ok && out.indexOf(n) === -1) out.push(n);
+      });
+      return out;
+    }
+    function choreDays(c) { return cleanInts(c.days, 0, 6, false); }
+    function choreWeeks(c) { return cleanInts(c.weeks, 1, 5, true); }
+    function calendarOn() { return choreStatus.calendarSchedules !== false; }
+    function isCalendar(c) { return calendarOn() && !c.anyone && choreDays(c).length > 0; }
+    function isTimed(c) { return !c.anyone && (c.timeOfDay === "morning" || c.timeOfDay === "nightly"); }
+    function isGated(c) { return isCalendar(c) || isTimed(c); }
+    function nthOfMonth(d) { return Math.floor((d.getDate() - 1) / 7) + 1; }
+    function isLastOfMonth(d) { return addDays(d, 7).getMonth() !== d.getMonth(); }
+    function occursOnCal(c, d) {
+      if (choreDays(c).indexOf(d.getDay()) === -1) return false;
+      var weeks = choreWeeks(c);
+      if (!weeks.length) return true;
+      if (weeks.indexOf(nthOfMonth(d)) !== -1) return true;
+      return weeks.indexOf(-1) !== -1 && isLastOfMonth(d);
+    }
+    function patternOn(c, d) { return isCalendar(c) ? occursOnCal(c, d) : true; }
+    function resolveTime(user, kind) {
+      var sc = choreStatus.schedule || {};
+      var per = (user && sc.perUser && sc.perUser[user]) || {};
+      var def = sc.defaults || {};
+      return per[kind] || def[kind] || (kind === "morning" ? "06:00" : "17:00");
+    }
+    function windowTime(c, user) { return isTimed(c) ? resolveTime(user, c.timeOfDay) : "00:00"; }
+
+    function latestTrigger(c, user, now) {
+      var hhmm = windowTime(c, user);
+      for (var back = 0; back <= 62; back++) {
+        var day = addDays(dayStart(now), -back);
+        if (!patternOn(c, day)) continue;
+        var t = triggerOn(day, hhmm);
+        if (t <= now) return t;
+      }
+      return null;
+    }
+    function nextTrigger(c, user, now) {
+      var hhmm = windowTime(c, user);
+      for (var ahead = 0; ahead <= 400; ahead++) {
+        var day = addDays(dayStart(now), ahead);
+        if (!patternOn(c, day)) continue;
+        var t = triggerOn(day, hhmm);
+        if (t > now) return t;
+      }
+      return null;
+    }
+    // Port of node_helper.js nextResetTime: periods count from the completion day.
+    function nextReset(completedAt, repeat) {
+      var done = completedAt ? new Date(completedAt) : null;
+      if (!done || isNaN(done.getTime())) return null;
+      var r = dayStart(done);
+      if (repeat === "daily") return addDays(r, 1);
+      if (repeat === "weekly") return addDays(r, 7);
+      if (repeat === "monthly") return new Date(r.getFullYear(), r.getMonth() + 1, r.getDate());
+      if (typeof repeat === "number" && repeat > 0) return addDays(r, repeat);
+      return null;
+    }
+
+    // What the chore actually does, as the editor's "How often?" sees it.
+    // Morning/Nightly chores without set days reopen every day on the mirror
+    // whatever `repeat` says — `mismatch` flags a saved repeat that's ignored.
+    function scheduleSpec(c) {
+      var time = (!c.anyone && (c.timeOfDay === "morning" || c.timeOfDay === "nightly")) ? c.timeOfDay : "anytime";
+      var spec = { kind: "once", days: [], weeks: [], interval: null, time: time, mismatch: false };
+      if (isCalendar(c)) {
+        spec.days = choreDays(c);
+        spec.weeks = choreWeeks(c);
+        spec.kind = spec.weeks.length ? "monthly" : "weekly";
+        return spec;
+      }
+      if (time !== "anytime") {
+        spec.kind = "daily";
+        spec.mismatch = c.repeat != null && c.repeat !== "" && c.repeat !== "daily";
+        return spec;
+      }
+      if (c.repeat === "daily") spec.kind = "daily";
+      else if (c.repeat != null && c.repeat !== "") { spec.kind = "interval"; spec.interval = c.repeat; }
+      return spec;
+    }
+
+    function monFirst(days) { return days.slice().sort(function (a, b) { return ((a + 6) % 7) - ((b + 6) % 7); }); }
+    function weeksSorted(w) { return w.slice().sort(function (a, b) { return (a === -1 ? 99 : a) - (b === -1 ? 99 : b); }); }
+    function daysPhrase(days) {
+      var d = monFirst(days);
+      if (d.length === 7) return "every day";
+      if (d.join() === "1,2,3,4,5") return "weekdays";
+      if (d.join() === "6,0") return "weekends";
+      if (d.length === 1) return DOW_LONG[d[0]];
+      return joinAnd(d.map(function (x) { return DOW_SHORT[x]; }));
+    }
+    function intervalPhrase(r) {
+      if (r === "monthly") return "1 month";
+      if (r === "weekly") return "1 week";
+      var n = typeof r === "number" ? r : parseInt(r, 10);
+      if (n % 7 === 0) return (n / 7) + (n === 7 ? " week" : " weeks");
+      return n + (n === 1 ? " day" : " days");
+    }
+    function patternText(spec) {
+      switch (spec.kind) {
+        case "daily": return "Every day";
+        case "weekly": {
+          var p = daysPhrase(spec.days);
+          if (p === "every day") return "Every day";
+          if (p === "weekdays" || p === "weekends") return cap(p);
+          return "Every " + p;
+        }
+        case "monthly":
+          return cap(joinAnd(weeksSorted(spec.weeks).map(function (w) { return NTH[String(w)]; }))) +
+            " " + daysPhrase(spec.days) + " of the month";
+        case "interval": return intervalPhrase(spec.interval) + " after it's done";
+        default: return "One time";
+      }
+    }
+    // For a whole chore (no single lane), name anyone whose per-user time
+    // differs from the household default, e.g. "morning from 6 AM (Savannah 7 AM)".
+    function timeText(time, user, people) {
+      if (time !== "morning" && time !== "nightly") return "";
+      var base = resolveTime(user, time);
+      var out = (time === "morning" ? "morning" : "nightly") + " from " + fmtClock(base);
+      if (!user && people && people.length > 1) {
+        var odd = people.filter(function (n) { return resolveTime(n, time) !== base; })
+          .map(function (n) { return n + " " + fmtClock(resolveTime(n, time)); });
+        if (odd.length) out += " (" + odd.join(", ") + ")";
+      }
+      return out;
+    }
+    function scheduleLine(c, user) {
+      var spec = scheduleSpec(c);
+      var t = timeText(spec.time, user, choreAssignees(c));
+      return patternText(spec) + (t ? " · " + t : "");
+    }
+
+    /* ---------- live state ---------- */
+    // Completion for one lane. Shared chores share one state across lanes
+    // (done if anyone finished), matching the module's buildViewRows.
+    function compStatus(c, user) {
+      if (c.anyone || !choreStatus.available) {
+        return { status: c.completed ? "done" : "open", completedAt: c.completedAt || null, by: c.claimedBy || null };
+      }
+      if (c.mode !== "independent") {
+        var best = { status: "open", completedAt: null, by: null };
+        choreAssignees(c).forEach(function (u) {
+          var r = compIndex[c.id + "|" + u];
+          if (!r) return;
+          if (r.status === "done" && best.status !== "done") best = { status: "done", completedAt: r.completedAt, by: u };
+          else if (r.status === "pending" && best.status === "open") best = { status: "pending", completedAt: r.completedAt, by: u };
+        });
+        return best;
+      }
+      var row = compIndex[c.id + "|" + user];
+      return row ? { status: row.status, completedAt: row.completedAt || null, by: user } : { status: "open", completedAt: null, by: null };
+    }
+
+    // { kind: now|late|done|pending|upcoming|none, text } for a (chore, lane).
+    function liveState(c, user, now) {
+      var cs = compStatus(c, user);
+      var st = cs.status;
+      if (!choreStatus.available && !c.anyone) {
+        return st === "done" ? { kind: "done", text: "Done" } : { kind: "none", text: "" };
+      }
+      if (isGated(c)) {
+        var lastIso = (choreStatus.activations || {})[c.id + "|" + user];
+        var last = lastIso ? new Date(lastIso) : null;
+        var visible, opened, newWindow;
+        if (isCalendar(c)) {
+          var trig = latestTrigger(c, user, now);
+          newWindow = !!trig && (last ? last < trig : sameDay(trig, now));
+          var carried = !!last && st !== "done";
+          visible = newWindow || (!!trig && !!last && sameDay(trig, now)) || carried;
+          opened = newWindow ? trig : last;
+        } else {
+          var today = triggerOn(now, windowTime(c, user));
+          newWindow = now >= today && (!last || last < today);
+          visible = now >= today || (!!last && st !== "done");
+          opened = newWindow ? today : last;
+        }
+        if (newWindow && st === "done") st = "open"; // the mirror reopens it on its next refresh
+        var next = nextTrigger(c, user, now);
+        if (st === "pending") return { kind: "pending", text: "Waiting for approval" };
+        if (st === "done") return { kind: "done", text: "Done" + (next ? " · back " + fmtWhen(next) : "") };
+        if (visible) {
+          if (opened && !sameDay(opened, now)) return { kind: "late", text: "Not done since " + dayLabel(opened) };
+          return { kind: "now", text: "To do now" };
+        }
+        return { kind: "upcoming", text: next ? "Next " + fmtWhen(next) : "Not scheduled" };
+      }
+      if (st === "pending") return { kind: "pending", text: "Waiting for approval" };
+      if (st === "done") {
+        var back = nextReset(cs.completedAt, c.repeat);
+        var who = c.anyone && cs.by ? cs.by + " · " : "";
+        return { kind: "done", text: who + (back ? "Done · back " + dayLabel(back) : "Done") };
+      }
+      return { kind: "now", text: c.anyone ? "Up for grabs" : "To do now" };
+    }
+    function stateEl(s) { return el("span", "state " + s.kind, s.text); }
+
+    /* ---------- projections for week / month ---------- */
+    function stepInterval(d, r) {
+      if (r === "monthly") return new Date(d.getFullYear(), d.getMonth() + 1, d.getDate());
+      if (r === "weekly") return addDays(d, 7);
+      return addDays(d, parseInt(r, 10) || 1);
+    }
+    // First day a once/interval chore is (or will be) open, from live state.
+    function dueStart(c, today) {
+      var spec = scheduleSpec(c);
+      var lanes = c.anyone ? [null] : choreAssignees(c);
+      if (!lanes.length) return null;
+      var anyOpen = false;
+      var earliest = null;
+      lanes.forEach(function (u) {
+        var cs = compStatus(c, u);
+        if (cs.status !== "done") { anyOpen = true; return; }
+        if (spec.kind === "once") return;
+        var back = nextReset(cs.completedAt, c.repeat);
+        if (back && (!earliest || back < earliest)) earliest = back;
+      });
+      if (anyOpen) return today;
+      if (!earliest) return null;
+      return earliest < today ? today : dayStart(earliest);
+    }
+    // { exact } when the chore lands on `day`; exact:false = estimated from
+    // the last completion (interval chores move when finished late).
+    function occurrence(c, day, today, cache) {
+      var spec = scheduleSpec(c);
+      if (spec.kind === "daily") return { exact: true };
+      if (spec.kind === "weekly" || spec.kind === "monthly") return occursOnCal(c, day) ? { exact: true } : null;
+      if (day < today) return null;
+      if (!(c.id in cache)) cache[c.id] = dueStart(c, today);
+      var d = cache[c.id];
+      if (!d) return null;
+      if (spec.kind === "once") return sameDay(d, day) ? { exact: false } : null;
+      for (var i = 0; i < 400 && d <= day; i++) {
+        if (sameDay(d, day)) return { exact: false };
+        d = stepInterval(d, spec.interval);
+      }
+      return null;
+    }
+
+    /* ---------- view state ---------- */
+    function prefGet(key, fallback) {
+      try { var v = localStorage.getItem("portal." + key); return v == null ? fallback : JSON.parse(v); } catch (e) { return fallback; }
+    }
+    function prefSet(key, value) {
+      try { localStorage.setItem("portal." + key, JSON.stringify(value)); } catch (e) { /* private mode */ }
+    }
+    var choreView = prefGet("choreView", "people");
+    var showDaily = prefGet("showDaily", false);
+    var personFilter = prefGet("personFilter", "");
+    var weekCursor = weekStart(new Date());
+    var monthCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    var monthSelected = dayStart(new Date());
+
+    var VIEWS = [
+      { id: "people", label: "People" },
+      { id: "tasks", label: "Chores" },
+      { id: "week", label: "Week" },
+      { id: "month", label: "Month" }
+    ];
+
     function render() {
       var root = $("chores-root");
       root.innerHTML = "";
+      var sw = el("div", "view-switch");
+      sw.setAttribute("role", "group");
+      sw.setAttribute("aria-label", "Chore view");
+      VIEWS.forEach(function (v) {
+        var b = el("button", null, v.label);
+        b.type = "button";
+        b.setAttribute("aria-pressed", String(choreView === v.id));
+        b.addEventListener("click", function () { choreView = v.id; prefSet("choreView", v.id); render(); });
+        sw.appendChild(b);
+      });
+      root.appendChild(sw);
+
       if (!chores.length) {
-        var note = document.createElement("p");
-        note.className = "empty-note";
-        note.textContent = "No chores yet — tap “Add chore” to create the first one.";
-        root.appendChild(note);
+        root.appendChild(el("p", "empty-note", "No chores yet — tap “Add chore” to create the first one."));
         return;
       }
+      if (!choreStatus.available) {
+        root.appendChild(el("p", "live-note", "Live status isn't available yet — showing schedules only."));
+      }
+      if (choreView === "tasks") renderTasks(root);
+      else if (choreView === "week") renderWeek(root);
+      else if (choreView === "month") renderMonth(root);
+      else renderPeople(root);
+    }
 
-      chores.forEach(function (chore) {
-        var card = document.createElement("div");
-        card.className = "task";
-        card.setAttribute("role", "button");
-        card.setAttribute("tabindex", "0");
-        card.addEventListener("click", function () { openSheet(chore); });
-        card.addEventListener("keydown", function (e) {
-          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSheet(chore); }
-        });
+    var KIND_ORDER = { daily: 0, weekly: 1, monthly: 2, interval: 3, once: 4 };
+    var TIME_ORDER = { morning: 0, anytime: 1, nightly: 2 };
+    function byTimeKindName(a, b) {
+      var sa = scheduleSpec(a), sb = scheduleSpec(b);
+      return (TIME_ORDER[sa.time] - TIME_ORDER[sb.time]) ||
+        (KIND_ORDER[sa.kind] - KIND_ORDER[sb.kind]) ||
+        String(a.name || "").localeCompare(String(b.name || ""));
+    }
 
-        var top = document.createElement("div");
-        top.className = "task-top";
-        var name = document.createElement("span");
-        name.className = "task-name";
-        name.textContent = chore.name || "Unnamed chore";
-        top.appendChild(name);
-        if (typeof chore.tokens === "number") {
-          var tok = document.createElement("span");
-          tok.className = "task-tokens";
-          tok.textContent = "✦ " + chore.tokens;
-          top.appendChild(tok);
-        }
+    /* ---------- People view: one section per person ---------- */
+    function renderPeople(root) {
+      var now = new Date();
+      allPeople().forEach(function (name) {
+        var mine = chores.filter(function (c) { return !c.anyone && choreAssignees(c).indexOf(name) !== -1; });
+        if (mine.length) root.appendChild(personSection(name, mine, now));
+      });
+      var bounty = chores.filter(function (c) { return c.anyone; });
+      if (bounty.length) root.appendChild(personSection(null, bounty, now));
+      var nobody = chores.filter(function (c) { return !c.anyone && !choreAssignees(c).length; });
+      if (nobody.length) root.appendChild(personSection("", nobody, now));
+    }
+
+    // name: a person, null = "Anyone can claim", "" = unassigned.
+    function personSection(name, list, now) {
+      var sec = paint(el("div", "person"), name || null);
+      if (name === "") sec.style.setProperty("--pc", "#9aa0a8");
+      var head = el("div", "person-head");
+      var av = el("span", "avatar", name ? name.charAt(0).toUpperCase() : (name === null ? "✨" : "?"));
+      av.setAttribute("aria-hidden", "true");
+      head.appendChild(av);
+      var txt = el("div", "ph-text");
+      txt.appendChild(el("h3", null, name || (name === null ? "Anyone can claim" : "No one assigned")));
+
+      var states = list.map(function (c) { return { chore: c, state: liveState(c, name || null, now) }; });
+      var counts = { now: 0, late: 0, pending: 0 };
+      states.forEach(function (s) { if (counts[s.state.kind] != null) counts[s.state.kind]++; });
+      var sum = el("div", "sum");
+      var parts = [list.length + (list.length === 1 ? " chore" : " chores")];
+      if (choreStatus.available) {
+        if (counts.now) parts.push(counts.now + " to do now");
+        if (counts.late) parts.push(counts.late + " overdue");
+        if (counts.pending) parts.push(counts.pending + " awaiting approval");
+      }
+      sum.textContent = parts.join(" · ");
+      txt.appendChild(sum);
+      head.appendChild(txt);
+      sec.appendChild(head);
+
+      var buckets = { morning: [], anytime: [], nightly: [] };
+      states.sort(function (a, b) { return byTimeKindName(a.chore, b.chore); });
+      states.forEach(function (s) { buckets[scheduleSpec(s.chore).time].push(s); });
+      var labels = { morning: "Morning", anytime: "Anytime", nightly: "Nightly" };
+      var used = Object.keys(buckets).filter(function (k) { return buckets[k].length; });
+      used.forEach(function (key) {
+        if (used.length > 1) sec.appendChild(el("div", "bucket-label", labels[key]));
+        buckets[key].forEach(function (s) { sec.appendChild(personRow(s.chore, name, s.state)); });
+      });
+      return sec;
+    }
+
+    function personRow(c, name, state) {
+      var row = paint(el("div", "prow"), name || null);
+      if (name === "") row.style.setProperty("--pc", "#9aa0a8");
+      tapToEdit(row, c);
+      var main = el("div", "pr-main");
+      main.appendChild(el("div", "pr-title", c.name || "Unnamed chore"));
+      var sub = scheduleLine(c, name || null);
+      var others = choreAssignees(c).filter(function (n) { return n !== name; });
+      if (others.length) {
+        sub += " · with " + joinAnd(others) + (c.mode === "independent" ? " (each their own)" : " (first to finish)");
+      }
+      if (scheduleSpec(c).mismatch) sub += " · ⚠ check schedule";
+      main.appendChild(el("div", "pr-sub", sub));
+      row.appendChild(main);
+      var right = el("div", "pr-right");
+      if (typeof c.tokens === "number") right.appendChild(el("span", "pr-tokens", "✦ " + c.tokens));
+      if (state.text) right.appendChild(stateEl(state));
+      row.appendChild(right);
+      return row;
+    }
+
+    /* ---------- Chores view: one card per chore ---------- */
+    var CAL_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
+
+    function renderTasks(root) {
+      var now = new Date();
+      chores.slice().sort(byTimeKindName).forEach(function (c) {
+        var names = choreAssignees(c);
+        var card = el("div", "task");
+        card.style.setProperty("--pc", c.anyone ? BOUNTY_COLOR : (names.length === 1 ? personColor(names[0]) : "rgba(255,255,255,0.18)"));
+        tapToEdit(card, c);
+
+        var top = el("div", "task-top");
+        top.appendChild(el("span", "task-name", c.name || "Unnamed chore"));
+        if (typeof c.tokens === "number") top.appendChild(el("span", "task-tokens", "✦ " + c.tokens + (c.mode === "independent" && names.length > 1 ? " each" : "")));
         card.appendChild(top);
 
-        var who = document.createElement("div");
-        who.className = "who";
-        if (chore.anyone) {
-          var b = document.createElement("span");
-          b.className = "bounty";
-          b.textContent = "✨ Anyone can claim";
-          who.appendChild(b);
+        var who = el("div", "who");
+        if (c.anyone) {
+          who.appendChild(el("span", "bounty", "✨ Anyone can claim"));
+        } else if (names.length) {
+          names.forEach(function (n) { who.appendChild(personChip(n)); });
+          if (names.length > 1) who.appendChild(el("span", "with-mode", c.mode === "independent" ? "each their own" : "first to finish"));
         } else {
-          var names = choreAssignees(chore);
-          if (names.length) {
-            names.forEach(function (n) {
-              var sp = document.createElement("span");
-              sp.textContent = n;
-              who.appendChild(sp);
-            });
-          } else {
-            var noneSp = document.createElement("span");
-            noneSp.className = "none";
-            noneSp.textContent = "No one assigned";
-            who.appendChild(noneSp);
-          }
+          who.appendChild(el("span", "none", "No one assigned"));
         }
         card.appendChild(who);
 
-        var meta = document.createElement("div");
-        meta.className = "task-meta";
-        function tag(text, cls) {
-          var t = document.createElement("span");
-          t.className = "tag" + (cls ? " " + cls : "");
-          t.textContent = text;
-          meta.appendChild(t);
+        var when = el("div", "when");
+        when.innerHTML = CAL_ICON;
+        when.appendChild(el("span", null, scheduleLine(c, names.length === 1 ? names[0] : null)));
+        card.appendChild(when);
+
+        var live = el("div", "live");
+        if (!c.anyone && c.mode === "independent" && names.length > 1) {
+          names.forEach(function (n) {
+            var s = liveState(c, n, now);
+            if (s.text) live.appendChild(el("span", "state " + s.kind, n + ": " + s.text));
+          });
+        } else {
+          var s = liveState(c, names[0] || null, now);
+          if (s.text) live.appendChild(stateEl(s));
         }
-        if (!chore.anyone && choreAssignees(chore).length > 1) {
-          tag(chore.mode === "independent" ? "Each their own" : "Shared");
-        }
-        var tl = timeLabel(chore.timeOfDay);
-        if (tl) tag(tl);
-        var rep = repeatLabel(chore.repeat);
-        if (rep) tag(rep);
-        if (chore.priority === "high") tag("High priority", "high");
-        if (chore.autoApprove) tag("Auto-approve", "auto");
+        if (live.childNodes.length) card.appendChild(live);
+
+        var meta = el("div", "task-meta");
+        function tag(text, cls) { meta.appendChild(el("span", "tag" + (cls ? " " + cls : ""), text)); }
+        if (c.priority === "high") tag("High priority", "high");
+        if (c.priority === "low") tag("Low priority", "low");
+        if (c.autoApprove) tag("Auto-approve", "auto");
+        if (scheduleSpec(c).mismatch) tag("⚠ Saved as “" + intervalPhrase(c.repeat) + "” but resets daily — tap to fix", "warn");
         if (meta.childNodes.length) card.appendChild(meta);
 
         root.appendChild(card);
       });
+    }
+
+    /* ---------- shared week/month bits ---------- */
+    function matchesFilter(c) {
+      if (!personFilter) return true;
+      if (personFilter === "__anyone") return !!c.anyone;
+      return choreAssignees(c).indexOf(personFilter) !== -1;
+    }
+    function filterRow() {
+      var row = el("div", "filter-row");
+      function chip(label, value, color) {
+        var b = el("button", "chip" + (color ? " pfilter" : ""), label);
+        b.type = "button";
+        if (color) b.style.setProperty("--pc", color);
+        b.setAttribute("aria-pressed", String(personFilter === value));
+        b.addEventListener("click", function () { personFilter = value; prefSet("personFilter", value); render(); });
+        row.appendChild(b);
+      }
+      chip("Everyone", "", null);
+      allPeople().forEach(function (n) { chip(n, n, personColor(n)); });
+      if (chores.some(function (c) { return c.anyone; })) chip("Anyone", "__anyone", BOUNTY_COLOR);
+      var daily = el("button", "chip", "Daily chores");
+      daily.type = "button";
+      daily.setAttribute("aria-pressed", String(showDaily));
+      daily.addEventListener("click", function () { showDaily = !showDaily; prefSet("showDaily", showDaily); render(); });
+      row.appendChild(daily);
+      return row;
+    }
+    function dailyNote() {
+      if (showDaily) return null;
+      var list = chores.filter(function (c) { return matchesFilter(c) && scheduleSpec(c).kind === "daily"; });
+      if (!list.length) return null;
+      var names = list.map(function (c) { return c.name; });
+      var shown = names.slice(0, 4).join(", ") + (names.length > 4 ? " +" + (names.length - 4) + " more" : "");
+      return el("p", "daily-note", "Plus " + list.length + " daily chore" + (list.length === 1 ? "" : "s") + " every day (" + shown + "). Tap “Daily chores” to list them.");
+    }
+    function dayEntries(day, today, cache) {
+      var out = [];
+      chores.forEach(function (c) {
+        if (!matchesFilter(c)) return;
+        var spec = scheduleSpec(c);
+        if (!showDaily && spec.kind === "daily") return;
+        var occ = occurrence(c, day, today, cache);
+        if (occ) out.push({ chore: c, spec: spec, exact: occ.exact });
+      });
+      out.sort(function (a, b) { return byTimeKindName(a.chore, b.chore); });
+      return out;
+    }
+    function agendaRow(entry) {
+      var c = entry.chore;
+      var row = el("div", "dayrow" + (entry.exact ? "" : " is-projected"));
+      tapToEdit(row, c);
+      var names = choreAssignees(c);
+      var t = entry.spec.time;
+      row.appendChild(el("span", "dr-time", t === "anytime" ? "Any time" : fmtClock(resolveTime(names.length === 1 ? names[0] : null, t))));
+      var main = el("div", "dr-main");
+      main.appendChild(el("div", "dr-name", c.name || "Unnamed chore"));
+      var who = c.anyone ? "Anyone" : (names.length ? joinAnd(names) : "No one");
+      main.appendChild(el("div", "dr-sub", who + " · " + patternText(entry.spec) + (entry.exact ? "" : " · estimated")));
+      row.appendChild(main);
+      var dots = el("span", "dots");
+      (c.anyone ? [null] : names).forEach(function (n) {
+        var d = paint(el("i"), n);
+        d.title = n || "Anyone";
+        dots.appendChild(d);
+      });
+      row.appendChild(dots);
+      return row;
+    }
+    function rangeNav(label, onPrev, onNext, onToday, showToday) {
+      var nav = el("div", "range-nav");
+      var prev = el("button", "nav-btn", "‹");
+      prev.type = "button";
+      prev.setAttribute("aria-label", "Previous");
+      prev.addEventListener("click", onPrev);
+      var next = el("button", "nav-btn", "›");
+      next.type = "button";
+      next.setAttribute("aria-label", "Next");
+      next.addEventListener("click", onNext);
+      nav.appendChild(prev);
+      nav.appendChild(el("div", "range-label", label));
+      if (showToday) {
+        var t = el("button", "today-btn", "Today");
+        t.type = "button";
+        t.addEventListener("click", onToday);
+        nav.appendChild(t);
+      }
+      nav.appendChild(next);
+      return nav;
+    }
+
+    /* ---------- Week view: agenda, Sunday-Saturday ---------- */
+    function renderWeek(root) {
+      var today = dayStart(new Date());
+      var end = addDays(weekCursor, 6);
+      var label = MON_SHORT[weekCursor.getMonth()] + " " + weekCursor.getDate() + " – " +
+        (end.getMonth() !== weekCursor.getMonth() ? MON_SHORT[end.getMonth()] + " " : "") + end.getDate();
+      root.appendChild(rangeNav(label,
+        function () { weekCursor = addDays(weekCursor, -7); render(); },
+        function () { weekCursor = addDays(weekCursor, 7); render(); },
+        function () { weekCursor = weekStart(today); render(); },
+        !sameDay(weekCursor, weekStart(today))));
+      root.appendChild(filterRow());
+      var note = dailyNote();
+      if (note) root.appendChild(note);
+
+      var cache = {};
+      for (var i = 0; i < 7; i++) {
+        var day = addDays(weekCursor, i);
+        var box = el("div", "day" + (day < today ? " is-past" : ""));
+        var head = el("div", "day-head", DOW_LONG[day.getDay()] + ", " + MON_SHORT[day.getMonth()] + " " + day.getDate());
+        if (sameDay(day, today)) head.appendChild(el("span", "today-pill", "Today"));
+        box.appendChild(head);
+        var entries = dayEntries(day, today, cache);
+        if (!entries.length) box.appendChild(el("div", "day-empty", day < today ? "—" : "Nothing extra scheduled"));
+        entries.forEach(function (e) { box.appendChild(agendaRow(e)); });
+        root.appendChild(box);
+      }
+    }
+
+    /* ---------- Month view: calendar grid + selected-day agenda ---------- */
+    function renderMonth(root) {
+      var today = dayStart(new Date());
+      var y = monthCursor.getFullYear(), m = monthCursor.getMonth();
+      root.appendChild(rangeNav(MON_LONG[m] + " " + y,
+        function () { shiftMonth(-1); },
+        function () { shiftMonth(1); },
+        function () { monthCursor = new Date(today.getFullYear(), today.getMonth(), 1); monthSelected = today; render(); },
+        !(today.getFullYear() === y && today.getMonth() === m)));
+      root.appendChild(filterRow());
+      var note = dailyNote();
+      if (note) root.appendChild(note);
+
+      var grid = el("div", "month");
+      DOW_LETTER.forEach(function (d) { grid.appendChild(el("div", "dow", d)); });
+      var first = new Date(y, m, 1);
+      var start = addDays(first, -first.getDay());
+      var lastDay = new Date(y, m + 1, 0);
+      var cells = Math.ceil((first.getDay() + lastDay.getDate()) / 7) * 7;
+      var cache = {};
+      for (var i = 0; i < cells; i++) {
+        (function (day) {
+          var cell = el("button", "mcell" + (day.getMonth() !== m ? " is-other" : "") + (sameDay(day, today) ? " is-today" : ""));
+          cell.type = "button";
+          cell.setAttribute("aria-pressed", String(sameDay(day, monthSelected)));
+          cell.appendChild(el("span", "num", String(day.getDate())));
+          var entries = dayEntries(day, today, cache);
+          var people = [];
+          entries.forEach(function (e) {
+            (e.chore.anyone ? [null] : choreAssignees(e.chore)).forEach(function (n) {
+              if (people.indexOf(n) === -1 && (!personFilter || personFilter === "__anyone" || n === personFilter)) people.push(n);
+            });
+          });
+          if (people.length) {
+            var dots = el("span", "mdots");
+            people.slice(0, 4).forEach(function (n) { dots.appendChild(paint(el("i"), n)); });
+            cell.appendChild(dots);
+            if (people.length > 4) cell.appendChild(el("span", "more", "+" + (people.length - 4)));
+          }
+          cell.setAttribute("aria-label", DOW_LONG[day.getDay()] + " " + MON_LONG[day.getMonth()] + " " + day.getDate() + ": " + entries.length + " chore" + (entries.length === 1 ? "" : "s"));
+          cell.addEventListener("click", function () {
+            monthSelected = day;
+            if (day.getMonth() !== m) monthCursor = new Date(day.getFullYear(), day.getMonth(), 1);
+            render();
+          });
+          grid.appendChild(cell);
+        })(addDays(start, i));
+      }
+      root.appendChild(grid);
+
+      var sel = monthSelected;
+      root.appendChild(el("div", "sel-day-head", DOW_LONG[sel.getDay()] + ", " + MON_LONG[sel.getMonth()] + " " + sel.getDate()));
+      var list = dayEntries(sel, today, cache);
+      if (!list.length) root.appendChild(el("div", "day-empty", sel < today ? "Nothing to show for past days." : "Nothing extra scheduled."));
+      list.forEach(function (e) { root.appendChild(agendaRow(e)); });
+    }
+    function shiftMonth(delta) {
+      monthCursor = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + delta, 1);
+      var today = dayStart(new Date());
+      monthSelected = (today.getFullYear() === monthCursor.getFullYear() && today.getMonth() === monthCursor.getMonth()) ? today : monthCursor;
+      render();
     }
 
     /* ---------- bottom sheet ---------- */
@@ -1158,96 +1999,174 @@
     var selectedNames = {};   // name -> true
     var bountyMode = false;   // "✨ Anyone" selected (clears names)
     var choreMode = "shared"; // "shared" | "independent"
-    var choreTime = "anytime";
     var autoApprove = false;
+    // Schedule editor state.
+    var sched = { kind: "once", days: {}, weeks: {}, interval: "7", time: "anytime", mismatchFrom: null };
 
     function setTokens(value) {
       tokens = Math.max(0, Math.min(99, value));
       $("f-tokens").textContent = tokens;
+      renderSummary();
     }
 
-    function selectedNameList() { return Object.keys(selectedNames); }
+    function selectedNameList() {
+      // Keep the household's order rather than tap order.
+      var order = allPeople();
+      return Object.keys(selectedNames).sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); });
+    }
 
     function renderChips() {
       var box = $("f-assignee");
       box.innerHTML = "";
       var names = assignees.slice();
       // Keep any selected name not in the known list (e.g. a legacy assignee).
-      selectedNameList().forEach(function (n) {
+      Object.keys(selectedNames).forEach(function (n) {
         if (names.indexOf(n) === -1) names.push(n);
       });
       names.forEach(function (name) { box.appendChild(makeNameChip(name)); });
 
-      var anyone = document.createElement("button");
+      var anyone = el("button", "chip pchip-btn", "✨ Anyone");
       anyone.type = "button";
-      anyone.className = "chip";
-      anyone.textContent = "✨ Anyone";
+      anyone.style.setProperty("--pc", BOUNTY_COLOR);
       anyone.setAttribute("aria-pressed", String(bountyMode));
       anyone.addEventListener("click", function () {
         bountyMode = !bountyMode;
         if (bountyMode) selectedNames = {};
         renderChips();
-        syncModeVisibility();
+        syncForm();
       });
       box.appendChild(anyone);
     }
 
     function makeNameChip(name) {
-      var chip = document.createElement("button");
+      var chip = el("button", "chip pchip-btn", name);
       chip.type = "button";
-      chip.className = "chip";
-      chip.textContent = name;
+      chip.style.setProperty("--pc", personColor(name));
       chip.setAttribute("aria-pressed", String(!!selectedNames[name]));
       chip.addEventListener("click", function () {
         if (selectedNames[name]) delete selectedNames[name];
         else { selectedNames[name] = true; bountyMode = false; }
         renderChips();
-        syncModeVisibility();
+        syncForm();
       });
       return chip;
     }
 
-    // The mode toggle only matters with 2+ assignees; auto-approve doesn't apply
-    // to bounty chores (they're claimed, not approved per assignee).
-    function syncModeVisibility() {
-      $("f-mode-field").style.display = (!bountyMode && selectedNameList().length > 1) ? "" : "none";
+    // Build the weekday picker once (Sunday first, like the month grid).
+    (function () {
+      var box = $("f-days");
+      DOW_LETTER.forEach(function (letter, i) {
+        var b = el("button", "chip", letter);
+        b.type = "button";
+        b.dataset.day = String(i);
+        b.setAttribute("aria-label", DOW_LONG[i]);
+        b.addEventListener("click", function () {
+          if (sched.days[i]) delete sched.days[i]; else sched.days[i] = true;
+          syncForm();
+        });
+        box.appendChild(b);
+      });
+    })();
+
+    function pressed(container, attr, isOn) {
+      Array.prototype.forEach.call($(container).children, function (b) {
+        b.setAttribute("aria-pressed", String(isOn(b.dataset[attr])));
+      });
+    }
+    function intKeys(obj) { return Object.keys(obj).map(function (k) { return parseInt(k, 10); }); }
+
+    var KIND_HINTS = {
+      once: "Stays on the list until it's done, then it's gone.",
+      daily: "Comes back every day.",
+      weekly: "Opens on the days you pick. If it isn't finished, it stays on the list until it is.",
+      monthly: "Pick the week and the day — e.g. 1st + Sat for the first Saturday, or 1st and Last for both ends of the month.",
+      interval: ""
+    };
+
+    // Enforce the combinations the mirror can actually run, then redraw.
+    //  - Bounty chores: no set days, no morning/nightly (the agent drops them).
+    //  - Morning/Nightly reopen on a calendar, so they can't be Once or
+    //    "N days after it's done".
+    function syncForm() {
+      var calOK = calendarOn() && !bountyMode;
+      if (!calOK && (sched.kind === "weekly" || sched.kind === "monthly")) sched.kind = "daily";
+      var timedOK = !bountyMode && sched.kind !== "once" && sched.kind !== "interval";
+      if (!timedOK) sched.time = "anytime";
+
+      Array.prototype.forEach.call($("f-kind").children, function (b) {
+        var k = b.dataset.kind;
+        b.disabled = (k === "weekly" || k === "monthly") && !calOK;
+        b.setAttribute("aria-pressed", String(sched.kind === k));
+      });
+      Array.prototype.forEach.call($("f-time").children, function (b) {
+        var t = b.dataset.time;
+        b.disabled = t !== "anytime" && !timedOK;
+        b.setAttribute("aria-pressed", String(sched.time === t));
+        if (t !== "anytime") {
+          var names = selectedNameList();
+          b.textContent = (t === "morning" ? "Morning" : "Nightly") + " · " + fmtClock(resolveTime(names.length === 1 ? names[0] : null, t));
+        }
+      });
+      pressed("f-days", "day", function (d) { return !!sched.days[d]; });
+      pressed("f-weeks", "week", function (w) { return !!sched.weeks[w]; });
+      pressed("f-mode", "mode", function (m) { return m === choreMode; });
+
+      $("f-weeks-field").hidden = sched.kind !== "monthly";
+      $("f-days-field").hidden = sched.kind !== "weekly" && sched.kind !== "monthly";
+      $("f-days-label").textContent = sched.kind === "monthly" ? "Which day?" : "On which days?";
+      $("f-interval-field").hidden = sched.kind !== "interval";
+
+      var kindHint = $("f-kind-hint");
+      kindHint.className = "field-hint";
+      if (sched.mismatchFrom && sched.kind === "daily") {
+        kindHint.className = "field-hint warn";
+        kindHint.textContent = "This was saved as “" + intervalPhrase(sched.mismatchFrom) + "”, but Morning/Nightly chores come back every day. Pick Weekly or Monthly to choose its day.";
+      } else if (bountyMode && calendarOn()) {
+        kindHint.textContent = "Chores open to anyone can't use set days yet — pick people (First to finish) instead.";
+      } else {
+        kindHint.textContent = KIND_HINTS[sched.kind] || "";
+      }
+      var timeHint = $("f-time-hint");
+      timeHint.textContent = bountyMode ? "Anyone-can-claim chores are always anytime."
+        : (!timedOK ? "Morning and Nightly need Every day, Weekly or Monthly." : "");
+
+      var multi = !bountyMode && selectedNameList().length > 1;
+      $("f-mode-field").style.display = multi ? "" : "none";
       $("f-autoapprove-field").style.display = bountyMode ? "none" : "";
+      renderSummary();
     }
 
-    function renderModeChips() {
-      Array.prototype.forEach.call($("f-mode").children, function (chip) {
-        chip.setAttribute("aria-pressed", String(chip.dataset.mode === choreMode));
-      });
-    }
-    function renderTimeChips() {
-      Array.prototype.forEach.call($("f-time").children, function (chip) {
-        chip.setAttribute("aria-pressed", String(chip.dataset.time === choreTime));
-      });
-    }
-    function renderAutoApprove() {
-      $("f-autoapprove").setAttribute("aria-checked", String(autoApprove));
-    }
-
-    Array.prototype.forEach.call($("f-mode").children, function (chip) {
-      chip.addEventListener("click", function () { choreMode = chip.dataset.mode; renderModeChips(); });
+    Array.prototype.forEach.call($("f-kind").children, function (b) {
+      b.addEventListener("click", function () { sched.kind = b.dataset.kind; sched.mismatchFrom = null; syncForm(); });
     });
-    Array.prototype.forEach.call($("f-time").children, function (chip) {
-      chip.addEventListener("click", function () { choreTime = chip.dataset.time; renderTimeChips(); });
+    Array.prototype.forEach.call($("f-weeks").children, function (b) {
+      b.addEventListener("click", function () {
+        var w = b.dataset.week;
+        if (sched.weeks[w]) delete sched.weeks[w]; else sched.weeks[w] = true;
+        syncForm();
+      });
     });
+    Array.prototype.forEach.call($("f-time").children, function (b) {
+      b.addEventListener("click", function () { sched.time = b.dataset.time; syncForm(); });
+    });
+    Array.prototype.forEach.call($("f-mode").children, function (b) {
+      b.addEventListener("click", function () { choreMode = b.dataset.mode; syncForm(); });
+    });
+    $("f-interval").addEventListener("change", function () { sched.interval = this.value; renderSummary(); });
+    $("f-name").addEventListener("input", renderSummary);
     $("f-autoapprove").addEventListener("click", function () {
       autoApprove = !autoApprove;
-      renderAutoApprove();
+      $("f-autoapprove").setAttribute("aria-checked", String(autoApprove));
     });
 
-    function ensureRepeatOption(repeat) {
-      var select = $("f-repeat");
-      var value = String(repeat);
+    function ensureIntervalOption(value) {
+      var select = $("f-interval");
       for (var i = 0; i < select.options.length; i++) {
         if (select.options[i].value === value) return;
       }
       var opt = document.createElement("option");
       opt.value = value;
-      opt.textContent = "Every " + value + " days";
+      opt.textContent = intervalPhrase(parseInt(value, 10)) + " after it's done";
       select.appendChild(opt);
     }
 
@@ -1262,20 +2181,25 @@
         choreAssignees(chore).forEach(function (n) { selectedNames[n] = true; });
       }
       choreMode = chore && chore.mode === "independent" ? "independent" : "shared";
-      choreTime = chore && chore.timeOfDay ? chore.timeOfDay : "anytime";
       autoApprove = chore ? !!chore.autoApprove : false;
+      $("f-autoapprove").setAttribute("aria-checked", String(autoApprove));
 
-      renderChips();
-      renderModeChips();
-      renderTimeChips();
-      renderAutoApprove();
-      syncModeVisibility();
+      var spec = chore ? scheduleSpec(chore) : { kind: "daily", days: [], weeks: [], interval: null, time: "anytime", mismatch: false };
+      sched = { kind: spec.kind, days: {}, weeks: {}, interval: "7", time: spec.time, mismatchFrom: spec.mismatch ? chore.repeat : null };
+      spec.days.forEach(function (d) { sched.days[d] = true; });
+      spec.weeks.forEach(function (w) { sched.weeks[w] = true; });
+      if (spec.kind === "interval") {
+        var iv = spec.interval === "weekly" ? "7" : String(spec.interval);
+        if (iv !== "monthly") ensureIntervalOption(iv);
+        sched.interval = iv;
+      }
+      $("f-interval").value = sched.interval;
 
-      if (chore && typeof chore.repeat === "number") ensureRepeatOption(chore.repeat);
-      $("f-repeat").value = chore && chore.repeat != null ? String(chore.repeat) : "";
       $("f-priority").value = chore && chore.priority ? chore.priority : "";
-      setTokens(chore && typeof chore.tokens === "number" ? chore.tokens : 1);
       $("btn-delete").hidden = !chore;
+      renderChips();
+      setTokens(chore && typeof chore.tokens === "number" ? chore.tokens : 1);
+      syncForm();
       document.body.classList.add("sheet-open");
       if (!chore) setTimeout(function () { $("f-name").focus(); }, 250);
     }
@@ -1285,22 +2209,71 @@
     }
 
     function payload() {
-      var repeatRaw = $("f-repeat").value;
-      var repeat = null;
-      if (repeatRaw === "daily" || repeatRaw === "weekly" || repeatRaw === "monthly") repeat = repeatRaw;
-      else if (repeatRaw !== "") repeat = parseInt(repeatRaw, 10);
       var names = selectedNameList();
+      var repeat = null, days = [], weeks = [];
+      if (sched.kind === "daily") repeat = "daily";
+      else if (sched.kind === "interval") repeat = sched.interval === "monthly" ? "monthly" : parseInt(sched.interval, 10);
+      else if (sched.kind === "weekly") days = intKeys(sched.days).sort();
+      else if (sched.kind === "monthly") {
+        days = intKeys(sched.days).sort();
+        weeks = weeksSorted(intKeys(sched.weeks));
+      }
       return {
         name: $("f-name").value.trim(),
         assignees: bountyMode ? [] : names,
         anyone: bountyMode,
         mode: choreMode,
-        timeOfDay: choreTime,
+        timeOfDay: bountyMode ? "anytime" : sched.time,
         autoApprove: bountyMode ? false : autoApprove,
         repeat: repeat,
+        days: days,
+        weeks: weeks,
         priority: $("f-priority").value,
         tokens: tokens
       };
+    }
+
+    // Plain-English read-back of the whole chore, so mistakes show before saving.
+    function renderSummary() {
+      var box = $("f-summary");
+      if (!box) return;
+      var body = payload();
+      box.innerHTML = "";
+      var who = el("div");
+      if (body.anyone) {
+        who.appendChild(el("b", null, "Anyone"));
+        who.appendChild(document.createTextNode(" can claim it"));
+      } else if (body.assignees.length) {
+        who.appendChild(el("b", null, joinAnd(body.assignees)));
+        if (body.assignees.length > 1) {
+          who.appendChild(document.createTextNode(body.mode === "independent" ? " — each does their own" : " — first to finish closes it for everyone"));
+        }
+      } else {
+        who.appendChild(document.createTextNode("Pick who does it"));
+      }
+      box.appendChild(who);
+
+      var draft = { id: "_draft", anyone: body.anyone, assignees: body.assignees, mode: body.mode, timeOfDay: body.timeOfDay, repeat: body.repeat, days: body.days, weeks: body.weeks };
+      var spec = scheduleSpec(draft);
+      var incomplete = (sched.kind === "weekly" && !body.days.length) || (sched.kind === "monthly" && (!body.days.length || !body.weeks.length));
+      var lane = body.assignees.length === 1 ? body.assignees[0] : null;
+      var line = incomplete ? (sched.kind === "monthly" ? "Pick a week and a day" : "Pick at least one day")
+        : patternText(spec) + (spec.time !== "anytime" ? ", " + timeText(spec.time, lane, body.assignees) : "");
+      var worth = body.tokens + " token" + (body.tokens === 1 ? "" : "s") + (body.mode === "independent" && body.assignees.length > 1 ? " each" : "");
+      box.appendChild(el("div", null, line + " · ✦ " + worth));
+
+      if (!incomplete) {
+        var nextText = "";
+        if (isGated(draft)) {
+          var nxt = nextTrigger(draft, lane, new Date());
+          var opensToday = isCalendar(draft) && occursOnCal(draft, new Date()) && !editingId;
+          if (nxt) nextText = (editingId ? "Next opens " : "First one ") + fmtWhen(nxt);
+          if (opensToday) nextText = "Shows up today";
+        } else if (!editingId) {
+          nextText = "Shows up right away";
+        }
+        if (nextText) box.appendChild(el("div", "s-next", nextText));
+      }
     }
 
     /* ---------- photos ---------- */
@@ -1422,6 +2395,8 @@
       var body = payload();
       if (!body.name) { toast("Give the chore a name"); return; }
       if (!body.anyone && !body.assignees.length) { toast("Pick who does it (or Anyone)"); return; }
+      if (sched.kind === "weekly" && !body.days.length) { toast("Pick at least one day"); return; }
+      if (sched.kind === "monthly" && (!body.days.length || !body.weeks.length)) { toast("Pick the week and the day"); return; }
       $("btn-save").disabled = true;
       var req = editingId
         ? api("/chores/" + encodeURIComponent(editingId), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
@@ -1856,6 +2831,7 @@
         sub.innerHTML = "<b>" + escapeHTML(item.user) + "</b>"
           + (item.mode === "shared" && (item.assignees || []).length > 1 ? " · closes it for everyone" : "")
           + " · " + timeAgo(item.createdAt);
+        sub.querySelector("b").style.color = personColor(item.user);
         card.appendChild(sub);
 
         var actions = document.createElement("div");
@@ -2004,7 +2980,8 @@
       events.forEach(function (ev) {
         var reverted = !!ev.revertedAt;
         var row = document.createElement("div");
-        row.className = "event" + (reverted ? " is-reverted" : "");
+        row.className = "event" + (reverted ? " is-reverted" : "") + (ev.user ? " has-person" : "");
+        if (ev.user) row.style.setProperty("--pc", personColor(ev.user));
 
         var icon = document.createElement("div");
         icon.className = "e-icon";

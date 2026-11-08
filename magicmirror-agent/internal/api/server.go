@@ -137,6 +137,7 @@ func (s *Server) setupRoutes() {
 	portalAPI.PUT("/chores/:id", s.updateChore)
 	portalAPI.DELETE("/chores/:id", s.deleteChore)
 	portalAPI.GET("/assignees", s.listAssignees)
+	portalAPI.GET("/chores-status", s.choresStatus)
 
 	// Pending-approval queue (HOM-139) and activity log + revert (HOM-140).
 	// Both read/write the MMM-Chores runtime-state SQLite the module owns.
