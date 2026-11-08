@@ -403,6 +403,9 @@
   .sched-box .box-title { font-family: "Fraunces", Georgia, serif; font-size: 17px; font-weight: 600; margin-bottom: 12px; }
   .dow-picker { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
   .dow-picker .chip { padding: 10px 0; text-align: center; }
+  .date-picker { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+  .date-picker .chip { padding: 9px 0; text-align: center; font-size: 14px; }
+  .date-picker .chip.last-day { grid-column: span 4; }
   .chip:disabled, .mode-card:disabled { opacity: 0.35; cursor: not-allowed; }
   .field-hint { margin-top: 8px; font-size: 12.5px; line-height: 1.4; color: var(--ink-dim); }
   .field-hint:empty { display: none; }
@@ -917,6 +920,14 @@
       <p class="field-hint" id="f-kind-hint"></p>
     </div>
 
+    <div class="field" id="f-monthby-field">
+      <label>Repeat by</label>
+      <div class="chips" id="f-monthby">
+        <button type="button" class="chip" data-by="weekday">Weekday (1st Saturday)</button>
+        <button type="button" class="chip" data-by="date">Date (the 15th)</button>
+      </div>
+    </div>
+
     <div class="field" id="f-weeks-field">
       <label>Which week of the month?</label>
       <div class="chips" id="f-weeks">
@@ -931,6 +942,12 @@
     <div class="field" id="f-days-field">
       <label id="f-days-label">On which days?</label>
       <div class="dow-picker" id="f-days"></div>
+    </div>
+
+    <div class="field" id="f-dates-field">
+      <label>Which dates?</label>
+      <div class="date-picker" id="f-dates"></div>
+      <p class="field-hint" id="f-dates-hint"></p>
     </div>
 
     <div class="field" id="f-interval-field">
@@ -1392,12 +1409,27 @@
     function choreDays(c) { return cleanInts(c.days, 0, 6, false); }
     function choreWeeks(c) { return cleanInts(c.weeks, 1, 5, true); }
     function calendarOn() { return choreStatus.calendarSchedules !== false; }
-    function isCalendar(c) { return calendarOn() && !c.anyone && choreDays(c).length > 0; }
+    function choreMonthDays(c) { return cleanInts(c.monthDays, 1, 31, true); }
+    function isCalendar(c) { return calendarOn() && !c.anyone && (choreMonthDays(c).length > 0 || choreDays(c).length > 0); }
+    function daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
+    // Add months without overflow (Jan 31 + 1 = Feb 28/29, not Mar 3); anchorDay
+    // keeps a chain on the original date (Jan 31 -> Feb 28 -> Mar 31).
+    function addMonthsClamped(d, months, anchorDay) {
+      var t = new Date(d.getFullYear(), d.getMonth() + months, 1);
+      t.setDate(Math.min(anchorDay || d.getDate(), daysInMonth(t.getFullYear(), t.getMonth())));
+      return t;
+    }
     function isTimed(c) { return !c.anyone && (c.timeOfDay === "morning" || c.timeOfDay === "nightly"); }
     function isGated(c) { return isCalendar(c) || isTimed(c); }
     function nthOfMonth(d) { return Math.floor((d.getDate() - 1) / 7) + 1; }
     function isLastOfMonth(d) { return addDays(d, 7).getMonth() !== d.getMonth(); }
     function occursOnCal(c, d) {
+      var md = choreMonthDays(c);
+      if (md.length) {
+        // A date past a short month's end lands on its last day (31 -> Feb 28).
+        var last = daysInMonth(d.getFullYear(), d.getMonth());
+        return md.some(function (n) { return n === -1 ? d.getDate() === last : Math.min(n, last) === d.getDate(); });
+      }
       if (choreDays(c).indexOf(d.getDay()) === -1) return false;
       var weeks = choreWeeks(c);
       if (!weeks.length) return true;
@@ -1440,7 +1472,7 @@
       var r = dayStart(done);
       if (repeat === "daily") return addDays(r, 1);
       if (repeat === "weekly") return addDays(r, 7);
-      if (repeat === "monthly") return new Date(r.getFullYear(), r.getMonth() + 1, r.getDate());
+      if (repeat === "monthly") return addMonthsClamped(r, 1);
       if (typeof repeat === "number" && repeat > 0) return addDays(r, repeat);
       return null;
     }
@@ -1450,8 +1482,14 @@
     // whatever `repeat` says — `mismatch` flags a saved repeat that's ignored.
     function scheduleSpec(c) {
       var time = (!c.anyone && (c.timeOfDay === "morning" || c.timeOfDay === "nightly")) ? c.timeOfDay : "anytime";
-      var spec = { kind: "once", days: [], weeks: [], interval: null, time: time, mismatch: false };
+      var spec = { kind: "once", days: [], weeks: [], monthDays: [], monthBy: "weekday", interval: null, time: time, mismatch: false };
       if (isCalendar(c)) {
+        spec.monthDays = choreMonthDays(c);
+        if (spec.monthDays.length) {
+          spec.kind = "monthly";
+          spec.monthBy = "date";
+          return spec;
+        }
         spec.days = choreDays(c);
         spec.weeks = choreWeeks(c);
         spec.kind = spec.weeks.length ? "monthly" : "weekly";
@@ -1477,6 +1515,22 @@
       if (d.length === 1) return DOW_LONG[d[0]];
       return joinAnd(d.map(function (x) { return DOW_SHORT[x]; }));
     }
+    function ordinal(n) {
+      var t = n % 100;
+      if (t >= 11 && t <= 13) return n + "th";
+      return n + ({ 1: "st", 2: "nd", 3: "rd" }[n % 10] || "th");
+    }
+    function monthDaysPhrase(md) {
+      var nums = md.filter(function (n) { return n !== -1; }).sort(function (a, b) { return a - b; });
+      var parts = nums.map(ordinal);
+      if (md.indexOf(-1) !== -1) parts.push("last day");
+      if (!parts.length) return "Monthly";
+      if (nums.length === 0) return "Last day of the month";
+      var out = "The " + joinAnd(parts) + " of the month";
+      // 29-31 don't exist every month; say where they land instead.
+      if (nums.some(function (n) { return n >= 29; })) out += " (or the last day, in shorter months)";
+      return out;
+    }
     function intervalPhrase(r) {
       if (r === "monthly") return "1 month";
       if (r === "weekly") return "1 week";
@@ -1494,6 +1548,7 @@
           return "Every " + p;
         }
         case "monthly":
+          if (spec.monthBy === "date") return monthDaysPhrase(spec.monthDays);
           return cap(joinAnd(weeksSorted(spec.weeks).map(function (w) { return NTH[String(w)]; }))) +
             " " + daysPhrase(spec.days) + " of the month";
         case "interval": return intervalPhrase(spec.interval) + " after it's done";
@@ -1585,7 +1640,6 @@
 
     /* ---------- projections for week / month ---------- */
     function stepInterval(d, r) {
-      if (r === "monthly") return new Date(d.getFullYear(), d.getMonth() + 1, d.getDate());
       if (r === "weekly") return addDays(d, 7);
       return addDays(d, parseInt(r, 10) || 1);
     }
@@ -1618,9 +1672,10 @@
       var d = cache[c.id];
       if (!d) return null;
       if (spec.kind === "once") return sameDay(d, day) ? { exact: false } : null;
+      var start = d;
       for (var i = 0; i < 400 && d <= day; i++) {
         if (sameDay(d, day)) return { exact: false };
-        d = stepInterval(d, spec.interval);
+        d = spec.interval === "monthly" ? addMonthsClamped(start, i + 1, start.getDate()) : stepInterval(d, spec.interval);
       }
       return null;
     }
@@ -2001,7 +2056,7 @@
     var choreMode = "shared"; // "shared" | "independent"
     var autoApprove = false;
     // Schedule editor state.
-    var sched = { kind: "once", days: {}, weeks: {}, interval: "7", time: "anytime", mismatchFrom: null };
+    var sched = { kind: "once", days: {}, weeks: {}, monthBy: "weekday", monthDays: {}, interval: "7", time: "anytime", mismatchFrom: null };
 
     function setTokens(value) {
       tokens = Math.max(0, Math.min(99, value));
@@ -2068,6 +2123,23 @@
       });
     })();
 
+    // Date picker: 1-31 plus "Last day" (-1).
+    (function () {
+      var box = $("f-dates");
+      function add(value, label, cls) {
+        var b = el("button", "chip" + (cls ? " " + cls : ""), label);
+        b.type = "button";
+        b.dataset.date = String(value);
+        b.addEventListener("click", function () {
+          if (sched.monthDays[value]) delete sched.monthDays[value]; else sched.monthDays[value] = true;
+          syncForm();
+        });
+        box.appendChild(b);
+      }
+      for (var n = 1; n <= 31; n++) add(n, String(n));
+      add(-1, "Last day", "last-day");
+    })();
+
     function pressed(container, attr, isOn) {
       Array.prototype.forEach.call($(container).children, function (b) {
         b.setAttribute("aria-pressed", String(isOn(b.dataset[attr])));
@@ -2079,7 +2151,7 @@
       once: "Stays on the list until it's done, then it's gone.",
       daily: "Comes back every day.",
       weekly: "Opens on the days you pick. If it isn't finished, it stays on the list until it is.",
-      monthly: "Pick the week and the day — e.g. 1st + Sat for the first Saturday, or 1st and Last for both ends of the month.",
+      monthly: "By weekday (e.g. the first Saturday) or by date (e.g. the 15th, or the last day).",
       interval: ""
     };
 
@@ -2109,10 +2181,20 @@
       });
       pressed("f-days", "day", function (d) { return !!sched.days[d]; });
       pressed("f-weeks", "week", function (w) { return !!sched.weeks[w]; });
+      pressed("f-monthby", "by", function (b) { return b === sched.monthBy; });
+      pressed("f-dates", "date", function (d) { return !!sched.monthDays[d]; });
       pressed("f-mode", "mode", function (m) { return m === choreMode; });
 
-      $("f-weeks-field").hidden = sched.kind !== "monthly";
-      $("f-days-field").hidden = sched.kind !== "weekly" && sched.kind !== "monthly";
+      var byDate = sched.kind === "monthly" && sched.monthBy === "date";
+      $("f-monthby-field").hidden = sched.kind !== "monthly";
+      $("f-weeks-field").hidden = sched.kind !== "monthly" || byDate;
+      $("f-days-field").hidden = (sched.kind !== "weekly" && sched.kind !== "monthly") || byDate;
+      $("f-dates-field").hidden = !byDate;
+      var lateDates = intKeys(sched.monthDays).filter(function (n) { return n >= 29; }).sort(function (a, b) { return a - b; });
+      $("f-dates-hint").textContent = lateDates.length
+        ? "Months without a " + joinAnd(lateDates.map(ordinal)) + " use their last day instead (" +
+          ({ 29: "Feb 28 in non-leap years", 30: "Feb 28 or 29", 31: "e.g. Feb 28, Apr 30" })[lateDates[0]] + ")."
+        : "Tip: pick “Last day” for the end of every month.";
       $("f-days-label").textContent = sched.kind === "monthly" ? "Which day?" : "On which days?";
       $("f-interval-field").hidden = sched.kind !== "interval";
 
@@ -2145,6 +2227,9 @@
         if (sched.weeks[w]) delete sched.weeks[w]; else sched.weeks[w] = true;
         syncForm();
       });
+    });
+    Array.prototype.forEach.call($("f-monthby").children, function (b) {
+      b.addEventListener("click", function () { sched.monthBy = b.dataset.by; syncForm(); });
     });
     Array.prototype.forEach.call($("f-time").children, function (b) {
       b.addEventListener("click", function () { sched.time = b.dataset.time; syncForm(); });
@@ -2184,8 +2269,9 @@
       autoApprove = chore ? !!chore.autoApprove : false;
       $("f-autoapprove").setAttribute("aria-checked", String(autoApprove));
 
-      var spec = chore ? scheduleSpec(chore) : { kind: "daily", days: [], weeks: [], interval: null, time: "anytime", mismatch: false };
-      sched = { kind: spec.kind, days: {}, weeks: {}, interval: "7", time: spec.time, mismatchFrom: spec.mismatch ? chore.repeat : null };
+      var spec = chore ? scheduleSpec(chore) : { kind: "daily", days: [], weeks: [], monthDays: [], monthBy: "weekday", interval: null, time: "anytime", mismatch: false };
+      sched = { kind: spec.kind, days: {}, weeks: {}, monthBy: spec.monthBy, monthDays: {}, interval: "7", time: spec.time, mismatchFrom: spec.mismatch ? chore.repeat : null };
+      spec.monthDays.forEach(function (n) { sched.monthDays[n] = true; });
       spec.days.forEach(function (d) { sched.days[d] = true; });
       spec.weeks.forEach(function (w) { sched.weeks[w] = true; });
       if (spec.kind === "interval") {
@@ -2210,11 +2296,13 @@
 
     function payload() {
       var names = selectedNameList();
-      var repeat = null, days = [], weeks = [];
+      var repeat = null, days = [], weeks = [], monthDays = [];
       if (sched.kind === "daily") repeat = "daily";
       else if (sched.kind === "interval") repeat = sched.interval === "monthly" ? "monthly" : parseInt(sched.interval, 10);
       else if (sched.kind === "weekly") days = intKeys(sched.days).sort();
-      else if (sched.kind === "monthly") {
+      else if (sched.kind === "monthly" && sched.monthBy === "date") {
+        monthDays = weeksSorted(intKeys(sched.monthDays));
+      } else if (sched.kind === "monthly") {
         days = intKeys(sched.days).sort();
         weeks = weeksSorted(intKeys(sched.weeks));
       }
@@ -2228,6 +2316,7 @@
         repeat: repeat,
         days: days,
         weeks: weeks,
+        monthDays: monthDays,
         priority: $("f-priority").value,
         tokens: tokens
       };
@@ -2253,11 +2342,14 @@
       }
       box.appendChild(who);
 
-      var draft = { id: "_draft", anyone: body.anyone, assignees: body.assignees, mode: body.mode, timeOfDay: body.timeOfDay, repeat: body.repeat, days: body.days, weeks: body.weeks };
+      var draft = { id: "_draft", anyone: body.anyone, assignees: body.assignees, mode: body.mode, timeOfDay: body.timeOfDay, repeat: body.repeat, days: body.days, weeks: body.weeks, monthDays: body.monthDays };
       var spec = scheduleSpec(draft);
-      var incomplete = (sched.kind === "weekly" && !body.days.length) || (sched.kind === "monthly" && (!body.days.length || !body.weeks.length));
+      var byDate = sched.kind === "monthly" && sched.monthBy === "date";
+      var incomplete = (sched.kind === "weekly" && !body.days.length) ||
+        (byDate && !body.monthDays.length) ||
+        (sched.kind === "monthly" && !byDate && (!body.days.length || !body.weeks.length));
       var lane = body.assignees.length === 1 ? body.assignees[0] : null;
-      var line = incomplete ? (sched.kind === "monthly" ? "Pick a week and a day" : "Pick at least one day")
+      var line = incomplete ? (byDate ? "Pick at least one date" : sched.kind === "monthly" ? "Pick a week and a day" : "Pick at least one day")
         : patternText(spec) + (spec.time !== "anytime" ? ", " + timeText(spec.time, lane, body.assignees) : "");
       var worth = body.tokens + " token" + (body.tokens === 1 ? "" : "s") + (body.mode === "independent" && body.assignees.length > 1 ? " each" : "");
       box.appendChild(el("div", null, line + " · ✦ " + worth));
@@ -2396,7 +2488,9 @@
       if (!body.name) { toast("Give the chore a name"); return; }
       if (!body.anyone && !body.assignees.length) { toast("Pick who does it (or Anyone)"); return; }
       if (sched.kind === "weekly" && !body.days.length) { toast("Pick at least one day"); return; }
-      if (sched.kind === "monthly" && (!body.days.length || !body.weeks.length)) { toast("Pick the week and the day"); return; }
+      if (sched.kind === "monthly" && sched.monthBy === "date") {
+        if (!body.monthDays.length) { toast("Pick at least one date"); return; }
+      } else if (sched.kind === "monthly" && (!body.days.length || !body.weeks.length)) { toast("Pick the week and the day"); return; }
       $("btn-save").disabled = true;
       var req = editingId
         ? api("/chores/" + encodeURIComponent(editingId), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
