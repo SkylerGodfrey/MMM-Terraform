@@ -220,6 +220,17 @@ deploy-photoframe: ## Deploy MMM-PhotoFrame to the Magic Mirror device (HOM-84)
 	ssh $(MM_SSH) 'cd $(MODULES_DIR)/MMM-PhotoFrame && npm install --omit=dev --no-audit --no-fund'
 	@echo "MMM-PhotoFrame deployed. Agent will pm2-restart MagicMirror after the next terraform apply."
 
+.PHONY: deploy-wifisetup
+deploy-wifisetup: ## Deploy MMM-WiFiSetup (on-screen Wi-Fi setup) + its polkit rule
+	@echo "Deploying MMM-WiFiSetup to $(MM_HOST)..."
+	rsync -av --delete \
+		--exclude '.git/' \
+		--exclude 'node_modules/' \
+		--exclude '.DS_Store' \
+		../MMM-WiFiSetup/ $(MM_SSH):$(MODULES_DIR)/MMM-WiFiSetup/
+	ssh $(MM_SSH) 'sudo sh $(MODULES_DIR)/MMM-WiFiSetup/deploy/install-polkit.sh $(MM_USER)'
+	@echo "MMM-WiFiSetup deployed. Restart MagicMirror (pm2 restart MagicMirror) to load changes."
+
 .PHONY: deploy-layoutbounds
 deploy-layoutbounds: ## Deploy MMM-LayoutBounds to the Magic Mirror device (HOM-90)
 	@echo "Deploying MMM-LayoutBounds to $(MM_HOST)..."
